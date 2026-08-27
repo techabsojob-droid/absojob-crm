@@ -1,9 +1,16 @@
 "use client";
 
-import { User, Bell, Shield, Moon, Globe, Lock, Smartphone, Sun, Loader2 } from "lucide-react";
+import { User, Bell, Shield, Globe, Lock, Smartphone, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
-import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/lib/auth";
+
+const ROLE_LABELS: Record<string, string> = {
+    SUPER_ADMIN: "Administrator",
+    TA_MANAGER: "TA Manager",
+    TA_RECRUITER: "Recruiter",
+    AGENT: "Channel Agent",
+    EMPLOYEE: "Employee",
+};
 import Image from "next/image";
 
 export default function SettingsPage() {
@@ -11,7 +18,6 @@ export default function SettingsPage() {
     const [emailNotif, setEmailNotif] = useState(true);
     const [pushNotif, setPushNotif] = useState(false);
     const [activeTab, setActiveTab] = useState("Profile");
-    const { theme, setTheme } = useTheme();
 
     // Form states
     const [name, setName] = useState("");
@@ -47,7 +53,6 @@ export default function SettingsPage() {
                     {[
                         { label: "Profile", icon: User },
                         { label: "Notifications", icon: Bell },
-                        { label: "Appearance", icon: Moon },
                         { label: "Security", icon: Shield },
                     ].map((item) => (
                         <button
@@ -107,7 +112,7 @@ export default function SettingsPage() {
                                     <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Role</label>
                                     <input 
                                         type="text" 
-                                        defaultValue={user?.role === 'admin' ? "Administrator" : "Agent"} 
+                                        defaultValue={ROLE_LABELS[user?.role ?? ""] ?? user?.role}
                                         disabled 
                                         className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-neutral-500 text-sm font-medium cursor-not-allowed capitalize" 
                                     />
@@ -157,70 +162,6 @@ export default function SettingsPage() {
                                         className={`w-12 h-6 rounded-full transition-colors relative ${pushNotif ? 'bg-primary' : 'bg-neutral-300'}`}
                                     >
                                         <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform shadow-sm ${pushNotif ? 'left-7' : 'left-1'}`} />
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Appearance / Dark Mode Section */}
-                    {activeTab === "Appearance" && (
-                        <div className="bg-white border border-neutral-200 rounded-3xl p-6 shadow-sm card-shadow">
-                            <h2 className="text-lg font-bold text-neutral-900 mb-2">Appearance</h2>
-                            <p className="text-sm text-neutral-500 mb-6">Customize how TrueVision looks for you</p>
-
-                            {/* Theme Selection */}
-                            <div className="space-y-4">
-                                <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Theme</label>
-                                <div className="grid grid-cols-2 gap-4">
-                                    {/* Light Mode */}
-                                    <button
-                                        onClick={() => setTheme("light")}
-                                        className={`p-4 rounded-2xl border-2 transition-all text-left ${theme === "light" ? "border-primary bg-primary/5 shadow-md" : "border-neutral-200 hover:border-neutral-300"}`}
-                                    >
-                                        <div className="flex items-center gap-3 mb-3">
-                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${theme === "light" ? "bg-primary text-white" : "bg-neutral-100 text-neutral-400"}`}>
-                                                <Sun size={20} />
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-bold text-neutral-900">Light</p>
-                                                <p className="text-[10px] text-neutral-400">Clean & bright</p>
-                                            </div>
-                                        </div>
-                                        {/* Mini preview */}
-                                        <div className="bg-neutral-100 rounded-xl p-2 space-y-1.5">
-                                            <div className="h-2.5 w-full bg-white rounded" />
-                                            <div className="flex gap-1">
-                                                <div className="h-6 flex-1 bg-white rounded" />
-                                                <div className="h-6 flex-1 bg-white rounded" />
-                                            </div>
-                                            <div className="h-3 w-2/3 bg-white rounded" />
-                                        </div>
-                                    </button>
-
-                                    {/* Dark Mode */}
-                                    <button
-                                        onClick={() => setTheme("dark")}
-                                        className={`p-4 rounded-2xl border-2 transition-all text-left ${theme === "dark" ? "border-primary bg-primary/5 shadow-md" : "border-neutral-200 hover:border-neutral-300"}`}
-                                    >
-                                        <div className="flex items-center gap-3 mb-3">
-                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${theme === "dark" ? "bg-primary text-white" : "bg-neutral-100 text-neutral-400"}`}>
-                                                <Moon size={20} />
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-bold text-neutral-900">Dark</p>
-                                                <p className="text-[10px] text-neutral-400">Easy on the eyes</p>
-                                            </div>
-                                        </div>
-                                        {/* Mini preview */}
-                                        <div className="bg-neutral-800 rounded-xl p-2 space-y-1.5">
-                                            <div className="h-2.5 w-full bg-neutral-700 rounded" />
-                                            <div className="flex gap-1">
-                                                <div className="h-6 flex-1 bg-neutral-700 rounded" />
-                                                <div className="h-6 flex-1 bg-neutral-700 rounded" />
-                                            </div>
-                                            <div className="h-3 w-2/3 bg-neutral-700 rounded" />
-                                        </div>
                                     </button>
                                 </div>
                             </div>

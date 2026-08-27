@@ -1,49 +1,47 @@
-import { createClient } from '@/utils/supabase/server'
-import { NextResponse } from 'next/server'
+import { NextResponse } from "next/server";
+import { getSessionUser } from "@/lib/mock/server";
+import { jobs, candidates, clients, users, commissionLedger } from "@/lib/mock/data";
 
 export async function GET(request: Request) {
-    try {
-        const { searchParams } = new URL(request.url)
-        const query = searchParams.get('q')
-        if (!query || query.length < 2) return NextResponse.json([])
-
-        const supabase = await createClient()
-
-        // Auth check
-        const { data: { user }, error: authError } = await supabase.auth.getUser()
-        if (authError || !user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-        }
-
-        const { data: profile } = await supabase
-            .from("profiles")
-            .select("org_id")
-            .eq("id", user.id)
-            .single()
-
-        if (!profile?.org_id) return NextResponse.json([])
-
-        const orgId = profile.org_id
-
-        // Parallel search across Leads, Properties, and Agents
-        const [
-            { data: leads },
-            { data: properties },
-            { data: agents }
-        ] = await Promise.all([
-            supabase.from("leads").select("id, name").eq("org_id", orgId).ilike('name', `%${query}%`).limit(5),
-            supabase.from("properties").select("id, title").eq("org_id", orgId).ilike('title', `%${query}%`).limit(5),
-            supabase.from("profiles").select("id, full_name").eq("org_id", orgId).eq('role', 'agent').ilike('full_name', `%${query}%`).limit(5)
-        ])
-
-        const results = [
-            ...(leads?.map(l => ({ id: l.id, title: l.name, type: 'Lead', href: `/admin/leads/${l.id}` })) || []),
-            ...(properties?.map(p => ({ id: p.id, title: p.title, type: 'Property', href: `/admin/sell/${p.id}` })) || []), // Assuming sell for now
-            ...(agents?.map(a => ({ id: a.id, title: a.full_name, type: 'Agent', href: `/admin/agents/${a.id}` })) || [])
-        ]
-
-        return NextResponse.json(results)
-    } catch (err: any) {
-        return NextResponse.json({ error: err.message }, { status: 500 })
+    const user = await getSessionUser();
+    if (!user || user.status !== "ACTIVE") {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const q = (new URL(request.url).searchParams.get("q") ?? "").toLowerCase();
+    if (q.length < 2) return NextResponse.json([]);
+
+    const orgId = user.orgId;
+    const results: { id: string; title: string; type: string; href: string }[] = [];
+
+    for (const j of jobs.filter((j) => j.orgId === orgId)) {
+        if (j.title.toLowerCase().includes(q)) {
+            const base = user.role === "SUPER_ADMIN" ? "/admin/jobs" : "/ta/requisitions";
+            results.push({ id: j.id, title: j.title, type: "Job", href: base });
+        }
+    }
+    for (const c of clients.filter((c) => c.orgId === orgId)) {
+        if (c.companyName.toLowerCase().includes(q)) {
+            results.push({ id: c.id, title: c.companyName, type: "Client", href: "/admin/clients" });
+        }
+    }
+    for (const c of candidates.filter((c) => c.orgId === orgId && !c.blacklisted)) {
+        if (c.name.toLowerCase().includes(q)) {
+            const base = user.role === "SUPER_ADMIN" ? "/admin/candidates" : user.role.startsWith("TA_") ? "/ta/candidates" : "/portal/referrals";
+            results.push({ id: c.id, title: c.name, type: "Candidate", href: base });
+        }
+    }
+    if (user.role === "SUPER_ADMIN") {
+        for (const u of users.filter((u) => u.orgId === orgId)) {
+            if (u.name.toLowerCase().includes(q)) {
+                results.push({ id: u.id, title: u.name, type: "Team", href: "/admin/team" });
+            }
+        }
+        for (const l of commissionLedger.filter((l) => l.orgId === orgId && l.invoiceNumber)) {
+            if ((l.invoiceNumber ?? "").toLowerCase().includes(q)) {
+                results.push({ id: l.id, title: `${l.invoiceNumber} — ₹${Math.abs(l.amountInr).toLocaleString("en-IN")}`, type: "Invoice", href: "/admin/finance" });
+            }
+        }
+    }
+
+    return NextResponse.json(results.slice(0, 8));
 }

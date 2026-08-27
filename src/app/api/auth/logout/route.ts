@@ -1,16 +1,11 @@
-import { createClient } from '@/utils/supabase/server'
 import { NextResponse } from 'next/server'
+import { SESSION_COOKIE } from '@/lib/mock/data'
 
 export async function POST() {
     try {
-        const supabase = await createClient()
-        const { error } = await supabase.auth.signOut()
-
-        if (error) {
-            return NextResponse.json({ error: error.message }, { status: 500 })
-        }
-
-        return NextResponse.json({ success: true })
+        const response = NextResponse.json({ success: true })
+        response.cookies.delete(SESSION_COOKIE)
+        return response
     } catch (err) {
         return NextResponse.json({ error: "Internal server error" }, { status: 500 })
     }

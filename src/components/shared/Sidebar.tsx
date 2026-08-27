@@ -37,7 +37,7 @@ export default function Sidebar({ items, collapsed, onToggle }: SidebarProps) {
                 {/* Logo */}
                 <div className={`mb-8 flex items-center shrink-0 ${collapsed ? "justify-center px-1" : "px-6 gap-3"}`}>
                     <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white text-sm font-black tracking-tight shadow-md shadow-primary/20 shrink-0">
-                        TV
+                        AJ
                     </div>
                     <span
                         className="text-lg font-bold text-neutral-900 tracking-tight whitespace-nowrap overflow-hidden"
@@ -47,7 +47,7 @@ export default function Sidebar({ items, collapsed, onToggle }: SidebarProps) {
                             transition: TRANSITION,
                         }}
                     >
-                        TrueVision
+                        AbsoJob
                     </span>
                 </div>
 
@@ -55,7 +55,7 @@ export default function Sidebar({ items, collapsed, onToggle }: SidebarProps) {
                 <nav className="flex-1 flex flex-col gap-1 w-full px-3 overflow-y-auto overflow-x-hidden no-scrollbar">
                     {items.map((item) => {
                         const Icon = item.icon;
-                        const isActive = pathname === item.href || (pathname.startsWith(item.href + "/") && item.href !== "/admin/dashboard" && item.href !== "/agent/dashboard");
+                        const isActive = pathname === item.href || (pathname.startsWith(item.href + "/") && !item.href.endsWith("/dashboard"));
 
                         return (
                             <Link

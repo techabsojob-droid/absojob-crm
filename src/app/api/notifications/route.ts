@@ -1,54 +1,30 @@
-import { createClient } from '@/utils/supabase/server'
-import { NextResponse } from 'next/server'
+import { NextResponse } from "next/server"
+import { getSessionUser } from "@/lib/mock/server"
+import { notifications as allNotifications } from "@/lib/mock/data"
 
 export async function GET() {
-    try {
-        const supabase = await createClient()
-
-        // Auth check
-        const { data: { user }, error: authError } = await supabase.auth.getUser()
-        if (authError || !user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-        }
-
-        const { data, error } = await supabase
-            .from("notifications")
-            .select("*")
-            .eq("user_id", user.id)
-            .order("created_at", { ascending: false })
-            .limit(10)
-
-        if (error) {
-            // Table might not exist yet if user hasn't run the SQL
-            if (error.code === 'PGRST116' || error.code === '42P01') {
-                return NextResponse.json([])
-            }
-            throw error
-        }
-
-        return NextResponse.json(data || [])
-    } catch (err: any) {
-        return NextResponse.json({ error: err.message }, { status: 500 })
+    const user = await getSessionUser()
+    if (!user) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
+
+    const data = allNotifications
+        .filter((n) => n.userId === user.id)
+        .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
+        .slice(0, 12)
+
+    return NextResponse.json(data)
 }
 
 export async function PATCH(request: Request) {
-    try {
-        const { id } = await request.json()
-        const supabase = await createClient()
+    const { id } = await request.json()
+    const user = await getSessionUser()
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
-        const { error } = await supabase
-            .from("notifications")
-            .update({ is_read: true })
-            .eq("id", id)
-            .eq("user_id", user.id)
-
-        if (error) throw error
-        return NextResponse.json({ success: true })
-    } catch (err: any) {
-        return NextResponse.json({ error: err.message }, { status: 500 })
+    const notification = allNotifications.find((n) => n.id === id && n.userId === user.id)
+    if (notification) {
+        notification.isRead = true
     }
+
+    return NextResponse.json({ success: true })
 }

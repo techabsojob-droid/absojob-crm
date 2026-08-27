@@ -1,39 +1,36 @@
-import { createClient } from '@/utils/supabase/server'
 import { NextResponse } from 'next/server'
+import { MOCK_PASSWORD, SESSION_COOKIE, users } from '@/lib/mock/data'
 
 export async function POST(request: Request) {
     try {
         const { email, password } = await request.json()
-        const supabase = await createClient()
 
-        const { data, error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
+        const user = users.find(
+            (u) => u.email.toLowerCase() === String(email).toLowerCase() && (u.status === "ACTIVE" || u.status === "INVITED")
+        )
+
+        if (!user || password !== MOCK_PASSWORD) {
+            return NextResponse.json({ error: "Invalid login credentials" }, { status: 401 })
+        }
+
+        const response = NextResponse.json({
+            success: true,
+            redirect:
+                user.role === "SUPER_ADMIN" ? "/admin/dashboard"
+                : user.role === "TA_MANAGER" || user.role === "TA_RECRUITER" ? "/ta/dashboard"
+                : "/portal/dashboard",
+            user: { id: user.id, email: user.email, role: user.role }
         })
 
-        if (error) {
-            return NextResponse.json({ error: error.message }, { status: 401 })
-        }
+        response.cookies.set(SESSION_COOKIE, user.id, {
+            httpOnly: true,
+            sameSite: "lax",
+            path: "/",
+            maxAge: 60 * 60 * 24 * 30
+        })
 
-        if (data.user) {
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('role')
-                .eq('id', data.user.id)
-                .maybeSingle()
-
-            return NextResponse.json({
-                success: true,
-                user: {
-                    id: data.user.id,
-                    email: data.user.email,
-                    role: profile?.role
-                }
-            })
-        }
-
-        return NextResponse.json({ error: "Unknown error occurred" }, { status: 500 })
-    } catch (err) {
+        return response
+    } catch {
         return NextResponse.json({ error: "Internal server error" }, { status: 500 })
     }
 }

@@ -1,26 +1,19 @@
-import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
+import { getSessionUser } from "@/lib/mock/server";
 import AdminLayoutClient from "./AdminLayoutClient";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getSessionUser();
 
     if (!user) {
         redirect("/login");
     }
 
-    const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .maybeSingle();
-
-    if (profile?.role !== "admin") {
-        if (profile?.role === "agent") {
-            redirect("/agent/dashboard");
+    if (user.role !== "SUPER_ADMIN") {
+        if (user.role === "TA_MANAGER" || user.role === "TA_RECRUITER") {
+            redirect("/ta/dashboard");
         } else {
-            redirect("/login");
+            redirect("/portal/dashboard");
         }
     }
 

@@ -2,18 +2,15 @@
 
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/utils/supabase/client";
-
-export type UserRole = "admin" | "agent";
+import type { UserRole } from "@/lib/types";
 
 export interface User {
     id: string;
-    org_id: string;
+    orgId: string;
     name: string;
     email: string;
     role: UserRole;
     avatar?: string;
-    area?: string;
 }
 
 interface AuthContextType {
@@ -25,59 +22,25 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Move supabase outside to ensure it's a singleton and doesn't trigger effect re-runs
-const supabase = createClient();
-
 export function AuthProvider({ children }: { children: ReactNode }) {
+    const router = useRouter();
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
-    const router = useRouter();
-
-    const fetchAndSetUserProfile = useCallback(async (userId: string) => {
-        try {
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', userId)
-                .maybeSingle();
-
-            if (error) {
-                setUser(null);
-            } else if (data) {
-                setUser({
-                    id: data.id,
-                    org_id: data.org_id,
-                    email: data.email,
-                    name: data.full_name,
-                    role: data.role as UserRole,
-                    avatar: data.avatar_url,
-                    area: data.assigned_area
-                });
-            }
-        } catch {
-            // Profile fetch failed — user will remain null
-        } finally {
-            setLoading(false);
-        }
-    }, []);
 
     useEffect(() => {
         let mounted = true;
 
         async function initAuth() {
             try {
-                const { data: { session } } = await supabase.auth.getSession();
+                const response = await fetch("/api/auth/me");
+                if (!response.ok) throw new Error("Session check failed");
 
-                if (session?.user) {
-                    if (mounted) await fetchAndSetUserProfile(session.user.id);
-                } else {
-                    if (mounted) {
-                        setUser(null);
-                        setLoading(false);
-                    }
+                const data = await response.json();
+                if (mounted) {
+                    setUser(data?.user || null);
+                    setLoading(false);
                 }
-            } catch (err) {
-                // Auth init failed — user will remain null
+            } catch {
                 if (mounted) {
                     setUser(null);
                     setLoading(false);
@@ -87,27 +50,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         initAuth();
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            if (!mounted) return;
-
-            if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') && session?.user) {
-                // Fetch profile to ensure we have the latest role and data
-                await fetchAndSetUserProfile(session.user.id);
-            } else if (event === 'SIGNED_OUT') {
-                setUser(null);
-                setLoading(false);
-            } else if (event === 'USER_UPDATED' && session?.user) {
-                await fetchAndSetUserProfile(session.user.id);
-            } else {
-                setLoading(false);
-            }
-        });
-
         return () => {
             mounted = false;
-            subscription.unsubscribe();
         };
-    }, [fetchAndSetUserProfile]);
+    }, []);
 
     const login = useCallback(async (email: string, password: string) => {
         setLoading(true);
@@ -125,16 +71,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 return { success: false, error: result.error || "Login failed" };
             }
 
-            // The login was successful. Profile fetching will trigger via onAuthStateChange.
-            // We return success so the calling component can execute a hard redirect 
-            // to re-initialize the server session cookies properly.
-
             return { success: true };
-        } catch (err) {
+        } catch {
             setLoading(false);
             return { success: false, error: "Login failed" };
         }
-    }, [router]);
+    }, []);
 
     const logout = useCallback(async () => {
         setLoading(true);
@@ -144,8 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             router.refresh();
             setLoading(false);
             router.push("/login");
-        } catch (err) {
-            // Logout failed silently
+        } catch {
             setLoading(false);
         }
     }, [router]);

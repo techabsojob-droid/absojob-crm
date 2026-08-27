@@ -1,19 +1,33 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Building2, UserCircle, Lock } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
+import { Eye, EyeOff, Briefcase, Lock, ShieldCheck, Users, UserRound } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
+const DEMO_ACCOUNTS = [
+    { label: "Super Admin", icon: ShieldCheck, email: "admin@absojob.com" },
+    { label: "TA Manager", icon: Users, email: "neha@absojob.com" },
+    { label: "Recruiter", icon: UserRound, email: "rahul.ta@absojob.com" },
+    { label: "Agent", icon: Briefcase, email: "vikram@absojob.com" },
+    { label: "Employee", icon: Briefcase, email: "kavya@absojob.com" },
+];
+
 export default function LoginPage() {
-    const { user, loading } = useAuth();
-    const router = useRouter();
+    const { user } = useAuth();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState("");
+
+    useEffect(() => {
+        if (!user) return;
+        const home =
+            user.role === "SUPER_ADMIN" ? "/admin/dashboard"
+            : user.role === "TA_MANAGER" || user.role === "TA_RECRUITER" ? "/ta/dashboard"
+            : "/portal/dashboard";
+        window.location.href = home;
+    }, [user]);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -35,52 +49,49 @@ export default function LoginPage() {
                 return;
             }
 
-            if (result.success) {
-                const role = result.user?.role;
-                if (!role) {
-                    setError("Your account does not have an assigned role yet. Please contact an admin.");
-                    setIsLoading(false);
-                    return;
-                }
-
-                // Force a hard navigation so the app completely re-initializes 
-                // and the Supabase client picks up the new HTTP-only auth cookies
-                window.location.href = role === "admin" ? "/admin/dashboard" : "/agent/dashboard";
+            if (result.redirect) {
+                // Hard navigation so middleware + session cookie are picked up fresh
+                window.location.href = result.redirect;
             }
-        } catch (err) {
+        } catch {
             setError("Something went wrong");
             setIsLoading(false);
         }
     };
 
-    // We rely entirely on the real auth state now
-
     return (
         <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2 bg-neutral-50 animate-fade-in">
 
-            {/* Left: Branding & Visuals */}
+            {/* Left: Branding */}
             <div className="hidden lg:flex flex-col justify-between p-12 relative overflow-hidden bg-primary text-white">
-                <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center opacity-10 mix-blend-overlay" />
-                <div className="absolute inset-0 bg-gradient-to-br from-primary-dark/80 to-primary/80" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.08),transparent_50%),radial-gradient(circle_at_80%_80%,rgba(16,185,129,0.15),transparent_50%)]" />
 
                 <div className="relative z-10">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center">
-                            <Building2 className="text-primary" size={20} />
+                            <Briefcase className="text-primary" size={20} />
                         </div>
-                        <span className="text-2xl font-bold tracking-tight">TrueVision<span className="text-white/60">CRM</span></span>
+                        <span className="text-2xl font-bold tracking-tight">Abso<span className="text-white/70">Job</span></span>
                     </div>
                 </div>
 
                 <div className="relative z-10 max-w-lg">
-                    <h1 className="text-5xl font-bold leading-tight mb-6">Manage Your Real Estate Empire.</h1>
+                    <h1 className="text-5xl font-bold leading-tight mb-6">Hire Faster.<br />Place Smarter.</h1>
                     <p className="text-lg text-white/80 leading-relaxed">
-                        Experience the premium dashboard designed for modern real estate professionals. Track leads, manage properties, and close deals faster.
+                        The recruitment operating system for staffing teams — requisitions, pipelines, interviews & referral incentives, all in one place.
                     </p>
+                    <div className="mt-8 flex gap-8 text-sm">
+                        {[["3 Portals", "Admin · TA · Partners"], ["End-to-end", "Sourcing → Joining"], ["Transparent", "Incentive ledger"]].map(([t, s]) => (
+                            <div key={t}>
+                                <p className="font-extrabold">{t}</p>
+                                <p className="text-xs text-white/60 mt-0.5">{s}</p>
+                            </div>
+                        ))}
+                    </div>
                 </div>
 
                 <div className="relative z-10 flex gap-4 text-xs font-medium text-white/60">
-                    <span>© 2026 TrueVision Inc.</span>
+                    <span>© 2026 AbsoJob Inc.</span>
                     <span>Privacy Policy</span>
                     <span>Terms of Service</span>
                 </div>
@@ -93,14 +104,13 @@ export default function LoginPage() {
                     <div className="text-center lg:text-left">
                         <div className="lg:hidden flex justify-center mb-6">
                             <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center">
-                                <Building2 className="text-white" size={24} />
+                                <Briefcase className="text-white" size={24} />
                             </div>
                         </div>
                         <h2 className="text-3xl font-bold text-neutral-900">Welcome Back</h2>
-                        <p className="text-neutral-500 mt-2">Please sign in to your account</p>
+                        <p className="text-neutral-500 mt-2">Sign in to your AbsoJob workspace</p>
                     </div>
 
-                    {/* Form */}
                     <form onSubmit={handleLogin} className="space-y-6">
                         {error && (
                             <div className="p-3 bg-red-50 text-red-600 text-sm rounded-xl font-medium text-center animate-fade-in">
@@ -115,7 +125,7 @@ export default function LoginPage() {
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     className="w-full px-4 py-3.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm font-medium focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none placeholder:text-neutral-400"
-                                    placeholder="name@company.com"
+                                    placeholder="name@absojob.com"
                                     required
                                 />
                             </div>
@@ -139,14 +149,6 @@ export default function LoginPage() {
                             </div>
                         </div>
 
-                        <div className="flex items-center justify-between text-sm">
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" className="w-4 h-4 rounded border-neutral-300 text-primary focus:ring-primary" />
-                                <span className="text-neutral-600 font-medium">Remember me</span>
-                            </label>
-                            <a href="#" className="text-primary font-bold hover:underline">Forgot password?</a>
-                        </div>
-
                         <button
                             type="submit"
                             disabled={isLoading}
@@ -161,6 +163,23 @@ export default function LoginPage() {
                             )}
                         </button>
                     </form>
+
+                    {/* Demo credentials (mock mode) */}
+                    <div className="mt-6 p-4 bg-neutral-50 border border-neutral-200 rounded-xl">
+                        <p className="font-bold text-neutral-600 uppercase tracking-wider text-xs mb-2.5">Demo Accounts — password: <span className="font-mono text-primary">demo123</span></p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
+                            {DEMO_ACCOUNTS.map(({ label, email: e }) => (
+                                <button key={e}
+                                    onClick={() => { setEmail(e); setPassword("demo123"); }}
+                                    className="flex items-center justify-between group text-left px-2 py-1 -mx-2 rounded-lg hover:bg-white transition-colors"
+                                >
+                                    <span className="text-[11px] font-bold text-neutral-600">{label}</span>
+                                    <span className="text-[10px] font-mono text-neutral-400 group-hover:text-primary truncate max-w-[160px]">{e}</span>
+                                </button>
+                            ))}
+                        </div>
+                        <p className="text-[10px] text-neutral-400 mt-2">Click any role to auto-fill credentials.</p>
+                    </div>
 
                 </div>
             </div>

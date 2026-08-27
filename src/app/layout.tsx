@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth";
-import { ThemeProvider } from "@/context/ThemeContext";
 import QueryProvider from "@/providers/QueryProvider";
 import { Toaster } from "sonner";
 
@@ -20,10 +19,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body suppressHydrationWarning>
         <QueryProvider>
-          <ThemeProvider>
-            <AuthProvider>{children}</AuthProvider>
-            <Toaster position="bottom-right" richColors />
-          </ThemeProvider>
+          <AuthProvider>{children}</AuthProvider>
+          <Toaster position="bottom-right" richColors />
         </QueryProvider>
       </body>
     </html>

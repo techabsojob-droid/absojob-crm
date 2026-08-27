@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, Bell, ChevronDown, Loader2, MapPin, User, FileText, Building2, Check, X } from "lucide-react";
+import { Search, Bell, ChevronDown, Loader2, Briefcase, User, Building2, Users, DollarSign } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import Image from "next/image";
@@ -129,7 +129,7 @@ export default function TopBar({ title, action }: TopBarProps) {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         onFocus={() => searchQuery.length >= 2 && setSearchOpen(true)}
-                        placeholder="Search leads, properties, agents..."
+                        placeholder="Search jobs, candidates, clients..."
                         className="w-full pl-11 pr-5 py-2.5 text-sm bg-neutral-50/50 border-transparent focus:bg-white focus:border-neutral-200 rounded-full transition-all outline-none"
                     />
                     {searchLoading && (
@@ -157,9 +157,11 @@ export default function TopBar({ title, action }: TopBarProps) {
                                     className="flex items-center gap-4 px-4 py-3 hover:bg-neutral-50 transition-colors group"
                                 >
                                     <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center text-neutral-500 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                                        {res.type === 'Lead' && <User size={18} />}
-                                        {res.type === 'Property' && <Building2 size={18} />}
-                                        {res.type === 'Agent' && <User size={18} />}
+                                        {res.type === 'Job' && <Briefcase size={18} />}
+                                        {res.type === 'Candidate' && <User size={18} />}
+                                        {res.type === 'Client' && <Building2 size={18} />}
+                                        {res.type === 'Team' && <Users size={18} />}
+                                        {res.type === 'Invoice' && <DollarSign size={18} />}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-bold text-neutral-900 truncate">{res.title}</p>
@@ -255,9 +257,6 @@ export default function TopBar({ title, action }: TopBarProps) {
                             </div>
                             <Link href="/admin/settings" onClick={() => setProfileOpen(false)} className="block w-full text-left px-4 py-2.5 text-sm text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 transition-colors">
                                 Profile Settings
-                            </Link>
-                            <Link href="/admin/settings" onClick={() => setProfileOpen(false)} className="block w-full text-left px-4 py-2.5 text-sm text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 transition-colors">
-                                Preferences
                             </Link>
                             <div className="h-px bg-neutral-100 my-1" />
                             <button onClick={logout} className="w-full text-left px-4 py-2.5 text-sm text-danger hover:bg-danger-light/30 transition-colors font-medium">
