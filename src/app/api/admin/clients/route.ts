@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
-import { clients, jobs, applications, users, addAudit, nextIds } from "@/lib/mock/data";
+import { jobs, applications, users, nextIds } from "@/lib/mock/data";
+import { getClientsFromDb, createClientInDb, logAudit } from "@/lib/supabase/db";
 import type { Client, ClientStatus } from "@/lib/types";
 
 export async function GET(request: Request) {
@@ -8,20 +9,19 @@ export async function GET(request: Request) {
     if ("error" in auth) return auth.error;
     const me = auth.user;
 
-    const list = clients
-        .filter((c) => c.orgId === me.orgId)
-        .map((c) => {
-            const clientJobs = jobs.filter((j) => j.clientId === c.id);
-            return {
-                ...c,
-                accountManagerName: users.find((u) => u.id === c.accountManagerId)?.name ?? "—",
-                openJobs: clientJobs.filter((j) => ["APPROVED", "SOURCING", "INTERVIEWING", "OFFER_STAGE"].includes(j.status)).length,
-                totalJobs: clientJobs.length,
-                placements: applications.filter((a) => clientJobs.some((j) => j.id === a.jobId) && a.stage === "JOINED").length,
-            };
-        });
+    const dbClients = await getClientsFromDb(me.orgId);
 
-    // ?status= filter
+    const list = dbClients.map((c) => {
+        const clientJobs = jobs.filter((j) => j.clientId === c.id);
+        return {
+            ...c,
+            accountManagerName: users.find((u) => u.id === c.accountManagerId)?.name ?? "—",
+            openJobs: clientJobs.filter((j) => ["APPROVED", "SOURCING", "INTERVIEWING", "OFFER_STAGE"].includes(j.status)).length,
+            totalJobs: clientJobs.length,
+            placements: applications.filter((a) => clientJobs.some((j) => j.id === a.jobId) && a.stage === "JOINED").length,
+        };
+    });
+
     const url = new URL(request.url);
     const statusFilter = url.searchParams.get("status");
     return NextResponse.json(statusFilter ? list.filter((c) => c.status === statusFilter) : list);
@@ -57,15 +57,20 @@ export async function POST(request: Request) {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
     };
-    clients.push(client);
 
-    addAudit({
-        orgId: me.orgId, actorUserId: me.id, actorRole: me.role,
-        action: "CLIENT_CREATED", entity: "Client", entityId: client.id,
-        detail: `Onboarded ${client.companyName}`,
+    const saved = await createClientInDb(client);
+
+    await logAudit({
+        orgId: me.orgId,
+        actorUserId: me.id,
+        actorRole: me.role,
+        action: "CLIENT_CREATED",
+        entity: "Client",
+        entityId: saved.id,
+        detail: `Onboarded ${saved.companyName}`,
     });
 
-    return NextResponse.json(client, { status: 201 });
+    return NextResponse.json(saved, { status: 201 });
 }
 
 export async function PATCH(request: Request) {
@@ -74,7 +79,8 @@ export async function PATCH(request: Request) {
     const me = auth.user;
 
     const { id, status, commissionRate, creditDays, accountManagerId, notes } = await request.json();
-    const client = clients.find((c) => c.id === id && c.orgId === me.orgId);
+    const dbClients = await getClientsFromDb(me.orgId);
+    const client = dbClients.find((c) => c.id === id);
     if (!client) return NextResponse.json({ error: "Client not found" }, { status: 404 });
 
     if (status) client.status = status as ClientStatus;
@@ -85,9 +91,13 @@ export async function PATCH(request: Request) {
     client.updatedAt = new Date().toISOString();
 
     if (status) {
-        addAudit({
-            orgId: me.orgId, actorUserId: me.id, actorRole: me.role,
-            action: "CLIENT_STATUS_CHANGED", entity: "Client", entityId: client.id,
+        await logAudit({
+            orgId: me.orgId,
+            actorUserId: me.id,
+            actorRole: me.role,
+            action: "CLIENT_STATUS_CHANGED",
+            entity: "Client",
+            entityId: client.id,
             detail: `${client.companyName} status → ${status}`,
         });
     }

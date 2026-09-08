@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Building2, Plus, Globe, Mail, Phone, Briefcase, UserCheck } from "lucide-react";
+import Link from "next/link";
+import { Building2, Plus, Globe, Mail, Phone, Briefcase, UserCheck, ChevronRight, IndianRupee } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader, StatCard, Badge, SectionCard, ModalShell, EmptyState } from "@/components/shared/ui";
 
@@ -43,7 +44,7 @@ export default function ClientsPage() {
         <div className="space-y-6">
             <PageHeader
                 title="Clients"
-                subtitle="Companies whose positions we fill — accounts, terms & performance"
+                subtitle="Companies whose positions we fill — click any client to view full 360° metrics, jobs, candidates and finance"
                 action={
                     <button onClick={() => setModalOpen(true)} className="px-4 py-2 bg-primary text-white rounded-xl text-sm font-semibold hover:bg-primary-dark transition-colors shadow-lg shadow-primary/25 flex items-center gap-2">
                         <Plus size={16} /> Onboard Client
@@ -78,21 +79,28 @@ export default function ClientsPage() {
             ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {filtered.map((c: any) => (
-                        <div key={c.id} className="bg-white p-5 rounded-2xl border border-neutral-200/80 shadow-xs hover:shadow-md transition-shadow space-y-3">
+                        <Link
+                            key={c.id}
+                            href={`/admin/clients/${c.id}`}
+                            className="group block bg-white p-5 rounded-2xl border border-neutral-200/80 shadow-xs hover:border-primary/50 hover:shadow-lg transition-all space-y-3 cursor-pointer"
+                        >
                             <div className="flex items-start justify-between gap-3">
                                 <div className="flex items-start gap-3 min-w-0">
-                                    <div className="w-11 h-11 bg-primary/10 text-primary rounded-xl flex items-center justify-center font-black shrink-0">
+                                    <div className="w-11 h-11 bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white rounded-xl flex items-center justify-center font-black shrink-0 transition-colors">
                                         {c.companyName.slice(0, 2).toUpperCase()}
                                     </div>
                                     <div className="min-w-0">
-                                        <h3 className="font-bold text-neutral-900 truncate">{c.companyName}</h3>
+                                        <div className="flex items-center gap-1.5">
+                                            <h3 className="font-bold text-neutral-900 group-hover:text-primary transition-colors truncate">{c.companyName}</h3>
+                                            <ChevronRight size={14} className="text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        </div>
                                         <p className="text-xs text-neutral-400">{c.industry}</p>
                                     </div>
                                 </div>
                                 <Badge value={c.status} />
                             </div>
 
-                            <div className="grid grid-cols-3 gap-2 text-center py-2 bg-neutral-50 rounded-xl border border-neutral-100">
+                            <div className="grid grid-cols-3 gap-2 text-center py-2 bg-neutral-50 rounded-xl border border-neutral-100 group-hover:bg-primary/5 transition-colors">
                                 <div><p className="text-lg font-extrabold text-neutral-900">{c.openJobs}</p><p className="text-[9px] font-bold text-neutral-400 uppercase">Open Jobs</p></div>
                                 <div className="border-x border-neutral-200"><p className="text-lg font-extrabold text-neutral-900">{c.placements}</p><p className="text-[9px] font-bold text-neutral-400 uppercase">Placements</p></div>
                                 <div><p className="text-lg font-extrabold text-neutral-900">{c.commissionRate}%</p><p className="text-[9px] font-bold text-neutral-400 uppercase">Commission</p></div>
@@ -101,14 +109,16 @@ export default function ClientsPage() {
                             <div className="space-y-1.5 text-xs text-neutral-500">
                                 <p className="flex items-center gap-2"><UserCheck size={13} className="text-neutral-400" /> AM: <span className="font-semibold text-neutral-700">{c.accountManagerName}</span></p>
                                 <p className="flex items-center gap-2"><Mail size={13} className="text-neutral-400" /> {c.contactPerson} · {c.contactEmail}</p>
-                                <p className="flex items-center gap-2"><Phone size={13} className="text-neutral-400" /> {c.contactPhone}</p>
+                                {c.contactPhone && <p className="flex items-center gap-2"><Phone size={13} className="text-neutral-400" /> {c.contactPhone}</p>}
                             </div>
 
                             <div className="pt-2 border-t border-neutral-100 flex items-center justify-between text-[11px] text-neutral-400">
-                                <span>Payment terms: <strong className="text-neutral-600">{c.creditDays} days</strong></span>
-                                <span>Est. value: <strong className="text-neutral-600">{c.estimatedValue}</strong></span>
+                                <span>Terms: <strong className="text-neutral-600">{c.creditDays} days</strong></span>
+                                <span className="text-primary font-bold flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
+                                    View 360° Details & Finance <ChevronRight size={12} />
+                                </span>
                             </div>
-                        </div>
+                        </Link>
                     ))}
                 </div>
             )}
