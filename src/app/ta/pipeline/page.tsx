@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { GitBranch, ChevronLeft, ChevronRight } from "lucide-react";
+import { GitBranch, ChevronLeft, ChevronRight, UserPlus, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader, Badge, SectionCard, EmptyState } from "@/components/shared/ui";
 import { SkeletonPulse } from "@/components/shared/UIStates";
 
 const STAGES = [
     "SOURCED", "SCREENING", "INTERVIEW_SCHEDULED", "TECH_ROUND",
-    "CLIENT_ROUND", "HR_ROUND", "OFFER_SENT",
+    "CLIENT_ROUND", "HR_ROUND", "OFFER_SENT", "OFFER_ACCEPTED", "ONBOARDING",
 ] as const;
 
 export default function TaPipelinePage() {
@@ -43,6 +43,32 @@ export default function TaPipelinePage() {
         },
         onSuccess: () => qc.invalidateQueries({ queryKey: ["pipeline"] }),
         onError: () => toast.error("Could not move candidate"),
+    });
+
+    const startOnboardingMutation = useMutation({
+        mutationFn: async (app: any) => {
+            const res = await fetch("/api/hr/onboarding", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    candidateId: app.candidateId,
+                    jobId: app.jobId,
+                    applicationId: app.id,
+                }),
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || "Failed to start onboarding");
+            }
+            return res.json();
+        },
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ["pipeline"] });
+            toast.success("Candidate transferred to HRMIS Onboarding!");
+        },
+        onError: (err: any) => {
+            toast.error(err.message || "Could not start onboarding");
+        },
     });
 
     const list = Array.isArray(apps) ? apps.filter((a: any) => !["JOINED", "REJECTED", "BACKED_OUT", "BLACKLISTED"].includes(a.stage)) : [];
@@ -125,6 +151,25 @@ export default function TaPipelinePage() {
                                                         <ChevronRight size={14} />
                                                     </button>
                                                 </div>
+
+                                                {(a.stage === "OFFER_SENT" || a.stage === "OFFER_ACCEPTED") && (
+                                                    <button
+                                                        onClick={() => startOnboardingMutation.mutate(a)}
+                                                        disabled={startOnboardingMutation.isPending}
+                                                        className="w-full mt-1.5 py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 shadow-xs transition-colors"
+                                                    >
+                                                        <UserPlus size={12} /> Start Onboarding
+                                                    </button>
+                                                )}
+
+                                                {a.stage === "ONBOARDING" && (
+                                                    <a
+                                                        href="/hr/onboarding"
+                                                        className="w-full mt-1.5 py-1.5 px-2 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 transition-colors"
+                                                    >
+                                                        In HR Onboarding →
+                                                    </a>
+                                                )}
                                             </div>
                                         );
                                     })}

@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth";
 
 const DEMO_ACCOUNTS = [
     { label: "Super Admin", icon: ShieldCheck, email: "admin@absojob.com" },
+    { label: "HR Admin", icon: Users, email: "hr@absojob.com" },
     { label: "TA Manager", icon: Users, email: "neha@absojob.com" },
     { label: "Recruiter", icon: UserRound, email: "rahul.ta@absojob.com" },
     { label: "Agent", icon: Briefcase, email: "vikram@absojob.com" },
@@ -24,6 +25,7 @@ export default function LoginPage() {
         if (!user) return;
         const home =
             user.role === "SUPER_ADMIN" ? "/admin/dashboard"
+            : user.role === "HR_ADMIN" ? "/hr/dashboard"
             : user.role === "TA_MANAGER" || user.role === "TA_RECRUITER" ? "/ta/dashboard"
             : "/portal/dashboard";
         window.location.href = home;

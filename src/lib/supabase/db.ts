@@ -232,7 +232,17 @@ export async function updateJobInDb(jobId: string, orgId: string, updates: Parti
   } catch (err) {
     const idx = mock.jobs.findIndex((j) => j.id === jobId && j.orgId === orgId);
     if (idx !== -1) {
-      mock.jobs[idx] = { ...mock.jobs[idx], ...updates, updatedAt: new Date().toISOString() };
+      mock.jobs[idx] = {
+        ...mock.jobs[idx],
+        ...updates,
+        openings: updates.openings !== undefined ? Number(updates.openings) : mock.jobs[idx].openings,
+        filled: updates.filled !== undefined ? Number(updates.filled) : mock.jobs[idx].filled,
+        salaryMinLpa: updates.salaryMinLpa !== undefined ? Number(updates.salaryMinLpa) : mock.jobs[idx].salaryMinLpa,
+        salaryMaxLpa: updates.salaryMaxLpa !== undefined ? Number(updates.salaryMaxLpa) : mock.jobs[idx].salaryMaxLpa,
+        experienceMinYears: updates.experienceMinYears !== undefined ? Number(updates.experienceMinYears) : mock.jobs[idx].experienceMinYears,
+        experienceMaxYears: updates.experienceMaxYears !== undefined ? Number(updates.experienceMaxYears) : mock.jobs[idx].experienceMaxYears,
+        updatedAt: new Date().toISOString()
+      };
       return true;
     }
     return false;

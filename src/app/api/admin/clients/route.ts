@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
-import { jobs, applications, users, nextIds } from "@/lib/mock/data";
+import { jobs, applications, users, nextIds, commissionLedger } from "@/lib/mock/data";
 import { getClientsFromDb, createClientInDb, logAudit } from "@/lib/supabase/db";
 import type { Client, ClientStatus } from "@/lib/types";
 
@@ -11,20 +11,77 @@ export async function GET(request: Request) {
 
     const dbClients = await getClientsFromDb(me.orgId);
 
-    const list = dbClients.map((c) => {
+    let list = dbClients.map((c) => {
         const clientJobs = jobs.filter((j) => j.clientId === c.id);
+        const clientApps = applications.filter((a) => clientJobs.some((j) => j.id === a.jobId));
+        const activeJobsCount = clientJobs.filter((j) => ["APPROVED", "SOURCING", "INTERVIEWING", "OFFER_STAGE"].includes(j.status)).length;
+        const totalOpenings = clientJobs.reduce((acc, j) => acc + (j.openings || 1), 0);
+        const placementsCount = clientApps.filter((a) => a.stage === "JOINED").length;
+        const pipelineCount = clientApps.filter((a) => !["JOINED", "REJECTED", "BACKED_OUT"].includes(a.stage)).length;
+
+        // Health check: Needs attention if active job with 0 candidates in pipeline, or status paused
+        let healthState: "HEALTHY" | "NEEDS_ATTENTION" | "INACTIVE" = "HEALTHY";
+        let healthReason = "Account active with steady operational velocity";
+
+        if (c.status === "PAUSED" || c.status === "CHURNED") {
+            healthState = "INACTIVE";
+            healthReason = "Client account paused/inactive";
+        } else if (activeJobsCount > 0 && pipelineCount === 0) {
+            healthState = "NEEDS_ATTENTION";
+            healthReason = "Active requisitions have zero candidates in screening";
+        } else if (c.status === "ONBOARDING") {
+            healthState = "NEEDS_ATTENTION";
+            healthReason = "Service agreement pending contract signature";
+        }
+
+        // Mock financial status if user is super admin
+        const clientInvoices = commissionLedger.filter((l) => l.clientId === c.id);
+        const outstandingAmount = clientInvoices
+            .filter((inv) => inv.status === "PENDING" || inv.status === "APPROVED")
+            .reduce((sum, inv) => sum + inv.amountInr, 0);
+
         return {
             ...c,
-            accountManagerName: users.find((u) => u.id === c.accountManagerId)?.name ?? "—",
-            openJobs: clientJobs.filter((j) => ["APPROVED", "SOURCING", "INTERVIEWING", "OFFER_STAGE"].includes(j.status)).length,
+            accountManagerName: users.find((u) => u.id === c.accountManagerId)?.name ?? "Aarav Mehta",
+            openJobs: activeJobsCount,
             totalJobs: clientJobs.length,
-            placements: applications.filter((a) => clientJobs.some((j) => j.id === a.jobId) && a.stage === "JOINED").length,
+            totalOpenings,
+            placements: placementsCount,
+            inPipeline: pipelineCount,
+            lastActivity: "2 hours ago",
+            healthState,
+            healthReason,
+            outstandingAmount,
+            paymentStatus: outstandingAmount > 0 ? "PAYMENT_DUE" : "SETTLED",
+            tags: c.industry === "Healthcare" ? ["Healthcare", "High Priority"] : c.industry === "Fintech" ? ["Fintech", "Enterprise"] : ["Technology"],
         };
     });
 
     const url = new URL(request.url);
+    const q = (url.searchParams.get("q") ?? "").toLowerCase();
     const statusFilter = url.searchParams.get("status");
-    return NextResponse.json(statusFilter ? list.filter((c) => c.status === statusFilter) : list);
+    const industryFilter = url.searchParams.get("industry");
+
+    if (q) {
+        list = list.filter((c) =>
+            c.companyName.toLowerCase().includes(q) ||
+            c.contactPerson.toLowerCase().includes(q) ||
+            c.contactEmail.toLowerCase().includes(q) ||
+            c.industry.toLowerCase().includes(q) ||
+            c.accountManagerName.toLowerCase().includes(q) ||
+            (c.address ?? "").toLowerCase().includes(q)
+        );
+    }
+
+    if (statusFilter && statusFilter !== "ALL") {
+        list = list.filter((c) => c.status === statusFilter);
+    }
+
+    if (industryFilter && industryFilter !== "ALL") {
+        list = list.filter((c) => c.industry === industryFilter);
+    }
+
+    return NextResponse.json(list);
 }
 
 export async function POST(request: Request) {
@@ -47,12 +104,12 @@ export async function POST(request: Request) {
         contactEmail: body.contactEmail,
         contactPhone: body.contactPhone ?? "",
         address: body.address ?? null,
-        status: "ONBOARDING",
+        status: (body.status as ClientStatus) ?? "ONBOARDING",
         agreementUrl: null,
         commissionRate: Number(body.commissionRate) || 8.33,
         creditDays: Number(body.creditDays) || 30,
-        accountManagerId: me.id,
-        estimatedValue: body.estimatedValue ?? "—",
+        accountManagerId: body.accountManagerId || me.id,
+        estimatedValue: body.estimatedValue ?? "₹25L",
         notes: body.notes ?? null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -78,7 +135,7 @@ export async function PATCH(request: Request) {
     if ("error" in auth) return auth.error;
     const me = auth.user;
 
-    const { id, status, commissionRate, creditDays, accountManagerId, notes } = await request.json();
+    const { id, status, commissionRate, creditDays, accountManagerId, notes, address, contactPerson, contactEmail, contactPhone } = await request.json();
     const dbClients = await getClientsFromDb(me.orgId);
     const client = dbClients.find((c) => c.id === id);
     if (!client) return NextResponse.json({ error: "Client not found" }, { status: 404 });
@@ -88,6 +145,10 @@ export async function PATCH(request: Request) {
     if (creditDays !== undefined) client.creditDays = Number(creditDays);
     if (accountManagerId !== undefined) client.accountManagerId = accountManagerId;
     if (notes !== undefined) client.notes = notes;
+    if (address !== undefined) client.address = address;
+    if (contactPerson !== undefined) client.contactPerson = contactPerson;
+    if (contactEmail !== undefined) client.contactEmail = contactEmail;
+    if (contactPhone !== undefined) client.contactPhone = contactPhone;
     client.updatedAt = new Date().toISOString();
 
     if (status) {

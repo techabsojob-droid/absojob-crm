@@ -4,6 +4,7 @@ import { roleHome } from '@/lib/types'
 
 const PORTAL_PREFIXES: Record<string, RegExp> = {
     ADMIN: /^\/admin(\/|$)/,
+    HR: /^\/hr(\/|$)/,
     TA: /^\/ta(\/|$)/,
     PORTAL: /^\/portal(\/|$)/,
 }
@@ -11,7 +12,9 @@ const PORTAL_PREFIXES: Record<string, RegExp> = {
 function allowedPortals(role: string): string[] {
     switch (role) {
         case "SUPER_ADMIN":
-            return ["ADMIN", "TA", "PORTAL"]; // full access & control
+            return ["ADMIN", "HR", "TA", "PORTAL"]; // full access & control
+        case "HR_ADMIN":
+            return ["HR"];
         case "TA_MANAGER":
         case "TA_RECRUITER":
             return ["TA"];
@@ -27,7 +30,7 @@ export default async function proxy(request: NextRequest) {
     const pathname = request.nextUrl.pathname
     const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/register')
     const isProtectedRoute =
-        pathname.startsWith('/admin') || pathname.startsWith('/ta') || pathname.startsWith('/portal')
+        pathname.startsWith('/admin') || pathname.startsWith('/hr') || pathname.startsWith('/ta') || pathname.startsWith('/portal')
     const isRootRoute = pathname === '/'
 
     // 1. Unauthenticated → login

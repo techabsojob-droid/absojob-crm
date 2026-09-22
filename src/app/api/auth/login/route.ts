@@ -17,6 +17,7 @@ export async function POST(request: Request) {
             success: true,
             redirect:
                 user.role === "SUPER_ADMIN" ? "/admin/dashboard"
+                : user.role === "HR_ADMIN" ? "/hr/dashboard"
                 : user.role === "TA_MANAGER" || user.role === "TA_RECRUITER" ? "/ta/dashboard"
                 : "/portal/dashboard",
             user: { id: user.id, email: user.email, role: user.role }

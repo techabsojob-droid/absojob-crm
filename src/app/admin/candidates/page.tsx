@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users, Search, Star, Building2, Briefcase, Ban } from "lucide-react";
+import { Users, Search, Star, Building2, Briefcase, Ban, ChevronRight, UploadCloud, FileSpreadsheet, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import Link from "next/link";
 import { PageHeader, StatCard, Badge, SectionCard, ModalShell, EmptyState } from "@/components/shared/ui";
 
 export default function AdminCandidatesPage() {
@@ -11,6 +12,9 @@ export default function AdminCandidatesPage() {
     const [q, setQ] = useState("");
     const [stageFilter, setStageFilter] = useState("ALL");
     const [addOpen, setAddOpen] = useState(false);
+    const [bulkOpen, setBulkOpen] = useState(false);
+    const [bulkCsvText, setBulkCsvText] = useState("");
+    const [bulkImporting, setBulkImporting] = useState(false);
     const [form, setForm] = useState({ name: "", email: "", phone: "", currentCompany: "", skills: "", totalExperienceYears: "", expectedCtcLpa: "" });
 
     const { data: candidates, isLoading } = useQuery({
@@ -46,8 +50,9 @@ export default function AdminCandidatesPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(form),
             });
-            if (!res.ok) throw new Error((await res.json()).error ?? "Failed");
-            return res.json();
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error ?? "Failed");
+            return data;
         },
         onSuccess: () => {
             toast.success("Candidate added to database.");
@@ -58,6 +63,51 @@ export default function AdminCandidatesPage() {
         onError: (e: Error) => toast.error(e.message),
     });
 
+    const handleBulkImport = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const lines = bulkCsvText.trim().split("\n").filter(Boolean);
+        if (lines.length === 0) {
+            toast.error("Please provide CSV text");
+            return;
+        }
+
+        setBulkImporting(true);
+        let imported = 0;
+        let skipped = 0;
+
+        for (const line of lines) {
+            const parts = line.split(",").map((p) => p.trim());
+            const [name, email, phone, currentCompany, skills, totalExperienceYears, expectedCtcLpa] = parts;
+            if (!name || !email) continue;
+
+            try {
+                const res = await fetch("/api/admin/candidates", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        name,
+                        email,
+                        phone: phone || "",
+                        currentCompany: currentCompany || "",
+                        skills: skills || "",
+                        totalExperienceYears: totalExperienceYears || "0",
+                        expectedCtcLpa: expectedCtcLpa || "0",
+                    }),
+                });
+                if (res.ok) imported++;
+                else skipped++;
+            } catch {
+                skipped++;
+            }
+        }
+
+        setBulkImporting(false);
+        setBulkOpen(false);
+        setBulkCsvText("");
+        qc.invalidateQueries({ queryKey: ["admin-candidates"] });
+        toast.success(`Import complete: ${imported} imported, ${skipped} skipped/duplicates.`);
+    };
+
     const list = Array.isArray(candidates) ? candidates : [];
     const filtered = stageFilter === "ALL" ? list
         : stageFilter === "NONE" ? list.filter((c: any) => !c.currentStage)
@@ -67,11 +117,16 @@ export default function AdminCandidatesPage() {
         <div className="space-y-6">
             <PageHeader
                 title="Candidate Database"
-                subtitle="Every candidate ever sourced — pipeline status, sources & ratings"
+                subtitle="Every candidate ever sourced — pipeline status, duplicate guard & CSV upload"
                 action={
-                    <button onClick={() => setAddOpen(true)} className="px-4 py-2 bg-primary text-white rounded-xl text-sm font-semibold hover:bg-primary-dark transition-colors shadow-lg shadow-primary/25 flex items-center gap-2">
-                        <Users size={16} /> Add Candidate
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button onClick={() => setBulkOpen(true)} className="px-3.5 py-2 bg-white border border-neutral-200 text-neutral-700 rounded-xl text-sm font-semibold hover:bg-neutral-50 transition-colors flex items-center gap-1.5 shadow-xs">
+                            <UploadCloud size={16} /> Bulk CSV Import
+                        </button>
+                        <button onClick={() => setAddOpen(true)} className="px-4 py-2 bg-primary text-white rounded-xl text-sm font-semibold hover:bg-primary-dark transition-colors shadow-lg shadow-primary/25 flex items-center gap-2">
+                            <Users size={16} /> Add Candidate
+                        </button>
+                    </div>
                 }
             />
 
@@ -139,18 +194,26 @@ export default function AdminCandidatesPage() {
                                             <span className="text-amber-500 text-xs tracking-tight">{"★".repeat(c.rating)}{"☆".repeat(5 - c.rating)}</span>
                                         </td>
                                         <td className="px-3 py-3.5 text-right">
-                                            {!c.blacklisted && (
-                                                <button onClick={() => blacklistMutation.mutate({ id: c.id, blacklisted: true })}
-                                                    className="text-xs font-bold text-red-500 hover:text-red-700 px-2 py-1 hover:bg-red-50 rounded-lg transition-colors">
-                                                    Blacklist
-                                                </button>
-                                            )}
-                                            {c.blacklisted && (
-                                                <button onClick={() => blacklistMutation.mutate({ id: c.id, blacklisted: false })}
-                                                    className="text-xs font-bold text-emerald-600 hover:text-emerald-700 px-2 py-1 hover:bg-emerald-50 rounded-lg transition-colors">
-                                                    Restore
-                                                </button>
-                                            )}
+                                            <div className="flex items-center justify-end gap-2 text-right">
+                                                {!c.blacklisted && (
+                                                    <button onClick={() => blacklistMutation.mutate({ id: c.id, blacklisted: true })}
+                                                        className="text-[10px] font-bold text-red-500 hover:text-red-700 px-2 py-1 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100">
+                                                        Blacklist
+                                                    </button>
+                                                )}
+                                                {c.blacklisted && (
+                                                    <button onClick={() => blacklistMutation.mutate({ id: c.id, blacklisted: false })}
+                                                        className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700 px-2 py-1 hover:bg-emerald-50 rounded-lg transition-colors border border-transparent hover:border-emerald-100">
+                                                        Restore
+                                                    </button>
+                                                )}
+                                                <Link 
+                                                    href={`/admin/candidates/${c.id}`} 
+                                                    className="inline-flex items-center gap-1 text-[11px] font-bold text-white bg-neutral-900 hover:bg-neutral-800 px-3 py-1.5 rounded-lg transition-all shadow-sm"
+                                                >
+                                                    Profile <ChevronRight size={12} />
+                                                </Link>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -181,6 +244,40 @@ export default function AdminCandidatesPage() {
                         <input value={form.skills} onChange={(e) => setForm({ ...form, skills: e.target.value })} placeholder="React, Node.js, SQL" className="mt-1 w-full px-4 py-2.5 rounded-xl border border-neutral-200 text-sm focus:border-primary outline-none" /></label>
                     <button disabled={addMutation.isPending} className="w-full py-3 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primary-dark transition-all disabled:opacity-50 shadow-lg shadow-primary/25">
                         {addMutation.isPending ? "Adding..." : "Add Candidate"}
+                    </button>
+                </form>
+            </ModalShell>
+
+            {/* Bulk CSV Import Modal */}
+            <ModalShell open={bulkOpen} onClose={() => setBulkOpen(false)} title="Bulk Import Candidates (CSV)">
+                <form onSubmit={handleBulkImport} className="space-y-4">
+                    <div>
+                        <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1">
+                            Paste CSV Data (1 Candidate Per Line)
+                        </label>
+                        <p className="text-xs text-neutral-400 mb-2 font-mono">
+                            Format: Name, Email, Phone, Company, Skills, ExpYears, ExpCtcLpa
+                        </p>
+                        <textarea
+                            rows={8}
+                            required
+                            value={bulkCsvText}
+                            onChange={(e) => setBulkCsvText(e.target.value)}
+                            placeholder="Aman Verma, aman@example.com, 9876543210, Infosys, React;Node;AWS, 4, 18
+Rohit Sharma, rohit@example.com, 9123456780, TCS, Java;Spring Boot, 5, 20"
+                            className="w-full p-3 font-mono text-xs rounded-xl border border-neutral-200 outline-none focus:border-primary"
+                        />
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-neutral-500 bg-neutral-50 p-3 rounded-xl border border-neutral-100">
+                        <AlertCircle size={15} className="text-primary shrink-0" />
+                        <span>Existing emails will be automatically skipped by duplicate check.</span>
+                    </div>
+                    <button
+                        type="submit"
+                        disabled={bulkImporting}
+                        className="w-full py-3 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primary-dark transition-all disabled:opacity-50 shadow-lg shadow-primary/25"
+                    >
+                        {bulkImporting ? "Importing..." : "Start Import"}
                     </button>
                 </form>
             </ModalShell>

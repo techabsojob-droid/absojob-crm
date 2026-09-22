@@ -60,7 +60,10 @@ export async function POST(request: Request) {
         isNew = true;
         candidate = {
             id: nextIds.candidate(),
+            candidateCode: `CAN-${Math.floor(1000 + Math.random() * 9000)}`,
             orgId: me.orgId,
+            status: "NEW" as const,
+            tags: ["Referral", "Pending Review"],
             name: body.name,
             email: body.email,
             phone: body.phone,

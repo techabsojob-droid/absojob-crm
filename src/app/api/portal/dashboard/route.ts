@@ -7,12 +7,13 @@ import {
 } from "@/lib/mock/data";
 import type { UserRole } from "@/lib/types";
 
-const AUDIENCE_BY_ROLE: Record<UserRole, "ALL" | "TA" | "AGENTS" | "EMPLOYEES"> = {
+const AUDIENCE_BY_ROLE: Record<UserRole, "ALL" | "TA" | "AGENTS" | "EMPLOYEES" | "HR"> = {
     SUPER_ADMIN: "ALL",
     TA_MANAGER: "TA",
     TA_RECRUITER: "TA",
     AGENT: "AGENTS",
     EMPLOYEE: "EMPLOYEES",
+    HR_ADMIN: "HR",
 };
 
 export async function GET() {
@@ -68,7 +69,7 @@ export async function GET() {
     // ─── Announcements visible to my role ───
     const aud = AUDIENCE_BY_ROLE[me.role];
     const visibleAnnouncements = announcements
-        .filter((a) => a.orgId === me.orgId && (a.audience.includes("ALL") || a.audience.includes(aud)))
+        .filter((a) => a.orgId === me.orgId && (a.audience.includes("ALL") || a.audience.includes(aud as any)))
         .sort((a, b) =>
             Number(b.pinned) - Number(a.pinned) || +new Date(b.createdAt) - +new Date(a.createdAt))
         .map((a) => ({
