@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
 import { clients, users, applications, nextIds } from "@/lib/mock/data";
 import { getJobsFromDb, createJobInDb, updateJobInDb, deleteJobFromDb, logAudit } from "@/lib/supabase/db";
+import { creditStatusOf } from "@/lib/mock/finance";
+import { createApproval, isRecruitmentManager, notifyJobAssignment, resolveApprovalsFor, validRecruiters } from "@/lib/mock/pipeline";
 import type { JobRequisition, JobStatus } from "@/lib/types";
 
 export async function GET(request: Request) {
@@ -18,8 +20,12 @@ export async function GET(request: Request) {
     const slaRisk = url.searchParams.get("slaRisk"); // "NEAR", "OVER", "ALL"
 
     const dbJobs = await getJobsFromDb(me.orgId);
+    // Recruiters see requisitions assigned to them (or that they requested); managers see all
+    const scoped = isRecruitmentManager(me)
+        ? dbJobs
+        : dbJobs.filter((j) => j.primaryRecruiterId === me.id || (j.assignedTas || []).includes(me.id) || j.requestedById === me.id);
 
-    let list = dbJobs.map((j) => {
+    let list = scoped.map((j) => {
         const client = clients.find((c) => c.id === j.clientId);
         const reqUser = users.find((u) => u.id === j.requestedById);
         const appUser = users.find((u) => u.id === j.approvedById);
@@ -107,7 +113,23 @@ export async function POST(request: Request) {
     }
 
     const isElevated = ["SUPER_ADMIN", "TA_MANAGER"].includes(me.role);
-    const numOpenings = Number(body.openings) || 1;
+    const numOpenings = Math.max(1, Math.floor(Number(body.openings) || 1));
+    if (!clients.some((c) => c.id === body.clientId && c.orgId === me.orgId)) {
+        return NextResponse.json({ error: "Client not found" }, { status: 400 });
+    }
+    const credit = creditStatusOf(me.orgId, body.clientId);
+    if (credit.onHold && me.role !== "SUPER_ADMIN") {
+        return NextResponse.json({ error: `Client is on credit hold (${credit.reasons.join("; ")}). Finance must clear it before new requisitions.` }, { status: 423 });
+    }
+    const requestedTeam: string[] = Array.isArray(body.assignedTas) ? body.assignedTas : [];
+    const teamIds = Array.from(new Set([...requestedTeam, ...(body.primaryRecruiterId ? [body.primaryRecruiterId] : [])]));
+    if (teamIds.length && !isElevated) {
+        return NextResponse.json({ error: "Only Super Admin or TA Manager can assign recruiters" }, { status: 403 });
+    }
+    const { invalid } = validRecruiters(me.orgId, teamIds);
+    if (invalid.length) return NextResponse.json({ error: `Recruiter(s) not found: ${invalid.join(", ")}` }, { status: 400 });
+    // Non-managers can only raise a request; status is always decided by approval
+    if (!isElevated) delete body.status;
     const initialOpenings = Array.from({ length: numOpenings }).map((_, i) => ({
         id: `opn-${Date.now()}-${i + 1}`,
         openingNumber: i + 1,
@@ -150,7 +172,8 @@ export async function POST(request: Request) {
         status: body.status || (isElevated ? "APPROVED" : "PENDING_APPROVAL"),
         requestedById: me.id,
         approvedById: isElevated ? me.id : null,
-        assignedTas: Array.isArray(body.assignedTas) ? body.assignedTas : (body.primaryRecruiterId ? [body.primaryRecruiterId] : []),
+        // Requester is on the team of their own request so they can see it
+        assignedTas: isElevated ? teamIds : [me.id],
         primaryRecruiterId: body.primaryRecruiterId ?? null,
         taManagerId: body.taManagerId ?? null,
         accountManagerId: body.accountManagerId ?? null,
@@ -199,6 +222,23 @@ export async function POST(request: Request) {
 
     const saved = await createJobInDb(job);
 
+    if (saved.status === "PENDING_APPROVAL") {
+        createApproval({
+            orgId: me.orgId,
+            requester: me,
+            type: "JOB_REQUISITION",
+            title: `New requisition: ${saved.title}`,
+            priority: saved.priority,
+            relatedRecordType: "JOB",
+            relatedRecordId: saved.id,
+            relatedRecordName: saved.title,
+            description: `${saved.openings} opening(s) · ${saved.location || "location TBD"} · ₹${saved.salaryMinLpa}-${saved.salaryMaxLpa} LPA`,
+            requestedById: me.id,
+        }, ["TA_MANAGER", "SUPER_ADMIN"]);
+    } else {
+        notifyJobAssignment(saved, [], me);
+    }
+
     await logAudit({
         orgId: me.orgId,
         actorUserId: me.id,
@@ -220,11 +260,20 @@ export async function PATCH(request: Request) {
     const body = await request.json();
     const { id, action, ...updates } = body;
     if (!id) return NextResponse.json({ error: "Job ID required" }, { status: 400 });
+    delete updates.filled;
+    delete updates.requirementVersions;
+    delete updates.assignmentHistory;
 
     if (action === "approve") {
         updates.status = "APPROVED";
         updates.approvedById = me.id;
     }
+    const before = (await getJobsFromDb(me.orgId)).find((j) => j.id === id);
+    if (!before) return NextResponse.json({ error: "Job not found" }, { status: 404 });
+    const newTeam = [...(updates.assignedTas || []), ...(updates.primaryRecruiterId ? [updates.primaryRecruiterId] : [])];
+    const { invalid } = validRecruiters(me.orgId, newTeam);
+    if (invalid.length) return NextResponse.json({ error: `Recruiter(s) not found: ${invalid.join(", ")}` }, { status: 400 });
+    const prevTeam = [...(before.assignedTas || []), ...(before.primaryRecruiterId ? [before.primaryRecruiterId] : [])];
 
     if (updates.skills && typeof updates.skills === "string") {
         updates.skills = updates.skills.split(",").map((s: string) => s.trim()).filter(Boolean);
@@ -232,6 +281,13 @@ export async function PATCH(request: Request) {
 
     const success = await updateJobInDb(id, me.orgId, updates);
     if (!success) return NextResponse.json({ error: "Job not found" }, { status: 404 });
+
+    const after = (await getJobsFromDb(me.orgId)).find((j) => j.id === id);
+    if (after) {
+        if (updates.status === "APPROVED") resolveApprovalsFor(id, "APPROVED", me);
+        if (updates.status === "CANCELLED") resolveApprovalsFor(id, "REJECTED", me, updates.cancelReason);
+        notifyJobAssignment(after, prevTeam, me);
+    }
 
     await logAudit({
         orgId: me.orgId,
@@ -254,6 +310,14 @@ export async function DELETE(request: Request) {
     const url = new URL(request.url);
     const id = url.searchParams.get("id");
     if (!id) return NextResponse.json({ error: "Job ID is required" }, { status: 400 });
+
+    const linkedApps = applications.filter((a) => a.jobId === id && a.orgId === me.orgId).length;
+    if (linkedApps > 0) {
+        return NextResponse.json(
+            { error: `This requisition has ${linkedApps} candidate application(s). Close or cancel it instead of deleting.` },
+            { status: 409 }
+        );
+    }
 
     const success = await deleteJobFromDb(id, me.orgId);
     if (!success) return NextResponse.json({ error: "Job not found" }, { status: 404 });

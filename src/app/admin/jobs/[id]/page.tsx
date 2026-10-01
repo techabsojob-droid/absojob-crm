@@ -74,7 +74,7 @@ export default function Job360Page({ params }: { params: Promise<{ id: string }>
     const { data: teamMembers } = useQuery({
         queryKey: ["team-members"],
         queryFn: async () => {
-            const res = await fetch("/api/admin/attendance");
+            const res = await fetch("/api/admin/team-members");
             if (!res.ok) return [];
             const d = await res.json();
             return d.users || [];
@@ -696,10 +696,10 @@ export default function Job360Page({ params }: { params: Promise<{ id: string }>
                                     <div>
                                         <p className="font-bold text-neutral-900 text-sm">{off.candidateName}</p>
                                         <p className="text-neutral-600 mt-0.5">
-                                            Offered Salary: <strong className="text-neutral-900 font-extrabold">{off.offeredSalaryLpa} LPA</strong>
-                                            {" · "}Expected Joining: <strong className="text-neutral-800">{off.expectedJoiningDate}</strong>
+                                            Offered Salary: <strong className="text-neutral-900 font-extrabold">{off.offeredSalaryLpa != null ? `${off.offeredSalaryLpa} LPA` : "Not recorded"}</strong>
+                                            {" · "}Expected Joining: <strong className="text-neutral-800">{off.expectedJoiningDate || "TBD"}</strong>
                                         </p>
-                                        <p className="text-[11px] text-neutral-400">Approved by: {off.approverName}</p>
+                                        {off.approverName && <p className="text-[11px] text-neutral-400">Approved by: {off.approverName}</p>}
                                     </div>
                                     <Badge value={off.status} />
                                 </div>
@@ -725,11 +725,11 @@ export default function Job360Page({ params }: { params: Promise<{ id: string }>
                                             <Badge value="JOINED" />
                                         </div>
                                         <p className="text-neutral-600 mt-1">
-                                            Joined Date: <strong className="text-neutral-900">{plc.joiningDate}</strong>
-                                            {" · "}Annual CTC: <strong className="text-neutral-900">{plc.ctcLpa} LPA</strong>
+                                            Joined Date: <strong className="text-neutral-900">{plc.joiningDate || "—"}</strong>
+                                            {" · "}Annual CTC: <strong className="text-neutral-900">{(plc.offeredSalaryLpa ?? plc.ctcLpa) != null ? `${plc.offeredSalaryLpa ?? plc.ctcLpa} LPA` : "Not recorded"}</strong>
                                         </p>
                                         <p className="text-emerald-700 font-bold mt-0.5">
-                                            Invoice: {plc.invoiceNumber} · Agency Fee: {inr(plc.placementFeeInr)}
+                                            Invoice: {plc.invoiceNumber || "Not invoiced"} · Agency Fee: {(plc.revenueInr ?? plc.placementFeeInr) != null ? inr(plc.revenueInr ?? plc.placementFeeInr) : "—"}
                                         </p>
                                     </div>
                                     <Link

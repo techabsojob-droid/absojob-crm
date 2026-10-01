@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { PageHeader, StatCard, Badge, SectionCard, EmptyState } from "@/components/shared/ui";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { PageHeader, StatCard, Badge, SectionCard, EmptyState, ModalShell } from "@/components/shared/ui";
+import { api, useEmployeeOptions } from "@/lib/api";
 import { SkeletonPulse } from "@/components/shared/UIStates";
-import { Laptop, Shield, CheckCircle2, Clock, Search, Filter, Monitor, Smartphone, Tag, AlertCircle } from "lucide-react";
+import { Laptop, CheckCircle2, Clock, Search, Filter, Tag, AlertCircle, Plus } from "lucide-react";
 
 interface AssetRecord {
     id: string;
@@ -18,12 +20,38 @@ interface AssetRecord {
     condition: "EXCELLENT" | "GOOD" | "FAIR" | "DAMAGED";
     status: "AVAILABLE" | "ASSIGNED" | "MAINTENANCE" | "RETIRED";
     notes?: string | null;
+    history?: { action: string; employeeName?: string | null; note?: string | null; byName: string; at: string }[];
 }
+
+const inputCls = "w-full px-3 py-2 rounded-xl border border-neutral-200 text-sm focus:border-primary outline-none";
 
 export default function HRAssetsPage() {
     const [categoryFilter, setCategoryFilter] = useState("ALL");
     const [statusFilter, setStatusFilter] = useState("ALL");
     const [search, setSearch] = useState("");
+    const qc = useQueryClient();
+    const { data: employeeOptions = [] } = useEmployeeOptions();
+    const [addOpen, setAddOpen] = useState(false);
+    const [addForm, setAddForm] = useState({ name: "", category: "LAPTOP", serialNumber: "", condition: "EXCELLENT", notes: "" });
+    const [assignFor, setAssignFor] = useState<AssetRecord | null>(null);
+    const [assignEmp, setAssignEmp] = useState("");
+    const [returnFor, setReturnFor] = useState<AssetRecord | null>(null);
+    const [returnCondition, setReturnCondition] = useState("GOOD");
+    const [historyFor, setHistoryFor] = useState<AssetRecord | null>(null);
+
+    const mutate = useMutation({
+        mutationFn: (args: { method: "POST" | "PATCH"; body: Record<string, unknown> }) => api("/api/hr/assets", args.method, args.body),
+        onSuccess: (_d, args) => {
+            toast.success(args.method === "POST" ? "Asset added to inventory" : "Asset updated");
+            setAddOpen(false);
+            setAssignFor(null);
+            setReturnFor(null);
+            setAssignEmp("");
+            setAddForm({ name: "", category: "LAPTOP", serialNumber: "", condition: "EXCELLENT", notes: "" });
+            qc.invalidateQueries({ queryKey: ["hr-assets"] });
+        },
+        onError: (e: Error) => toast.error(e.message),
+    });
 
     const { data: assets = [], isLoading } = useQuery<AssetRecord[]>({
         queryKey: ["hr-assets", categoryFilter, statusFilter, search],
@@ -49,6 +77,11 @@ export default function HRAssetsPage() {
             <PageHeader
                 title="Company Asset Management"
                 subtitle="Track hardware inventory, laptop allocation, serial tags, asset condition, and employee assignments."
+                action={
+                    <button onClick={() => setAddOpen(true)} className="px-4 py-2.5 rounded-xl bg-primary text-white font-bold text-xs flex items-center gap-2">
+                        <Plus size={15} /> Add Asset
+                    </button>
+                }
             />
 
             {/* KPI Cards */}
@@ -134,6 +167,7 @@ export default function HRAssetsPage() {
                                     <th className="py-3 px-2">Assigned Employee</th>
                                     <th className="py-3 px-2">Condition</th>
                                     <th className="py-3 px-2">Status</th>
+                                    <th className="py-3 px-2 text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-neutral-100">
@@ -158,6 +192,29 @@ export default function HRAssetsPage() {
                                         <td className="py-3.5 px-2">
                                             <Badge value={ast.status} />
                                         </td>
+                                        <td className="py-3.5 px-2 text-right whitespace-nowrap space-x-1.5">
+                                            {ast.status === "AVAILABLE" && (
+                                                <button onClick={() => setAssignFor(ast)} className="px-2.5 py-1 rounded-lg bg-primary/10 text-primary text-xs font-bold hover:bg-primary hover:text-white">Assign</button>
+                                            )}
+                                            {ast.status === "ASSIGNED" && (
+                                                <button onClick={() => { setReturnFor(ast); setReturnCondition(ast.condition); }} className="px-2.5 py-1 rounded-lg border border-neutral-200 text-neutral-700 text-xs font-bold hover:bg-neutral-100">Return</button>
+                                            )}
+                                            {ast.status === "AVAILABLE" && (
+                                                <button onClick={() => mutate.mutate({ method: "PATCH", body: { id: ast.id, action: "status", status: "MAINTENANCE" } })} className="px-2.5 py-1 rounded-lg border border-amber-200 text-amber-700 text-xs font-bold hover:bg-amber-50">Service</button>
+                                            )}
+                                            {ast.status === "MAINTENANCE" && (
+                                                <button onClick={() => mutate.mutate({ method: "PATCH", body: { id: ast.id, action: "status", status: "AVAILABLE" } })} className="px-2.5 py-1 rounded-lg border border-emerald-200 text-emerald-700 text-xs font-bold hover:bg-emerald-50">Back in stock</button>
+                                            )}
+                                            {["AVAILABLE", "MAINTENANCE"].includes(ast.status) && (
+                                                <button
+                                                    onClick={() => { if (window.confirm(`Retire ${ast.assetTag}? It can no longer be assigned.`)) mutate.mutate({ method: "PATCH", body: { id: ast.id, action: "status", status: "RETIRED" } }); }}
+                                                    className="px-2.5 py-1 rounded-lg border border-rose-200 text-rose-700 text-xs font-bold hover:bg-rose-50"
+                                                >
+                                                    Retire
+                                                </button>
+                                            )}
+                                            <button onClick={() => setHistoryFor(ast)} className="px-2.5 py-1 rounded-lg text-neutral-500 text-xs font-bold hover:text-primary">History</button>
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -165,6 +222,63 @@ export default function HRAssetsPage() {
                     </div>
                 )}
             </SectionCard>
+
+            <ModalShell open={addOpen} onClose={() => setAddOpen(false)} title="Add Asset to Inventory">
+                <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); mutate.mutate({ method: "POST", body: addForm }); }}>
+                    <input required placeholder="Device name (e.g. MacBook Pro 14)" value={addForm.name} onChange={(e) => setAddForm({ ...addForm, name: e.target.value })} className={inputCls} />
+                    <div className="grid grid-cols-2 gap-3">
+                        <select value={addForm.category} onChange={(e) => setAddForm({ ...addForm, category: e.target.value })} className={inputCls}>
+                            {categories.filter((c) => c !== "ALL").concat("OTHER").map((c) => <option key={c} value={c}>{c.replace("_", " ")}</option>)}
+                        </select>
+                        <select value={addForm.condition} onChange={(e) => setAddForm({ ...addForm, condition: e.target.value })} className={inputCls}>
+                            {["EXCELLENT", "GOOD", "FAIR", "DAMAGED"].map((c) => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                    </div>
+                    <input required placeholder="Serial number" value={addForm.serialNumber} onChange={(e) => setAddForm({ ...addForm, serialNumber: e.target.value })} className={inputCls} />
+                    <textarea placeholder="Notes (optional)" value={addForm.notes} onChange={(e) => setAddForm({ ...addForm, notes: e.target.value })} className={inputCls} rows={2} />
+                    <button disabled={mutate.isPending} className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">Save Asset</button>
+                </form>
+            </ModalShell>
+
+            <ModalShell open={!!assignFor} onClose={() => setAssignFor(null)} title={`Assign ${assignFor?.assetTag ?? ""}`}>
+                <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); if (assignFor) mutate.mutate({ method: "PATCH", body: { id: assignFor.id, action: "assign", employeeId: assignEmp } }); }}>
+                    <p className="text-sm text-neutral-600">{assignFor?.name} · S/N {assignFor?.serialNumber}</p>
+                    <select required value={assignEmp} onChange={(e) => setAssignEmp(e.target.value)} className={inputCls}>
+                        <option value="">Select employee</option>
+                        {employeeOptions.map((e) => <option key={e.id} value={e.id}>{e.name} · {e.employeeId} · {e.department}</option>)}
+                    </select>
+                    <button disabled={mutate.isPending || !assignEmp} className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">Assign Asset</button>
+                </form>
+            </ModalShell>
+
+            <ModalShell open={!!returnFor} onClose={() => setReturnFor(null)} title={`Return ${returnFor?.assetTag ?? ""}`}>
+                <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); if (returnFor) mutate.mutate({ method: "PATCH", body: { id: returnFor.id, action: "return", condition: returnCondition } }); }}>
+                    <p className="text-sm text-neutral-600">Returned by <strong>{returnFor?.assignedEmployeeName}</strong></p>
+                    <label className="text-xs font-bold text-neutral-500">Condition on return</label>
+                    <select value={returnCondition} onChange={(e) => setReturnCondition(e.target.value)} className={inputCls}>
+                        {["EXCELLENT", "GOOD", "FAIR", "DAMAGED"].map((c) => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    <p className="text-[11px] text-neutral-400">Damaged assets go to maintenance automatically.</p>
+                    <button disabled={mutate.isPending} className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">Record Return</button>
+                </form>
+            </ModalShell>
+
+            <ModalShell open={!!historyFor} onClose={() => setHistoryFor(null)} title={`${historyFor?.assetTag ?? ""} history`}>
+                {(historyFor?.history ?? []).length === 0 ? (
+                    <p className="text-sm text-neutral-500">No history recorded for this asset yet.</p>
+                ) : (
+                    <ul className="space-y-2">
+                        {historyFor!.history!.map((h, i) => (
+                            <li key={i} className="text-sm border-b border-neutral-100 pb-2">
+                                <span className="font-bold text-neutral-900">{h.action.replace("_", " ")}</span>
+                                {h.employeeName && <span className="text-neutral-700"> · {h.employeeName}</span>}
+                                {h.note && <span className="text-neutral-500"> · {h.note}</span>}
+                                <div className="text-[11px] text-neutral-400">{new Date(h.at).toLocaleString("en-IN")} by {h.byName}</div>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </ModalShell>
         </div>
     );
 }

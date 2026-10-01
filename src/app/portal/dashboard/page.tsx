@@ -6,6 +6,7 @@ import { Gift, Wallet, TrendingUp, CalendarCheck, LogIn, LogOut, CheckSquare, Me
 import { PageHeader, StatCard, Badge, SectionCard, EmptyState, inr } from "@/components/shared/ui";
 import { SkeletonPulse } from "@/components/shared/UIStates";
 import { useAuth } from "@/lib/auth";
+import EmployeeHome from "@/components/portal/EmployeeHome";
 
 export default function PortalDashboard() {
     const { user } = useAuth();
@@ -37,7 +38,7 @@ export default function PortalDashboard() {
         <div className="space-y-6">
             <PageHeader
                 title={`Hi ${user?.name.split(" ")[0]} 👋`}
-                subtitle={isTa ? "Your recruitment desk at a glance" : "Your referrals, earnings & attendance"}
+                subtitle={isTa ? "Your recruitment desk at a glance" : data.partner ? "Your referrals, earnings and standing among partners" : "Your referrals, earnings & attendance"}
             />
 
             {/* Referral / earnings KPIs */}
@@ -48,6 +49,47 @@ export default function PortalDashboard() {
                 <StatCard label="Pending Payout" value={inr(data.pendingPayoutTotal)} icon={TrendingUp} tone={data.pendingPayoutTotal > 0 ? "amber" : "blue"} />
             </div>
 
+            {data.employee && <EmployeeHome e={data.employee} />}
+
+            {data.partner && (
+                <>
+                    {data.partner.kycStatus && data.partner.kycStatus !== "VERIFIED" && (
+                        <Link href="/portal/profile?tab=payouts" className="block rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                            <b>KYC {data.partner.kycStatus === "REJECTED" ? "needs attention" : "under verification"}</b> — {data.partner.kycNote ?? "payouts start once your KYC is verified."} <span className="underline font-bold">Update →</span>
+                        </Link>
+                    )}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <SectionCard title="Your funnel" subtitle={`${data.partner.stats.conversion}% of your referrals joined`}>
+                            <ul className="space-y-2 text-xs">
+                                {([["Submitted", data.partner.stats.submitted], ["Under review", data.partner.stats.underReview], ["Shortlisted", data.partner.stats.shortlisted], ["Joined", data.partner.stats.hired], ["Not selected", data.partner.stats.rejected]] as [string, number][]).map(([k, v]) => (
+                                    <li key={k} className="flex items-center gap-2"><span className="w-24 text-neutral-600">{k}</span><div className="flex-1 h-2 bg-neutral-100 rounded-full overflow-hidden"><div className="h-full bg-[#2a78d6] rounded-full" style={{ width: `${(v / Math.max(1, data.partner.stats.total)) * 100}%` }} /></div><span className="w-6 text-right font-mono font-bold">{v}</span></li>
+                                ))}
+                            </ul>
+                            <p className="text-xs text-neutral-500 mt-3">Potential earnings in pipeline: <b className="text-emerald-700">{inr(data.partner.stats.potential)}</b></p>
+                        </SectionCard>
+                        <SectionCard title="Partner leaderboard" subtitle={data.partner.rank ? `You are #${data.partner.rank} of ${data.partner.partners}` : "Joinings this year"}>
+                            <ol className="space-y-2 text-sm">
+                                {data.partner.leaderboard.map((l: any) => (
+                                    <li key={l.rank} className={`flex items-center justify-between rounded-xl px-2.5 py-1.5 ${l.me ? "bg-primary/10 font-bold" : ""}`}>
+                                        <span>{l.rank === 1 ? "🥇" : l.rank === 2 ? "🥈" : l.rank === 3 ? "🥉" : `#${l.rank}`} {l.name}</span>
+                                        <span className="text-xs text-neutral-500">{l.hired} joined · {l.conversion}%</span>
+                                    </li>
+                                ))}
+                            </ol>
+                        </SectionCard>
+                        <SectionCard title="Quick actions">
+                            <div className="space-y-2">
+                                <Link href="/portal/jobs" className="block w-full text-center py-2.5 rounded-xl bg-primary text-white text-xs font-bold">Browse open jobs & refer</Link>
+                                <Link href="/portal/referrals" className="block w-full text-center py-2.5 rounded-xl border border-neutral-200 text-xs font-bold">Track my referrals</Link>
+                                <Link href="/portal/incentives" className="block w-full text-center py-2.5 rounded-xl border border-neutral-200 text-xs font-bold">Earnings & statement</Link>
+                            </div>
+                        </SectionCard>
+                    </div>
+                </>
+            )}
+
+            {!data.partner && (
+                <>
             {/* Attendance quick actions */}
             <SectionCard title={`Attendance — ${new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}`}>
                 <div className="flex items-center gap-4 flex-wrap">
@@ -86,6 +128,9 @@ export default function PortalDashboard() {
                     )}
                 </div>
             </SectionCard>
+
+                </>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* My tasks */}

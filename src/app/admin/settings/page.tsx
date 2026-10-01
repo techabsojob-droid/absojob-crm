@@ -151,10 +151,8 @@ export default function AdminSettingsControlCenter() {
             const res = await fetch("/api/admin/database/query", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    sql: sqlQuery,
-                    connectionString: connectionString.trim() || undefined,
-                }),
+                // Server always uses its own DATABASE_URL; client connection strings are not accepted
+                body: JSON.stringify({ sql: sqlQuery }),
             });
             const data = await res.json();
             if (!res.ok || data.error) {

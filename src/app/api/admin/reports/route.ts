@@ -6,7 +6,7 @@ import {
 } from "@/lib/mock/data";
 
 export async function GET() {
-    const auth = await requireRole("SUPER_ADMIN", "TA_MANAGER");
+    const auth = await requireRole("SUPER_ADMIN", "HR_ADMIN", "TA_MANAGER");
     if ("error" in auth) return auth.error;
     const me = auth.user;
 

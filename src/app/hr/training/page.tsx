@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { PageHeader, StatCard, Badge, SectionCard, EmptyState } from "@/components/shared/ui";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { PageHeader, StatCard, Badge, SectionCard, EmptyState, ModalShell } from "@/components/shared/ui";
+import { api, useEmployeeOptions } from "@/lib/api";
 import { SkeletonPulse } from "@/components/shared/UIStates";
-import { GraduationCap, Calendar, Users, Award, BookOpen, Search, CheckCircle2, Filter, AlertCircle } from "lucide-react";
+import { GraduationCap, Calendar, Users, BookOpen, Search, CheckCircle2, Filter, AlertCircle, Plus } from "lucide-react";
 
 interface TrainingProgram {
     id: string;
@@ -16,11 +18,32 @@ interface TrainingProgram {
     enrolledEmployeeIds: string[];
     status: "UPCOMING" | "IN_PROGRESS" | "COMPLETED";
     description: string;
+    enrolledEmployees?: { id: string; name: string; completed: boolean }[];
 }
+
+const inputCls = "w-full px-3 py-2 rounded-xl border border-neutral-200 text-sm focus:border-primary outline-none";
 
 export default function HRTrainingPage() {
     const [statusFilter, setStatusFilter] = useState("ALL");
     const [search, setSearch] = useState("");
+    const qc = useQueryClient();
+    const { data: employeeOptions = [] } = useEmployeeOptions();
+    const [createOpen, setCreateOpen] = useState(false);
+    const [form, setForm] = useState({ title: "", course: "", trainer: "", startDate: "", endDate: "", description: "" });
+    const [manage, setManage] = useState<TrainingProgram | null>(null);
+    const [enrollIds, setEnrollIds] = useState<string[]>([]);
+
+    const mutate = useMutation({
+        mutationFn: (args: { method: "POST" | "PATCH"; body: Record<string, unknown> }) => api<TrainingProgram>("/api/hr/training", args.method, args.body),
+        onSuccess: (_d, args) => {
+            toast.success(args.method === "POST" ? "Training program created" : "Training updated");
+            setCreateOpen(false);
+            setEnrollIds([]);
+            setForm({ title: "", course: "", trainer: "", startDate: "", endDate: "", description: "" });
+            qc.invalidateQueries({ queryKey: ["hr-training"] });
+        },
+        onError: (e: Error) => toast.error(e.message),
+    });
 
     const { data: programs = [], isLoading } = useQuery<TrainingProgram[]>({
         queryKey: ["hr-training", statusFilter, search],
@@ -34,6 +57,7 @@ export default function HRTrainingPage() {
         },
     });
 
+    const current = manage ? programs.find((p) => p.id === manage.id) ?? manage : null;
     const upcomingCount = programs.filter((p) => p.status === "UPCOMING" || p.status === "IN_PROGRESS").length;
     const completedCount = programs.filter((p) => p.status === "COMPLETED").length;
     const totalEnrolled = programs.reduce((acc, p) => acc + (p.enrolledEmployeeIds?.length || 0), 0);
@@ -43,6 +67,11 @@ export default function HRTrainingPage() {
             <PageHeader
                 title="Learning & Development (L&D)"
                 subtitle="Organize employee training workshops, skill development bootcamps, and compliance certifications."
+                action={
+                    <button onClick={() => setCreateOpen(true)} className="px-4 py-2.5 rounded-xl bg-primary text-white font-bold text-xs flex items-center gap-2">
+                        <Plus size={15} /> New Program
+                    </button>
+                }
             />
 
             {/* KPI Cards */}
@@ -126,15 +155,76 @@ export default function HRTrainingPage() {
                                     <span>{prog.startDate} to {prog.endDate}</span>
                                 </div>
 
-                                <div className="flex items-center gap-1 bg-neutral-100 px-2.5 py-1 rounded-full font-bold text-neutral-700">
+                                <button onClick={() => setManage(prog)} className="flex items-center gap-1 bg-neutral-100 hover:bg-primary/10 hover:text-primary px-2.5 py-1 rounded-full font-bold text-neutral-700">
                                     <Users size={12} />
-                                    <span>{prog.enrolledEmployeeIds?.length || 0} Enrolled</span>
-                                </div>
+                                    <span>{prog.enrolledEmployeeIds?.length || 0} Enrolled · Manage</span>
+                                </button>
                             </div>
                         </div>
                     ))}
                 </div>
             )}
+
+            <ModalShell open={createOpen} onClose={() => setCreateOpen(false)} title="New Training Program">
+                <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); mutate.mutate({ method: "POST", body: form }); }}>
+                    <input required placeholder="Program title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={inputCls} />
+                    <div className="grid grid-cols-2 gap-3">
+                        <input placeholder="Course" value={form.course} onChange={(e) => setForm({ ...form, course: e.target.value })} className={inputCls} />
+                        <input placeholder="Trainer" value={form.trainer} onChange={(e) => setForm({ ...form, trainer: e.target.value })} className={inputCls} />
+                        <input required type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} className={inputCls} />
+                        <input required type="date" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} className={inputCls} />
+                    </div>
+                    <textarea placeholder="Description" rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className={inputCls} />
+                    <button disabled={mutate.isPending} className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">Create Program</button>
+                </form>
+            </ModalShell>
+
+            <ModalShell open={!!current} onClose={() => setManage(null)} title={current ? current.title : ""} wide>
+                {current && (
+                    <div className="space-y-5 text-sm">
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-neutral-500">Status</span>
+                            <select value={current.status} onChange={(e) => mutate.mutate({ method: "PATCH", body: { id: current.id, action: "status", status: e.target.value } })} className="px-2 py-1 rounded-lg border border-neutral-200 text-xs font-bold">
+                                {["UPCOMING", "IN_PROGRESS", "COMPLETED"].map((s2) => <option key={s2} value={s2}>{s2.replace("_", " ")}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <h4 className="text-xs font-bold uppercase text-neutral-400 mb-2">Participants ({current.enrolledEmployees?.length ?? 0})</h4>
+                            {(current.enrolledEmployees ?? []).length === 0 ? (
+                                <p className="text-neutral-500">No one enrolled yet.</p>
+                            ) : (
+                                <ul className="space-y-1.5">
+                                    {current.enrolledEmployees!.map((e) => (
+                                        <li key={e.id} className="flex items-center justify-between border-b border-neutral-100 pb-1.5">
+                                            <span>{e.completed ? "🎓" : "•"} {e.name}</span>
+                                            <span className="space-x-1.5">
+                                                {!e.completed && <button onClick={() => mutate.mutate({ method: "PATCH", body: { id: current.id, action: "complete", employeeId: e.id } })} className="px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-bold">Mark completed</button>}
+                                                <button onClick={() => mutate.mutate({ method: "PATCH", body: { id: current.id, action: "unenroll", employeeId: e.id } })} className="px-2 py-0.5 rounded-lg text-neutral-500 text-xs font-bold hover:text-rose-600">Remove</button>
+                                            </span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                        <div>
+                            <h4 className="text-xs font-bold uppercase text-neutral-400 mb-2">Enroll employees</h4>
+                            <select multiple value={enrollIds} onChange={(e) => setEnrollIds(Array.from(e.target.selectedOptions).map((o) => o.value))} className={`${inputCls} h-40`}>
+                                {employeeOptions.filter((e) => !current.enrolledEmployeeIds.includes(e.id)).map((e) => (
+                                    <option key={e.id} value={e.id}>{e.name} · {e.department}</option>
+                                ))}
+                            </select>
+                            <p className="text-[11px] text-neutral-400 mt-1">Hold Ctrl / Cmd to select several. Enrolled employees are notified.</p>
+                            <button
+                                disabled={!enrollIds.length || mutate.isPending}
+                                onClick={() => mutate.mutate({ method: "PATCH", body: { id: current.id, action: "enroll", employeeIds: enrollIds } })}
+                                className="mt-2 px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold disabled:opacity-50"
+                            >
+                                Enroll {enrollIds.length || ""}
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </ModalShell>
         </div>
     );
 }

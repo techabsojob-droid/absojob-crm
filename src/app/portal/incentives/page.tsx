@@ -1,74 +1,81 @@
 "use client";
 
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Wallet, TrendingUp, Award, Clock, IndianRupee } from "lucide-react";
-import { PageHeader, StatCard, Badge, SectionCard, EmptyState, inr } from "@/components/shared/ui";
+import { Wallet, Clock, IndianRupee, Hourglass, Receipt, AlertTriangle, Download, Undo2 } from "lucide-react";
+import { PageHeader, StatCard, Badge, SectionCard, EmptyState } from "@/components/shared/ui";
+import { SkeletonPulse } from "@/components/shared/UIStates";
+import { money } from "@/components/finance/kit";
+import { api } from "@/lib/api";
+
+interface Entry { id: string; description: string; type: "CREDIT" | "DEBIT"; kind: string; tdsAmount: number; amount: number; status: string; date: string; paidOn: string | null }
+interface Data {
+    entries: Entry[];
+    summary: { earned: number; paid: number; pending: number; tds: number; clawback: number; netPaid: number; potential: number; hired: number; shortlisted: number };
+    tiers: { label: string; amount: number }[];
+    payoutReady: boolean;
+    blockers: string[];
+    tdsNote: string;
+}
 
 export default function PortalIncentivesPage() {
-    const { data: ledger, isLoading } = useQuery({
-        queryKey: ["incentives"],
-        queryFn: async () => (await fetch("/api/portal/incentives")).json(),
-        refetchInterval: 30000,
-    });
-
-    const entries = Array.isArray(ledger) ? ledger : [];
-    const earned = entries.filter((e: any) => e.type === "CREDIT");
-    const paidOut = entries.filter((e: any) => e.status === "PAID");
-    const pending = entries.filter((e: any) => e.status !== "PAID");
+    const { data, isLoading } = useQuery<Data>({ queryKey: ["portal-incentives"], queryFn: () => api("/api/portal/incentives?summary=1"), refetchInterval: 30000 });
+    if (isLoading || !data) return <SkeletonPulse className="h-96 w-full" />;
+    const s = data.summary;
 
     return (
         <div className="space-y-6">
-            <PageHeader title="My Incentives" subtitle="Commission ledger — every rupee you've earned, tracked transparently" />
+            <PageHeader title="My Earnings" subtitle="Every incentive, TDS deduction, clawback and payout — tracked transparently"
+                action={<a href="/api/portal/incentives?format=csv" className="px-4 py-2.5 rounded-xl border border-neutral-200 bg-white font-bold text-xs flex items-center gap-1.5 hover:bg-neutral-50"><Download size={14} /> Statement (CSV)</a>} />
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatCard label="Lifetime Earned" value={inr(earned.reduce((s: number, e: any) => s + e.amount, 0))} icon={IndianRupee} tone="primary" />
-                <StatCard label="Paid Out" value={inr(paidOut.reduce((s: number, e: any) => s + e.amount, 0))} icon={Wallet} tone="emerald" />
-                <StatCard label="Pending" value={inr(pending.reduce((s: number, e: any) => s + e.amount, 0))} icon={Clock} tone={pending.length ? "amber" : "blue"} hint={`${pending.length} credit(s)`} />
-                <StatCard label="Credits" value={earned.length} icon={TrendingUp} tone="purple" />
+            {!data.payoutReady && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 flex gap-3">
+                    <AlertTriangle size={18} className="shrink-0" />
+                    <div><p className="font-bold">Payouts on hold</p><ul className="list-disc ml-4 text-xs mt-1">{data.blockers.map((b) => <li key={b}>{b}</li>)}</ul><Link href="/portal/profile?tab=payouts" className="text-xs font-bold underline mt-1 inline-block">Update payout details →</Link></div>
+                </div>
+            )}
+
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+                <StatCard label="Total earned" value={money(s.earned)} icon={IndianRupee} tone="primary" hint={`${s.hired} joining(s)`} />
+                <StatCard label="Paid (gross)" value={money(s.paid)} icon={Wallet} tone="emerald" />
+                <StatCard label="TDS deducted" value={money(s.tds)} icon={Receipt} tone="blue" hint="Sec 194H — claim in your ITR" />
+                <StatCard label="Net received" value={money(s.netPaid)} icon={Wallet} tone="emerald" />
+                <StatCard label="Pending" value={money(s.pending)} icon={Clock} tone={s.pending ? "amber" : "blue"} />
+                <StatCard label="Clawbacks" value={money(s.clawback)} icon={Undo2} tone={s.clawback ? "amber" : "blue"} hint="Recovered from next payout" />
             </div>
 
-            {/* How it works */}
-            <SectionCard title="How incentives work">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-neutral-600">
-                    <div className="p-4 bg-primary/[0.04] border border-primary/10 rounded-xl">
-                        <p className="font-extrabold text-neutral-900 mb-1 flex items-center gap-2"><Award size={14} className="text-primary" /> 1. Candidate joins</p>
-                        Your referral clears notice period & completes 15 days.
-                    </div>
-                    <div className="p-4 bg-primary/[0.04] border border-primary/10 rounded-xl">
-                        <p className="font-extrabold text-neutral-900 mb-1 flex items-center gap-2"><Award size={14} className="text-primary" /> 2. Credit posted</p>
-                        Incentive (typically ₹10k–₹25k) credited to your ledger.
-                    </div>
-                    <div className="p-4 bg-primary/[0.04] border border-primary/10 rounded-xl">
-                        <p className="font-extrabold text-neutral-900 mb-1 flex items-center gap-2"><Award size={14} className="text-primary" /> 3. Payout</p>
-                        Finance processes payouts in the next monthly cycle.
-                    </div>
-                </div>
-            </SectionCard>
-
-            {isLoading ? (
-                <SectionCard><div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-16 bg-neutral-50 rounded-xl animate-pulse" />)}</div></SectionCard>
-            ) : entries.length === 0 ? (
-                <SectionCard><EmptyState icon={Wallet} message="No incentive activity yet. Refer someone to get started!" /></SectionCard>
-            ) : (
-                <SectionCard title={`Ledger (${entries.length})`}>
-                    <div className="divide-y divide-neutral-50 -mx-5 px-5">
-                        {entries.map((e: any) => (
-                            <div key={e.id} className="py-3.5 flex items-center justify-between gap-4 flex-wrap">
-                                <div className="min-w-0">
-                                    <p className="text-sm font-bold text-neutral-900">{e.description}</p>
-                                    <p className="text-[11px] text-neutral-400">{new Date(e.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}{e.paidOn ? ` · paid ${new Date(e.paidOn).toLocaleDateString("en-IN")}` : ""}</p>
-                                </div>
-                                <div className="flex items-center gap-3 shrink-0">
-                                    <span className={`text-sm font-extrabold ${e.type === "CREDIT" ? "text-emerald-600" : "text-red-500"}`}>
-                                        {e.type === "CREDIT" ? "+" : "−"}{inr(Math.abs(e.amount))}
-                                    </span>
-                                    <Badge value={e.status === "PAID" ? "PAID" : e.status === "APPROVED" ? "APPROVED" : "PENDING"} />
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <SectionCard title="Ledger" className="lg:col-span-2">
+                    {data.entries.length === 0 ? <EmptyState icon={Wallet} message="No incentives yet — they are booked when your referred candidate joins." /> : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead><tr className="text-left text-[11px] text-neutral-500 uppercase"><th className="py-2">Date</th><th>Description</th><th className="text-right">Amount</th><th className="text-right">TDS</th><th>Status</th></tr></thead>
+                                <tbody className="divide-y divide-neutral-100">
+                                    {data.entries.map((e) => (
+                                        <tr key={e.id}>
+                                            <td className="py-2.5 text-xs text-neutral-500 whitespace-nowrap">{e.date.slice(0, 10)}</td>
+                                            <td className="text-xs">{e.description}{e.paidOn && <span className="block text-neutral-400">paid {e.paidOn.slice(0, 10)}</span>}</td>
+                                            <td className={`text-right font-mono font-bold ${e.type === "DEBIT" ? "text-rose-600" : ""}`}>{e.type === "DEBIT" ? "−" : ""}{money(e.amount)}</td>
+                                            <td className="text-right font-mono text-xs">{e.tdsAmount ? money(e.tdsAmount) : "—"}</td>
+                                            <td><Badge value={e.status} /></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </SectionCard>
-            )}
+                <div className="space-y-6">
+                    <SectionCard title="Pipeline potential" subtitle="If your shortlisted candidates join">
+                        <p className="text-3xl font-extrabold text-[#2a78d6] flex items-center gap-2"><Hourglass size={22} />{money(s.potential)}</p>
+                        <p className="text-xs text-neutral-500 mt-1">{s.shortlisted} candidate(s) in interviews or offer stage</p>
+                    </SectionCard>
+                    <SectionCard title="Commission structure" subtitle="Per successful joining, by offered CTC">
+                        <ul className="divide-y divide-neutral-100 text-sm">{data.tiers.map((t) => <li key={t.label} className="py-2 flex justify-between"><span className="text-neutral-600">{t.label}</span><span className="font-bold">{money(t.amount)}</span></li>)}</ul>
+                        <p className="text-[11px] text-neutral-400 mt-3">Paid within 30 days of joining after KYC verification. {data.tdsNote} If the candidate leaves within the client&apos;s guarantee period the incentive is recovered from your next payout.</p>
+                    </SectionCard>
+                </div>
+            </div>
         </div>
     );
 }
