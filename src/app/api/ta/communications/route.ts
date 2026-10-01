@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { nextTaskKey } from "@/lib/tasks";
 import { requireRole } from "@/lib/mock/server";
 import { applications, candidates, emailOutbox, tasks, addAudit, nextIds } from "@/lib/mock/data";
 import { bad, body } from "@/lib/mock/fin/http";
@@ -79,7 +80,7 @@ export async function POST(request: Request) {
     let taskId: string | null = null;
     if (b.nextFollowUpDate) {
         taskId = nextIds.task();
-        tasks.push({ id: taskId, orgId: me.orgId, assignedToId: me.id, createdById: me.id, title: `Follow up with ${cand.name}`, description: `${subject} — ${outcome}`, dueDate: b.nextFollowUpDate, priority: "MEDIUM", linkedApplicationId: app?.id ?? null, completed: false, completedAt: null, createdAt: log.createdAt });
+        tasks.push({ id: taskId, orgId: me.orgId, key: nextTaskKey(tasks, me.orgId), type: "FOLLOW_UP", status: "TODO", labels: ["candidate"], watcherIds: [], relatedType: "CANDIDATE", relatedId: cand.id, assignedToId: me.id, createdById: me.id, title: `Follow up with ${cand.name}`, description: `${subject} — ${outcome}`, dueDate: b.nextFollowUpDate, priority: "MEDIUM", linkedApplicationId: app?.id ?? null, completed: false, completedAt: null, createdAt: log.createdAt });
     }
     addAudit({ orgId: me.orgId, actorUserId: me.id, actorRole: me.role, action: "CANDIDATE_CONTACTED", entity: "Candidate", entityId: cand.id, detail: `${log.type} ${log.direction.toLowerCase()} — ${subject} (${outcome})` });
     return NextResponse.json({ log, link, emailStatus, taskId }, { status: 201 });

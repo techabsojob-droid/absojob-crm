@@ -5583,6 +5583,24 @@ export const TABLES: TableDef[] = [
                 "type": "text"
             },
             {
+                "field": "key",
+                "column": "key",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "type",
+                "column": "type",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "status",
+                "column": "status",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
                 "field": "assignedToId",
                 "column": "assigned_to_id",
                 "type": "text"
@@ -5603,14 +5621,47 @@ export const TABLES: TableDef[] = [
                 "type": "text"
             },
             {
+                "field": "labels",
+                "column": "labels",
+                "type": "text[]",
+                "omitIfNull": true
+            },
+            {
+                "field": "watcherIds",
+                "column": "watcher_ids",
+                "type": "text[]",
+                "omitIfNull": true
+            },
+            {
+                "field": "startDate",
+                "column": "start_date",
+                "type": "date"
+            },
+            {
                 "field": "dueDate",
                 "column": "due_date",
                 "type": "date",
                 "omitIfNull": true
             },
             {
+                "field": "estimateHours",
+                "column": "estimate_hours",
+                "type": "numeric",
+                "omitIfNull": true
+            },
+            {
                 "field": "priority",
                 "column": "priority",
+                "type": "text"
+            },
+            {
+                "field": "relatedType",
+                "column": "related_type",
+                "type": "text"
+            },
+            {
+                "field": "relatedId",
+                "column": "related_id",
                 "type": "text"
             },
             {
@@ -5628,6 +5679,118 @@ export const TABLES: TableDef[] = [
                 "column": "completed_at",
                 "type": "timestamptz",
                 "omitIfNull": true
+            },
+            {
+                "field": "createdAt",
+                "column": "created_at",
+                "type": "timestamptz"
+            },
+            {
+                "field": "updatedAt",
+                "column": "updated_at",
+                "type": "timestamptz",
+                "omitIfNull": true
+            }
+        ]
+    },
+    {
+        "key": "taskComments",
+        "table": "task_comments",
+        "kind": "rows",
+        "pk": [
+            "id"
+        ],
+        "columns": [
+            {
+                "field": "id",
+                "column": "id",
+                "type": "text"
+            },
+            {
+                "field": "orgId",
+                "column": "org_id",
+                "type": "text"
+            },
+            {
+                "field": "taskId",
+                "column": "task_id",
+                "type": "text"
+            },
+            {
+                "field": "authorId",
+                "column": "author_id",
+                "type": "text"
+            },
+            {
+                "field": "body",
+                "column": "body",
+                "type": "text"
+            },
+            {
+                "field": "mentionIds",
+                "column": "mention_ids",
+                "type": "text[]"
+            },
+            {
+                "field": "createdAt",
+                "column": "created_at",
+                "type": "timestamptz"
+            },
+            {
+                "field": "editedAt",
+                "column": "edited_at",
+                "type": "timestamptz",
+                "omitIfNull": true
+            }
+        ]
+    },
+    {
+        "key": "taskActivity",
+        "table": "task_activity",
+        "kind": "rows",
+        "pk": [
+            "id"
+        ],
+        "columns": [
+            {
+                "field": "id",
+                "column": "id",
+                "type": "text"
+            },
+            {
+                "field": "orgId",
+                "column": "org_id",
+                "type": "text"
+            },
+            {
+                "field": "taskId",
+                "column": "task_id",
+                "type": "text"
+            },
+            {
+                "field": "actorId",
+                "column": "actor_id",
+                "type": "text"
+            },
+            {
+                "field": "action",
+                "column": "action",
+                "type": "text"
+            },
+            {
+                "field": "field",
+                "column": "field",
+                "type": "text"
+            },
+            {
+                "field": "fromValue",
+                "column": "from_value",
+                "type": "text"
+            },
+            {
+                "field": "toValue",
+                "column": "to_value",
+                "type": "text"
             },
             {
                 "field": "createdAt",

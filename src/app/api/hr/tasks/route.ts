@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
-import { tasks, users, employees, addAudit, addNotification, nextIds } from "@/lib/mock/data";
+import { tasks, taskActivity, users, employees, addAudit, addNotification, nextIds } from "@/lib/mock/data";
 import type { Task } from "@/lib/types";
-import { taskLinkFor } from "@/lib/tasks";
+import { applyStatus, newActivity, nextTaskKey, statusOf, taskLinkFor } from "@/lib/tasks";
 
 // GET /api/hr/tasks
 export async function GET(request: Request) {
@@ -60,6 +60,11 @@ export async function POST(request: Request) {
         const newTask: Task = {
             id: `tsk-${crypto.randomUUID().slice(0, 8)}`,
             orgId: me.orgId,
+            key: nextTaskKey(tasks, me.orgId),
+            type: "TASK",
+            status: "TODO",
+            labels: [],
+            watcherIds: [],
             title: title.trim(),
             description: description?.trim() || null,
             assignedToId: assignedToId || me.id,
@@ -72,6 +77,7 @@ export async function POST(request: Request) {
         };
 
         tasks.unshift(newTask);
+        taskActivity.push(newActivity(newTask, me.id, "CREATED"));
 
         addAudit({
             orgId: me.orgId,
@@ -122,8 +128,8 @@ export async function PATCH(request: Request) {
         }
 
         if (completed !== undefined && completed !== task.completed) {
-            task.completed = !!completed;
-            task.completedAt = completed ? new Date().toISOString() : null;
+            taskActivity.push(newActivity(task, me.id, "UPDATED", "status", statusOf(task), completed ? "DONE" : "TODO"));
+            applyStatus(task, completed ? "DONE" : "TODO");
             if (completed && task.createdById !== me.id) {
                 addNotification({
                     orgId: me.orgId, userId: task.createdById,

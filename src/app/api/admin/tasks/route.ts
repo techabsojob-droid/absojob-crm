@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
-import { tasks, users, applications, addAudit, addNotification } from "@/lib/mock/data";
+import { tasks, taskActivity, users, applications, addAudit, addNotification } from "@/lib/mock/data";
 import type { Task } from "@/lib/types";
-import { canAssignTo, taskLinkFor } from "@/lib/tasks";
+import { applyStatus, canAssignTo, newActivity, nextTaskKey, statusOf, taskLinkFor } from "@/lib/tasks";
 
 const TASK_MANAGERS = ["SUPER_ADMIN", "HR_ADMIN", "TA_MANAGER"];
 
@@ -73,6 +73,11 @@ export async function POST(request: Request) {
     const newTask: Task = {
         id: `tsk-${crypto.randomUUID().slice(0, 8)}`,
         orgId: me.orgId,
+        key: nextTaskKey(tasks, me.orgId),
+        type: "TASK",
+        status: "TODO",
+        labels: [],
+        watcherIds: [],
         assignedToId: assignee.id,
         createdById: me.id,
         title,
@@ -84,6 +89,7 @@ export async function POST(request: Request) {
         createdAt: new Date().toISOString(),
     };
     tasks.unshift(newTask);
+    taskActivity.push(newActivity(newTask, me.id, "CREATED"));
 
     addAudit({
         orgId: me.orgId, actorUserId: me.id, actorRole: me.role,
@@ -118,8 +124,8 @@ export async function PATCH(request: Request) {
 
     const changes: string[] = [];
     if (completed !== undefined && completed !== item.completed) {
-        item.completed = !!completed;
-        item.completedAt = completed ? new Date().toISOString() : null;
+        taskActivity.push(newActivity(item, me.id, "UPDATED", "status", statusOf(item), completed ? "DONE" : "TODO"));
+        applyStatus(item, completed ? "DONE" : "TODO");
         changes.push(completed ? "completed" : "reopened");
         if (completed && item.createdById !== me.id) {
             addNotification({

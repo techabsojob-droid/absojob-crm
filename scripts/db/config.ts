@@ -58,8 +58,8 @@ export const DOMAINS: DomainFile[] = [
     {
         file: "08_workspace.sql",
         title: "Workspace — tasks, approvals, notifications, audit",
-        about: "Cross-role plumbing: tasks, announcements, in-app notifications, approval requests, audit trail, compliance, data quality, integrations, workflow rules, outgoing email and uploaded files.",
-        tables: ["tasks", "announcements", "notifications", "approvals", "auditLogs", "complianceItems", "dataQualityIssues", "integrationServices", "workflows", "emailOutbox", "storedFiles"],
+        about: "Cross-role plumbing: Jira-style tasks with comments and history, announcements, in-app notifications, approval requests, audit trail, compliance, data quality, integrations, workflow rules, outgoing email and uploaded files.",
+        tables: ["tasks", "taskComments", "taskActivity", "announcements", "notifications", "approvals", "auditLogs", "complianceItems", "dataQualityIssues", "integrationServices", "workflows", "emailOutbox", "storedFiles"],
     },
 ];
 
@@ -137,6 +137,8 @@ export const REFERENCES: Record<string, Record<string, string>> = {
     contractAssignments: { clientId: "clients", recruiterId: "users" },
     timesheets: { assignmentId: "contractAssignments" },
     tasks: { assignedToId: "users", createdById: "users" },
+    taskComments: { taskId: "tasks", authorId: "users" },
+    taskActivity: { taskId: "tasks", actorId: "users" },
     announcements: { createdById: "users" },
     notifications: { userId: "users" },
     storedFiles: { ownerUserId: "users" },
@@ -148,7 +150,9 @@ export const TABLE_COMMENTS: Record<string, string> = {
     organizationSettingsSeed: "Agency profile and preferences, one JSON document per organization.",
     employees: "HR record behind each staff login (agents excluded). employee_id is the human code, e.g. EMP-001.",
     attendance: "One row per user per day; check_in / check_out keep the exact string the app writes.",
-    tasks: "Tasks assigned between users; drives TA › Tasks, HR › Tasks and Portal › Tasks.",
+    tasks: "Jira-style tasks: key (ABS-12), type, status workflow, assignee, reporter (created_by_id), watchers, labels. Shown on Admin, HR, TA and Portal › Tasks.",
+    taskComments: "Comments on a task. mention_ids lists users @mentioned in the body.",
+    taskActivity: "Task history: creation, every field change (field / from_value / to_value) and comments.",
     notifications: "In-app bell notifications, one row per recipient.",
     auditLogs: "Append-only trail of who did what.",
 };

@@ -202,6 +202,12 @@ create trigger budgets_sync after insert or update or delete or truncate on crm.
 drop trigger if exists tasks_sync on crm.tasks;
 create trigger tasks_sync after insert or update or delete or truncate on crm.tasks
   for each statement execute function crm.bump_sync_version();
+drop trigger if exists task_comments_sync on crm.task_comments;
+create trigger task_comments_sync after insert or update or delete or truncate on crm.task_comments
+  for each statement execute function crm.bump_sync_version();
+drop trigger if exists task_activity_sync on crm.task_activity;
+create trigger task_activity_sync after insert or update or delete or truncate on crm.task_activity
+  for each statement execute function crm.bump_sync_version();
 drop trigger if exists announcements_sync on crm.announcements;
 create trigger announcements_sync after insert or update or delete or truncate on crm.announcements
   for each statement execute function crm.bump_sync_version();
@@ -295,6 +301,8 @@ alter table crm.bank_statement_lines enable row level security;
 alter table crm.manual_journals enable row level security;
 alter table crm.budgets enable row level security;
 alter table crm.tasks enable row level security;
+alter table crm.task_comments enable row level security;
+alter table crm.task_activity enable row level security;
 alter table crm.announcements enable row level security;
 alter table crm.notifications enable row level security;
 alter table crm.approval_requests enable row level security;

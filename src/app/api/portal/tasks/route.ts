@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
-import { tasks, users, addNotification, nextIds } from "@/lib/mock/data";
+import { tasks, taskActivity, users, addNotification, nextIds } from "@/lib/mock/data";
+import { applyStatus, newActivity, nextTaskKey, statusOf } from "@/lib/tasks";
 
 export async function GET() {
     const auth = await requireRole();
@@ -37,8 +38,9 @@ export async function PATCH(request: Request) {
 
     // Default action = mark complete (pages send only { id })
     const wasDone = task.completed;
-    task.completed = completed === undefined ? true : Boolean(completed);
-    task.completedAt = task.completed ? new Date().toISOString() : null;
+    const next = completed === undefined || Boolean(completed) ? "DONE" : "TODO";
+    if (statusOf(task) !== next) taskActivity.push(newActivity(task, me.id, "UPDATED", "status", statusOf(task), next));
+    applyStatus(task, next);
     if (task.completed && !wasDone && task.createdById !== me.id) {
         addNotification({
             orgId: me.orgId, userId: task.createdById,
@@ -59,7 +61,7 @@ export async function POST(request: Request) {
     const title = String(b.title ?? "").trim();
     if (!title) return NextResponse.json({ error: "Title is required" }, { status: 400 });
     if (b.dueDate && !/^\d{4}-\d{2}-\d{2}$/.test(b.dueDate)) return NextResponse.json({ error: "Invalid due date" }, { status: 400 });
-    const t = { id: nextIds.task(), orgId: me.orgId, assignedToId: me.id, createdById: me.id, title: title.slice(0, 200), description: String(b.description ?? "").trim().slice(0, 1000) || null, dueDate: b.dueDate || null, priority: ["LOW", "MEDIUM", "HIGH", "URGENT"].includes(b.priority) ? b.priority : "MEDIUM", linkedApplicationId: null, completed: false, completedAt: null, createdAt: new Date().toISOString() };
+    const t = { id: nextIds.task(), orgId: me.orgId, key: nextTaskKey(tasks, me.orgId), type: "TASK" as const, status: "TODO" as const, labels: [], watcherIds: [], assignedToId: me.id, createdById: me.id, title: title.slice(0, 200), description: String(b.description ?? "").trim().slice(0, 1000) || null, dueDate: b.dueDate || null, priority: ["LOW", "MEDIUM", "HIGH", "URGENT"].includes(b.priority) ? b.priority : "MEDIUM", linkedApplicationId: null, completed: false, completedAt: null, createdAt: new Date().toISOString() };
     tasks.push(t);
     return NextResponse.json(t, { status: 201 });
 }

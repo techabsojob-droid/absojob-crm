@@ -530,6 +530,36 @@ alter table crm.tasks add constraint tasks_created_by_id_fkey
   foreign key (created_by_id) references crm.users (id)
   on delete set null deferrable initially deferred;
 
+alter table crm.task_comments drop constraint if exists task_comments_org_id_fkey;
+alter table crm.task_comments add constraint task_comments_org_id_fkey
+  foreign key (org_id) references crm.organizations (id)
+  on delete cascade deferrable initially deferred;
+
+alter table crm.task_comments drop constraint if exists task_comments_task_id_fkey;
+alter table crm.task_comments add constraint task_comments_task_id_fkey
+  foreign key (task_id) references crm.tasks (id)
+  on delete set null deferrable initially deferred;
+
+alter table crm.task_comments drop constraint if exists task_comments_author_id_fkey;
+alter table crm.task_comments add constraint task_comments_author_id_fkey
+  foreign key (author_id) references crm.users (id)
+  on delete set null deferrable initially deferred;
+
+alter table crm.task_activity drop constraint if exists task_activity_org_id_fkey;
+alter table crm.task_activity add constraint task_activity_org_id_fkey
+  foreign key (org_id) references crm.organizations (id)
+  on delete cascade deferrable initially deferred;
+
+alter table crm.task_activity drop constraint if exists task_activity_task_id_fkey;
+alter table crm.task_activity add constraint task_activity_task_id_fkey
+  foreign key (task_id) references crm.tasks (id)
+  on delete set null deferrable initially deferred;
+
+alter table crm.task_activity drop constraint if exists task_activity_actor_id_fkey;
+alter table crm.task_activity add constraint task_activity_actor_id_fkey
+  foreign key (actor_id) references crm.users (id)
+  on delete set null deferrable initially deferred;
+
 alter table crm.announcements drop constraint if exists announcements_org_id_fkey;
 alter table crm.announcements add constraint announcements_org_id_fkey
   foreign key (org_id) references crm.organizations (id)
@@ -697,6 +727,12 @@ create index if not exists budgets_org_id_idx on crm.budgets (org_id);
 create index if not exists tasks_org_id_idx on crm.tasks (org_id);
 create index if not exists tasks_assigned_to_id_idx on crm.tasks (assigned_to_id);
 create index if not exists tasks_created_by_id_idx on crm.tasks (created_by_id);
+create index if not exists task_comments_org_id_idx on crm.task_comments (org_id);
+create index if not exists task_comments_task_id_idx on crm.task_comments (task_id);
+create index if not exists task_comments_author_id_idx on crm.task_comments (author_id);
+create index if not exists task_activity_org_id_idx on crm.task_activity (org_id);
+create index if not exists task_activity_task_id_idx on crm.task_activity (task_id);
+create index if not exists task_activity_actor_id_idx on crm.task_activity (actor_id);
 create index if not exists announcements_org_id_idx on crm.announcements (org_id);
 create index if not exists announcements_created_by_id_idx on crm.announcements (created_by_id);
 create index if not exists notifications_org_id_idx on crm.notifications (org_id);
@@ -773,6 +809,8 @@ create index if not exists bank_statement_lines_position_idx on crm.bank_stateme
 create index if not exists manual_journals_position_idx on crm.manual_journals (_position);
 create index if not exists budgets_position_idx on crm.budgets (_position);
 create index if not exists tasks_position_idx on crm.tasks (_position);
+create index if not exists task_comments_position_idx on crm.task_comments (_position);
+create index if not exists task_activity_position_idx on crm.task_activity (_position);
 create index if not exists announcements_position_idx on crm.announcements (_position);
 create index if not exists notifications_position_idx on crm.notifications (_position);
 create index if not exists approval_requests_position_idx on crm.approval_requests (_position);

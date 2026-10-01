@@ -693,18 +693,55 @@ export interface LeaveRequest {
 
 // ─── Tasks, Announcements, Audit ─────────────────────────────
 
+export type TaskStatus = "TODO" | "IN_PROGRESS" | "IN_REVIEW" | "BLOCKED" | "DONE";
+export type TaskType = "TASK" | "FOLLOW_UP" | "CALL" | "MEETING" | "DOCUMENTS" | "INTERVIEW";
+export type TaskRelatedType = "CANDIDATE" | "JOB" | "CLIENT" | "EMPLOYEE";
+
 export interface Task {
   id: string;
   orgId: string;
+  key?: string; // human ticket key, e.g. "ABS-12"
+  type?: TaskType;
+  status?: TaskStatus; // absent on older rows → derived from `completed`
   assignedToId: string;
-  createdById: string;
+  createdById: string; // reporter
   title: string;
   description?: string | null;
+  labels?: string[];
+  watcherIds?: string[];
+  startDate?: string | null;
   dueDate?: string | null;
+  estimateHours?: number | null;
   priority: JobPriority;
+  relatedType?: TaskRelatedType | null;
+  relatedId?: string | null;
   linkedApplicationId?: string | null;
-  completed: boolean;
+  completed: boolean; // kept in step with status === "DONE" for older screens
   completedAt?: string | null;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface TaskComment {
+  id: string;
+  orgId: string;
+  taskId: string;
+  authorId: string;
+  body: string;
+  mentionIds: string[];
+  createdAt: string;
+  editedAt?: string | null;
+}
+
+export interface TaskActivity {
+  id: string;
+  orgId: string;
+  taskId: string;
+  actorId: string;
+  action: "CREATED" | "UPDATED" | "COMMENTED";
+  field?: string | null; // which field changed, for UPDATED
+  fromValue?: string | null;
+  toValue?: string | null;
   createdAt: string;
 }
 

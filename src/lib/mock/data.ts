@@ -5,7 +5,7 @@ import type {
   Holiday, PolicyAcknowledgement, BenefitEnrollment, TaxDeclaration,
   Organization, User, Client, JobRequisition, Candidate, CandidateSource, Application,
   Interview, Referral, CommissionLedgerEntry, Payout, AttendanceRecord,
-  LeaveRequest, Task, Announcement, AuditLog, Notification,
+  LeaveRequest, Task, TaskComment, TaskActivity, Announcement, AuditLog, Notification,
   Employee, OnboardingRecord, PayrollRecord, PerformanceReview,
   AssetRecord, TrainingProgram, ExitRecord, DocumentRecord,
   PlacementRecord, ClientLead, ApprovalRequest, ComplianceItem, DataQualityIssue, IntegrationService,
@@ -1066,12 +1066,39 @@ export const leaveRequests: LeaveRequest[] = persist("leaveRequests", () => ([
 // ─── Tasks ────────────────────────────────────────────────────
 
 export const tasks: Task[] = persist("tasks", () => ([
-  { id: "tsk-001", orgId: ORG_1, assignedToId: "usr-ta1", createdById: "usr-tam", title: "Collect documents from Karan Malhotra", description: "Offer released — need PAN, degree certs before joining.", dueDate: dateOnly(1), priority: "URGENT", linkedApplicationId: "app-003", completed: false, createdAt: daysAgo(2) },
-  { id: "tsk-002", orgId: ORG_1, assignedToId: "usr-ta1", createdById: "usr-tam", title: "Follow up: Amit Verma client round feedback", description: null, dueDate: dateOnly(0), priority: "HIGH", linkedApplicationId: "app-001", completed: false, createdAt: daysAgo(1) },
-  { id: "tsk-003", orgId: ORG_1, assignedToId: "usr-ta2", createdById: "usr-tam", title: "Source 5 more profiles for Risk Analyst", description: "FinEdge wants diverse banking backgrounds.", dueDate: dateOnly(2), priority: "HIGH", linkedApplicationId: null, completed: false, createdAt: daysAgo(3) },
-  { id: "tsk-004", orgId: ORG_1, assignedToId: "usr-ag1", createdById: "usr-tam", title: "Refer 3 candidates for ICU Nurse (MediCare)", description: "Urgent requisition pending approval — gather interest first.", dueDate: dateOnly(3), priority: "MEDIUM", linkedApplicationId: null, completed: false, createdAt: daysAgo(1) },
-  { id: "tsk-005", orgId: ORG_1, assignedToId: "usr-ta2", createdById: "usr-ta2", title: "Update candidate tracker sheet", description: null, dueDate: dateOnly(-1), priority: "LOW", linkedApplicationId: null, completed: true, createdAt: daysAgo(5) },
-  { id: "tsk-006", orgId: ORG_1, assignedToId: "usr-em1", createdById: "usr-sa", title: "Prepare monthly ops report draft", description: null, dueDate: dateOnly(4), priority: "MEDIUM", linkedApplicationId: null, completed: false, createdAt: daysAgo(2) },
+  { id: "tsk-001", orgId: ORG_1, key: "ABS-1", type: "DOCUMENTS", status: "IN_PROGRESS", assignedToId: "usr-ta1", createdById: "usr-tam", title: "Collect documents from Karan Malhotra", description: "Offer released — need PAN, degree certificates and last 3 payslips before joining.\nShare the checklist on WhatsApp and track receipt here.", labels: ["joining", "documents"], watcherIds: ["usr-hr1"], startDate: dateOnly(-1), dueDate: dateOnly(1), estimateHours: 2, priority: "URGENT", relatedType: "CANDIDATE", relatedId: "cand-003", linkedApplicationId: "app-003", completed: false, createdAt: daysAgo(2), updatedAt: daysAgo(0, -2) },
+  { id: "tsk-002", orgId: ORG_1, key: "ABS-2", type: "FOLLOW_UP", status: "TODO", assignedToId: "usr-ta1", createdById: "usr-tam", title: "Follow up: Amit Verma client round feedback", description: "TechNova promised feedback within 48 hours of the client round.", labels: ["client-feedback", "technova"], watcherIds: [], startDate: null, dueDate: dateOnly(0), estimateHours: 0.5, priority: "HIGH", relatedType: "CANDIDATE", relatedId: "cand-001", linkedApplicationId: "app-001", completed: false, createdAt: daysAgo(1), updatedAt: daysAgo(1) },
+  { id: "tsk-003", orgId: ORG_1, key: "ABS-3", type: "TASK", status: "IN_REVIEW", assignedToId: "usr-ta2", createdById: "usr-tam", title: "Source 5 more profiles for Risk Analyst", description: "FinEdge wants diverse banking backgrounds — at least 2 from cooperative banks.", labels: ["sourcing", "finedge"], watcherIds: ["usr-sa"], startDate: dateOnly(-3), dueDate: dateOnly(2), estimateHours: 6, priority: "HIGH", relatedType: "JOB", relatedId: "job-102", linkedApplicationId: null, completed: false, createdAt: daysAgo(3), updatedAt: daysAgo(0, -5) },
+  { id: "tsk-004", orgId: ORG_1, key: "ABS-4", type: "TASK", status: "BLOCKED", assignedToId: "usr-ag1", createdById: "usr-tam", title: "Refer 3 candidates for ICU Nurse (MediCare)", description: "Urgent requisition pending approval — gather interest first, don't share salary yet.", labels: ["sourcing", "healthcare"], watcherIds: [], startDate: dateOnly(-1), dueDate: dateOnly(3), estimateHours: 4, priority: "MEDIUM", relatedType: "JOB", relatedId: "job-105", linkedApplicationId: null, completed: false, createdAt: daysAgo(1), updatedAt: daysAgo(0, -8) },
+  { id: "tsk-005", orgId: ORG_1, key: "ABS-5", type: "TASK", status: "DONE", assignedToId: "usr-ta2", createdById: "usr-ta2", title: "Update candidate tracker sheet", description: null, labels: ["reporting"], watcherIds: [], startDate: null, dueDate: dateOnly(-1), estimateHours: 1, priority: "LOW", relatedType: null, relatedId: null, linkedApplicationId: null, completed: true, completedAt: daysAgo(1), createdAt: daysAgo(5), updatedAt: daysAgo(1) },
+  { id: "tsk-006", orgId: ORG_1, key: "ABS-6", type: "DOCUMENTS", status: "TODO", assignedToId: "usr-em1", createdById: "usr-sa", title: "Prepare monthly ops report draft", description: "Cover placements, open requisitions and collections for September. Use last month's deck as the template.", labels: ["reporting", "monthly"], watcherIds: ["usr-fin1"], startDate: dateOnly(1), dueDate: dateOnly(4), estimateHours: 3, priority: "MEDIUM", relatedType: null, relatedId: null, linkedApplicationId: null, completed: false, createdAt: daysAgo(2), updatedAt: daysAgo(2) },
+  { id: "tsk-007", orgId: ORG_1, key: "ABS-7", type: "MEETING", status: "TODO", assignedToId: "usr-tam", createdById: "usr-sa", title: "Quarterly business review with TechNova", description: "Agenda: Q3 hiring numbers, SLA misses, renewal of the 8.33% commercial.", labels: ["client", "technova"], watcherIds: ["usr-fin1"], startDate: null, dueDate: dateOnly(5), estimateHours: 1.5, priority: "HIGH", relatedType: "CLIENT", relatedId: "cl-1", linkedApplicationId: null, completed: false, createdAt: daysAgo(1), updatedAt: daysAgo(1) },
+  { id: "tsk-008", orgId: ORG_1, key: "ABS-8", type: "TASK", status: "IN_PROGRESS", assignedToId: "usr-hr1", createdById: "usr-sa", title: "Roll out new leave policy for 2027", description: "Align casual/sick split with the Shops & Establishments Act and publish on the portal.", labels: ["policy", "hr"], watcherIds: ["usr-em1"], startDate: dateOnly(-2), dueDate: dateOnly(7), estimateHours: 8, priority: "MEDIUM", relatedType: null, relatedId: null, linkedApplicationId: null, completed: false, createdAt: daysAgo(4), updatedAt: daysAgo(0, -3) },
+]));
+
+export const taskComments: TaskComment[] = persist("taskComments", () => ([
+  { id: "tcm-001", orgId: ORG_1, taskId: "tsk-001", authorId: "usr-tam", body: "Karan joins on the 15th, so we need everything by Friday latest.", mentionIds: [], createdAt: daysAgo(2, 1) },
+  { id: "tcm-002", orgId: ORG_1, taskId: "tsk-001", authorId: "usr-ta1", body: "PAN and degree received. Waiting on payslips — he says his current employer is slow to issue them.", mentionIds: [], createdAt: daysAgo(0, -2) },
+  { id: "tcm-003", orgId: ORG_1, taskId: "tsk-001", authorId: "usr-hr1", body: "@Rahul Sharma a bank statement showing salary credits works too if payslips are delayed.", mentionIds: ["usr-ta1"], createdAt: daysAgo(0, -1) },
+  { id: "tcm-004", orgId: ORG_1, taskId: "tsk-003", authorId: "usr-ta2", body: "Shared 5 profiles in the tracker — 2 from Saraswat Bank, 1 from Cosmos. Ready for your review.", mentionIds: [], createdAt: daysAgo(0, -5) },
+  { id: "tcm-005", orgId: ORG_1, taskId: "tsk-004", authorId: "usr-ag1", body: "Blocked until the requisition is approved — two nurses asked about salary and I couldn't confirm.", mentionIds: [], createdAt: daysAgo(0, -8) },
+  { id: "tcm-006", orgId: ORG_1, taskId: "tsk-008", authorId: "usr-hr1", body: "First draft done. @Aarav Mehta please review the carry-forward rule before I publish.", mentionIds: ["usr-sa"], createdAt: daysAgo(0, -3) },
+]));
+
+export const taskActivity: TaskActivity[] = persist("taskActivity", () => ([
+  { id: "tac-001", orgId: ORG_1, taskId: "tsk-001", actorId: "usr-tam", action: "CREATED", field: null, fromValue: null, toValue: null, createdAt: daysAgo(2) },
+  { id: "tac-002", orgId: ORG_1, taskId: "tsk-001", actorId: "usr-ta1", action: "UPDATED", field: "status", fromValue: "TODO", toValue: "IN_PROGRESS", createdAt: daysAgo(1) },
+  { id: "tac-003", orgId: ORG_1, taskId: "tsk-002", actorId: "usr-tam", action: "CREATED", field: null, fromValue: null, toValue: null, createdAt: daysAgo(1) },
+  { id: "tac-004", orgId: ORG_1, taskId: "tsk-003", actorId: "usr-tam", action: "CREATED", field: null, fromValue: null, toValue: null, createdAt: daysAgo(3) },
+  { id: "tac-005", orgId: ORG_1, taskId: "tsk-003", actorId: "usr-ta2", action: "UPDATED", field: "status", fromValue: "IN_PROGRESS", toValue: "IN_REVIEW", createdAt: daysAgo(0, -5) },
+  { id: "tac-006", orgId: ORG_1, taskId: "tsk-004", actorId: "usr-tam", action: "CREATED", field: null, fromValue: null, toValue: null, createdAt: daysAgo(1) },
+  { id: "tac-007", orgId: ORG_1, taskId: "tsk-004", actorId: "usr-ag1", action: "UPDATED", field: "status", fromValue: "TODO", toValue: "BLOCKED", createdAt: daysAgo(0, -8) },
+  { id: "tac-008", orgId: ORG_1, taskId: "tsk-005", actorId: "usr-ta2", action: "CREATED", field: null, fromValue: null, toValue: null, createdAt: daysAgo(5) },
+  { id: "tac-009", orgId: ORG_1, taskId: "tsk-005", actorId: "usr-ta2", action: "UPDATED", field: "status", fromValue: "TODO", toValue: "DONE", createdAt: daysAgo(1) },
+  { id: "tac-010", orgId: ORG_1, taskId: "tsk-006", actorId: "usr-sa", action: "CREATED", field: null, fromValue: null, toValue: null, createdAt: daysAgo(2) },
+  { id: "tac-011", orgId: ORG_1, taskId: "tsk-007", actorId: "usr-sa", action: "CREATED", field: null, fromValue: null, toValue: null, createdAt: daysAgo(1) },
+  { id: "tac-012", orgId: ORG_1, taskId: "tsk-008", actorId: "usr-sa", action: "CREATED", field: null, fromValue: null, toValue: null, createdAt: daysAgo(4) },
+  { id: "tac-013", orgId: ORG_1, taskId: "tsk-008", actorId: "usr-hr1", action: "UPDATED", field: "status", fromValue: "TODO", toValue: "IN_PROGRESS", createdAt: daysAgo(2) },
 ]));
 
 // ─── Announcements ────────────────────────────────────────────

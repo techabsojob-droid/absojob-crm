@@ -15,7 +15,7 @@ same project belongs to the recruitment website and is never touched by these sc
 | `schema/05_hr_time.sql` | attendance, shifts, corrections, WFH, leave requests / balances / policies, holidays |
 | `schema/06_hr_pay_growth.sql` | payroll, performance reviews and cycles, goals, training, benefits, tax declarations, HR policies |
 | `schema/07_finance.sql` | finance settings, invoices, receipts, recurring billing, expenses, vendors and bills, contracts, timesheets, F&F, bank lines, journals, budgets |
-| `schema/08_workspace.sql` | tasks, announcements, notifications, approvals, audit log, compliance, data quality, integrations, workflow rules, email outbox, uploaded files |
+| `schema/08_workspace.sql` | Jira-style tasks + task comments + task history, announcements, notifications, approvals, audit log, compliance, data quality, integrations, workflow rules, email outbox, uploaded files |
 | `schema/09_relationships.sql` | foreign keys between the tables above, plus indexes |
 | `schema/10_sync_and_security.sql` | change tracking (`_sync_state` + triggers) and row-level security |
 | `seed/seed.sql` | the demo data for every table (wipes CRM rows first) |
@@ -27,7 +27,7 @@ Every table also has two internal columns:
 ## Commands (run inside `crm/`)
 
 ```bash
-npm run db:push      # create / update tables (safe to re-run)
+npm run db:push      # create tables, add new columns to existing ones (never drops; safe to re-run)
 npm run db:seed      # replace all CRM data with the demo data
 npm run db:reset     # drop the crm schema, recreate it, load demo data
 npm run db:verify    # check Supabase returns exactly the demo data
