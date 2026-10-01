@@ -1095,7 +1095,7 @@ export default function TaPipelinePage() {
                                 candidateId: addForm.candidateId,
                                 jobId: addForm.jobId,
                                 screeningNotes: addForm.screeningNotes,
-                                fitScore: parseInt(addForm.fitScore) || 85,
+                                fitScore: parseInt(addForm.fitScore) || undefined,
                             });
                         }}
                         className="space-y-4"

@@ -14,6 +14,7 @@ import {
 import { toast } from "sonner";
 import { PageHeader, StatCard, Badge, SectionCard, ModalShell, EmptyState, inr } from "@/components/shared/ui";
 import { SkeletonPulse } from "@/components/shared/UIStates";
+import { RelatedTasks } from "@/components/tasks/TaskWidgets";
 
 export default function TaRequisitionDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id: jobId } = use(params);
@@ -292,6 +293,7 @@ export default function TaRequisitionDetailPage({ params }: { params: Promise<{ 
             {activeTab === "overview" && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2 space-y-6">
+                        <RelatedTasks relatedType="JOB" relatedId={jobId} recordName={job.title} />
                         <SectionCard title="Job Description & Sourcing Brief">
                             <div className="prose prose-sm max-w-none text-neutral-700 text-xs leading-relaxed space-y-3">
                                 <p>{job.description || "No detailed job description provided."}</p>

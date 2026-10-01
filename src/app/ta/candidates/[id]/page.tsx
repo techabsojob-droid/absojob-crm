@@ -14,6 +14,7 @@ import { SkeletonPulse } from "@/components/shared/UIStates";
 import { btn, fileToPayload, inputCls, Tabs, useAct } from "@/components/finance/kit";
 import CandidateComms from "@/components/ta/CandidateComms";
 import { api } from "@/lib/api";
+import { RelatedTasks } from "@/components/tasks/TaskWidgets";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Tab = "overview" | "applications" | "communicate" | "submissions" | "interviews" | "notes" | "activity";
@@ -112,6 +113,7 @@ export default function TaCandidateProfilePage() {
             {tab === "overview" && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2 space-y-6">
+                        <RelatedTasks relatedType="CANDIDATE" relatedId={c.id} recordName={c.name} />
                         <SectionCard title="Summary"><p className="text-sm text-neutral-700 leading-relaxed">{c.bio || c.headline || "No summary added."}</p></SectionCard>
                         <SectionCard title="Skills"><div className="flex flex-wrap gap-2">{(c.skills ?? []).length ? c.skills.map((s: string) => <span key={s} className="px-3 py-1 bg-primary/10 text-primary font-bold rounded-lg text-xs">{s}</span>) : <span className="text-xs text-neutral-400">No skills listed</span>}</div></SectionCard>
                         <SectionCard title="Work experience">

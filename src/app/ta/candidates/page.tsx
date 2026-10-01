@@ -88,7 +88,7 @@ export default function TaCandidatesPage() {
                     candidateId: targetCandidate.id,
                     jobId: pipelineForm.jobId,
                     screeningNotes: pipelineForm.screeningNotes,
-                    fitScore: parseInt(pipelineForm.fitScore) || 85,
+                    fitScore: parseInt(pipelineForm.fitScore) || undefined,
                 }),
             });
             if (!res.ok) {
@@ -597,7 +597,7 @@ export default function TaCandidatesPage() {
                                                     ? "bg-emerald-50 text-emerald-700"
                                                     : "bg-neutral-100 text-neutral-600"
                                                     }`}>
-                                                    {c.noticePeriodDays || 30}d
+                                                    {c.noticePeriodDays ? `${c.noticePeriodDays}d` : "Immediate"}
                                                 </span>
                                             </td>
 
@@ -695,7 +695,7 @@ export default function TaCandidatesPage() {
                                     </div>
                                     <div>
                                         <span className="text-[10px] uppercase font-bold text-neutral-400 block">Notice Period</span>
-                                        <p className="font-extrabold text-neutral-900">{c.noticePeriodDays || 30} Days</p>
+                                        <p className="font-extrabold text-neutral-900">{c.noticePeriodDays ? `${c.noticePeriodDays} Days` : "Immediate"}</p>
                                     </div>
                                     <div>
                                         <span className="text-[10px] uppercase font-bold text-neutral-400 block">Current CTC</span>
@@ -798,7 +798,7 @@ export default function TaCandidatesPage() {
                                 </div>
                                 <div className="p-3 bg-neutral-50 rounded-xl border border-neutral-100">
                                     <p className="text-[10px] uppercase font-bold text-neutral-400">Notice Period</p>
-                                    <p className="font-extrabold text-neutral-900 mt-0.5">{previewCandidate.noticePeriodDays || 30} Days</p>
+                                    <p className="font-extrabold text-neutral-900 mt-0.5">{previewCandidate.noticePeriodDays ? `${previewCandidate.noticePeriodDays} Days` : "Immediate"}</p>
                                 </div>
                                 <div className="p-3 bg-neutral-50 rounded-xl border border-neutral-100">
                                     <p className="text-[10px] uppercase font-bold text-neutral-400">Current CTC</p>

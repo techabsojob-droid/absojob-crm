@@ -14,6 +14,7 @@ import {
     auditLogs
 } from "@/lib/mock/data";
 import type { JobRequisition, JobStatus } from "@/lib/types";
+import { pipelineMetrics } from "@/lib/metrics";
 
 export async function GET(
     request: Request,
@@ -79,6 +80,7 @@ export async function GET(
 
     // Interviews for this job
     const jobAppIds = new Set(jobApps.map((a) => a.id));
+    const jobMetrics = pipelineMetrics(jobApps, mockInterviews, mockCandidates);
     const populatedInterviews = mockInterviews
         .filter((i) => jobAppIds.has(i.applicationId))
         .map((i) => {
@@ -221,6 +223,8 @@ export async function GET(
             taManagerName: taMgr?.name ?? null,
             accountManagerName: acctMgr?.name ?? null,
             daysOpen,
+            timeToFirstInterviewDays: jobMetrics.avgDaysToFirstInterview,
+            timeToOfferDays: jobMetrics.avgDaysToOffer,
             slaDays: effectiveSlaDays,
             daysRemaining,
             calculatedSlaStatus,

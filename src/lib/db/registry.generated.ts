@@ -7,6 +7,9 @@ export interface TableDef { key: string; table: string; kind: "rows" | "orgMap";
 
 export const DB_SCHEMA = "crm";
 
+// Orders column maps when old and new code share one dev server (hot reload)
+export const REGISTRY_GENERATED_AT = "2026-10-01T16:26:23.373Z";
+
 export const TABLES: TableDef[] = [
     {
         "key": "organizations",

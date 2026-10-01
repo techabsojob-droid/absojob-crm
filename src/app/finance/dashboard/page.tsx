@@ -8,6 +8,7 @@ import { SkeletonPulse } from "@/components/shared/UIStates";
 import { BilledCollectedChart, HorizontalBars } from "@/components/finance/Charts";
 import { money } from "@/components/finance/kit";
 import { api } from "@/lib/api";
+import { MyWork } from "@/components/tasks/TaskWidgets";
 
 interface Dash {
     kpis: Record<string, number>;
@@ -48,6 +49,8 @@ export default function FinanceDashboard() {
                 <StatCard label="Expense claims" value={`${k.expensesPending} pending`} icon={CreditCard} tone="primary" hint={`${money(k.expensesToPay)} approved, unpaid`} href="/finance/expenses" />
                 <StatCard label="GST output (issued)" value={money(k.gstOutput)} icon={Clock} tone="blue" href="/finance/tax" />
             </div>
+
+            <MyWork limit={4} />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <SectionCard title="Billed vs collected" subtitle="Last 6 months" className="lg:col-span-2">

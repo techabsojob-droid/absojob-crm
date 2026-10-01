@@ -8,7 +8,7 @@ import { TASK_STATUSES, TASK_TYPES, STATUS_LABEL } from "@/lib/tasks/rules";
 import { Avatar, LabelInput, PeopleOptions, PeoplePicker, PRIORITY_META, TYPE_META, type TaskMeta, type TaskRow } from "./bits";
 
 const LINK_LABEL = { CANDIDATE: "Candidate", JOB: "Job requisition", CLIENT: "Client", EMPLOYEE: "Employee" } as const;
-type LinkType = keyof typeof LINK_LABEL;
+export type LinkType = keyof typeof LINK_LABEL;
 
 function localDay(offset: number) {
     const d = new Date(Date.now() + offset * 86400000);
@@ -18,13 +18,15 @@ function localDay(offset: number) {
 const field = "w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:ring-2 focus:ring-primary/20";
 const label = "block text-[11px] font-bold text-neutral-600 mb-1";
 
-export function CreateTaskModal({ meta, onClose, onCreated }: { meta: TaskMeta; onClose: () => void; onCreated: (t: TaskRow) => void }) {
+export function CreateTaskModal({ meta, onClose, onCreated, initial }: { meta: TaskMeta; onClose: () => void; onCreated: (t: TaskRow) => void; initial?: { relatedType?: LinkType; relatedId?: string; title?: string; assignedToId?: string } }) {
     const qc = useQueryClient();
     const [quickDates] = useState(() => ([["Today", localDay(0)], ["Tomorrow", localDay(1)], ["+1 week", localDay(7)]] as const));
     const [f, setF] = useState({
         type: "TASK", title: "", description: "", assignedToId: meta.me.id, priority: "MEDIUM", status: "TODO",
         labels: [] as string[], startDate: "", dueDate: "", estimateHours: "", watcherIds: [] as string[],
-        relatedType: "" as "" | LinkType, relatedId: "",
+        relatedType: (initial?.relatedType ?? "") as "" | LinkType, relatedId: initial?.relatedId ?? "",
+        ...(initial?.title ? { title: initial.title } : {}),
+        ...(initial?.assignedToId ? { assignedToId: initial.assignedToId } : {}),
     });
     const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((p) => ({ ...p, [k]: v }));
 

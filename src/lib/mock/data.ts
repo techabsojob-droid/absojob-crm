@@ -1010,27 +1010,31 @@ function seedAttendance(): AttendanceRecord[] {
   const records: AttendanceRecord[] = [];
   const activeUsers = users.filter((u) => u.orgId === ORG_1 && u.status === "ACTIVE");
   let seq = 1;
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  // Rolling four weeks so dashboards and trends always have history
+  const start = new Date(now.getTime() - 27 * 86400000);
+  const pad = (n: number) => String(n).padStart(2, "0");
 
-  for (let d = new Date(monthStart); d <= now; d.setDate(d.getDate() + 1)) {
+  for (let d = new Date(start); d <= now; d.setDate(d.getDate() + 1)) {
     const iso = d.toISOString().split("T")[0];
     const dow = d.getDay();
     // Mon–Fri working week; nobody punches on company holidays in the seed data
     if (dow === 0 || dow === 6 || HOLIDAY_SEED.some(([date, , type]) => date === iso && type !== "OPTIONAL")) continue;
 
     for (const u of activeUsers) {
-      const seedVal = (u.id.charCodeAt(u.id.length - 1) * 31 + d.getDate() * 17) % 10;
+      // Deterministic per person per day, roughly: 70% on time, 10% late, 8% WFH, 4% half day, 4% leave, 3% absent
+      const h = [...`${u.id}|${iso}`].reduce((acc, ch) => (acc * 31 + ch.charCodeAt(0)) % 1000003, 7) % 100;
       let status: AttendanceRecord["status"] = "PRESENT";
-      if (seedVal === 0 && u.role !== "SUPER_ADMIN") status = "ON_LEAVE";
-      else if (seedVal === 1) status = "ABSENT";
-      else if (seedVal === 2) status = "HALF_DAY";
-      else if (seedVal === 3 && u.role === "EMPLOYEE") status = "WFH";
+      let lateBy = 0;
+      if (h < 4 && u.role !== "SUPER_ADMIN") status = "ON_LEAVE";
+      else if (h < 7) status = "ABSENT";
+      else if (h < 11) status = "HALF_DAY";
+      else if (h < 19 && u.role !== "AGENT") status = "WFH";
+      else if (h < 29) { status = "LATE"; lateBy = 16 + (h % 9) * 5; }
 
       const isToday = iso === todayStr;
-      const checkIn = status === "ABSENT" || status === "ON_LEAVE"
-        ? null
-        : `${iso}T${seedVal % 2 === 0 ? "09" : "10"}:${String((seedVal * 7) % 60).padStart(2, "0")}:00`;
-
+      const inMins = status === "LATE" ? 9 * 60 + 30 + lateBy : 9 * 60 + 5 + (h % 25);
+      const checkIn = status === "ABSENT" || status === "ON_LEAVE" ? null : `${iso}T${pad(Math.floor(inMins / 60))}:${pad(inMins % 60)}:00`;
+      const outMins = status === "HALF_DAY" ? 14 * 60 + (h % 20) : 18 * 60 + 10 + (h % 40);
       records.push({
         id: `att-${seq++}`,
         orgId: ORG_1,
@@ -1038,7 +1042,9 @@ function seedAttendance(): AttendanceRecord[] {
         date: iso,
         status,
         checkIn,
-        checkOut: isToday ? null : checkIn ? `${iso}T18:${String((seedVal * 13) % 60).padStart(2, "0")}:00` : null,
+        checkOut: isToday || !checkIn ? null : `${iso}T${pad(Math.floor(outMins / 60))}:${pad(outMins % 60)}:00`,
+        mode: status === "WFH" ? "WFH" : "OFFICE",
+        ...(lateBy ? { lateByMinutes: lateBy } : {}),
       });
     }
   }

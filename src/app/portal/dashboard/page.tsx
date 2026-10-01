@@ -2,11 +2,12 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { Gift, Wallet, TrendingUp, CalendarCheck, LogIn, LogOut, CheckSquare, Megaphone, Users, Award, Clock } from "lucide-react";
+import { Gift, Wallet, TrendingUp, CalendarCheck, LogIn, LogOut, Megaphone, Users, Award, Clock } from "lucide-react";
 import { PageHeader, StatCard, Badge, SectionCard, EmptyState, inr } from "@/components/shared/ui";
 import { SkeletonPulse } from "@/components/shared/UIStates";
 import { useAuth } from "@/lib/auth";
 import EmployeeHome from "@/components/portal/EmployeeHome";
+import { MyWork } from "@/components/tasks/TaskWidgets";
 
 export default function PortalDashboard() {
     const { user } = useAuth();
@@ -30,7 +31,6 @@ export default function PortalDashboard() {
         );
     }
 
-    const today = new Date().toDateString();
     const fmtTime = (iso: string | null) =>
         iso ? new Date(iso).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" }) : "—";
 
@@ -133,21 +133,7 @@ export default function PortalDashboard() {
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* My tasks */}
-                <SectionCard title="My Tasks" action={<Link href="/portal/tasks" className="text-xs font-bold text-primary hover:underline">All →</Link>}>
-                    {data.myTasks.length === 0 ? (
-                        <EmptyState icon={CheckSquare} message="No pending tasks." />
-                    ) : (
-                        <div className="divide-y divide-neutral-50 -mx-5 px-5">
-                            {data.myTasks.slice(0, 4).map((t: any) => (
-                                <div key={t.id} className="py-3 flex items-start justify-between gap-3">
-                                    <p className="text-sm font-semibold text-neutral-800">{t.title}</p>
-                                    <Badge value={t.priority} />
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </SectionCard>
+                <MyWork limit={4} />
 
                 {/* Recent referrals */}
                 <SectionCard title="Recent Referrals" action={<Link href="/portal/referrals" className="text-xs font-bold text-primary hover:underline">All →</Link>}>

@@ -927,7 +927,7 @@ export default function TaRequisitionsPage() {
                                 <p className="text-[11px] text-neutral-500">
                                     {previewJob.daysRemaining != null && previewJob.daysRemaining < 0
                                         ? `Breached by ${Math.abs(previewJob.daysRemaining)} days. Needs immediate sourcing attention.`
-                                        : `${previewJob.daysRemaining || 15} days remaining to fulfill position.`}
+                                        : previewJob.daysRemaining != null ? `${previewJob.daysRemaining} days remaining to fulfill position.` : "No SLA target set."}
                                 </p>
                             </div>
 

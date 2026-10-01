@@ -11,7 +11,7 @@ export async function GET() {
     const data = allNotifications
         .filter((n) => n.userId === user.id)
         .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
-        .slice(0, 30)
+        .slice(0, 50)
 
     return NextResponse.json(data)
 }

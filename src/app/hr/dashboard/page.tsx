@@ -19,6 +19,7 @@ import {
     ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell,
     LineChart, Line, AreaChart, Area
 } from "recharts";
+import { MyWork } from "@/components/tasks/TaskWidgets";
 
 const ATT_COLORS: Record<string, string> = {
     present: "#10B981",
@@ -247,10 +248,12 @@ export default function HrDashboardPage() {
                     value={kpis.totalPayrollAmount > 0 ? inr(kpis.totalPayrollAmount) : "Draft Cycle"}
                     icon={Wallet}
                     tone="purple"
-                    hint={`Gross: ${inr(kpis.grossPayrollAmount || 1020000)} · ${kpis.payrollStatus}`}
+                    hint={`Gross: ${inr(kpis.grossPayrollAmount ?? 0)} · ${kpis.payrollStatus}`}
                     href="/hr/payroll"
                 />
             </div>
+
+            <MyWork />
 
             {/* ROW 2: HR Action Center: Needs Your Attention */}
             <div id="action-center" className="bg-amber-50/50 border border-amber-200/80 rounded-2xl p-5 space-y-4">

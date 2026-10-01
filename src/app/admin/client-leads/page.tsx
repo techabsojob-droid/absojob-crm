@@ -83,6 +83,8 @@ export default function ClientLeadsPage() {
 
     const activePipeline = leads.filter((l) => !["CONVERTED", "LOST"].includes(l.stage));
     const convertedCount = leads.filter((l) => l.stage === "CONVERTED").length;
+    const industryCounts = leads.reduce<Record<string, number>>((m, l) => { if (l.industry) m[l.industry] = (m[l.industry] ?? 0) + 1; return m; }, {});
+    const topIndustries = Object.entries(industryCounts).sort((x, y) => y[1] - x[1]).slice(0, 2).map(([k]) => k);
     const totalPipelineValue = activePipeline.reduce((acc, l) => acc + (l.expectedAnnualValueLpa || 0), 0);
 
     return (
@@ -105,7 +107,7 @@ export default function ClientLeadsPage() {
                 <StatCard label="Active Leads" value={activePipeline.length} icon={Building2} tone="primary" hint="prospects in negotiation" />
                 <StatCard label="Pipeline Value" value={`₹${totalPipelineValue}L`} icon={UserCheck} tone="blue" hint="estimated annual billing" />
                 <StatCard label="Converted Accounts" value={convertedCount} icon={CheckCircle2} tone="emerald" hint="active billing clients" />
-                <StatCard label="Top Industries" value="SaaS & Fintech" icon={Building2} tone="purple" hint="highest demand sectors" />
+                <StatCard label="Top Industries" value={topIndustries.join(" & ") || "—"} icon={Building2} tone="purple" hint={topIndustries.length ? `${industryCounts[topIndustries[0]]} lead(s) in ${topIndustries[0]}` : "no leads yet"} />
             </div>
 
             {/* Filter Bar */}

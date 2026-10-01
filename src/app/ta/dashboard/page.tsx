@@ -16,6 +16,7 @@ import { SkeletonPulse } from "@/components/shared/UIStates";
 import {
     ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, Legend
 } from "recharts";
+import { MyWork } from "@/components/tasks/TaskWidgets";
 
 export default function TaCommandCenterDashboard() {
     const qc = useQueryClient();
@@ -286,12 +287,12 @@ export default function TaCommandCenterDashboard() {
 
     // Trend chart data (sourced vs joined vs offers)
     const pipelineTrendData = [
-        { stage: "Sourced", count: data.pipeline?.find((p: any) => p.stage === "SOURCED")?.count || 12 },
-        { stage: "Screening", count: data.pipeline?.find((p: any) => p.stage === "SCREENING")?.count || 8 },
+        { stage: "Sourced", count: data.pipeline?.find((p: any) => p.stage === "SOURCED")?.count || 0 },
+        { stage: "Screening", count: data.pipeline?.find((p: any) => p.stage === "SCREENING")?.count || 0 },
         { stage: "Interviews", count: (data.pipeline?.find((p: any) => p.stage === "TECH_ROUND")?.count || 0) + (data.pipeline?.find((p: any) => p.stage === "CLIENT_ROUND")?.count || 0) },
-        { stage: "Offers", count: data.pipeline?.find((p: any) => p.stage === "OFFER_SENT")?.count || 3 },
-        { stage: "Accepted", count: data.pipeline?.find((p: any) => p.stage === "OFFER_ACCEPTED")?.count || 2 },
-        { stage: "Joined", count: data.pipeline?.find((p: any) => p.stage === "JOINED")?.count || 1 },
+        { stage: "Offers", count: data.pipeline?.find((p: any) => p.stage === "OFFER_SENT")?.count || 0 },
+        { stage: "Accepted", count: data.pipeline?.find((p: any) => p.stage === "OFFER_ACCEPTED")?.count || 0 },
+        { stage: "Joined", count: data.pipeline?.find((p: any) => p.stage === "JOINED")?.count || 0 },
     ];
 
     return (
@@ -585,6 +586,8 @@ export default function TaCommandCenterDashboard() {
                     />
                 </div>
             </div>
+
+            <MyWork />
 
             {/* 5. Actionable Alerts / Needs Immediate Attention (SuperAdmin alerts look) */}
             {data.attentionItems.length > 0 && (

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
 import { candidates, applications, jobs, clients, users, addAudit, addNotification } from "@/lib/mock/data";
+import { nextCandidateCode } from "@/lib/fit";
 
 const ELEVATED_ROLES = ["SUPER_ADMIN", "TA_MANAGER"];
 
@@ -312,7 +313,7 @@ export async function POST(request: Request) {
 
     const candidate = {
         id: nextIds.candidate(),
-        candidateCode: `CAN-${Math.floor(1000 + Math.random() * 9000)}`,
+        candidateCode: nextCandidateCode(candidates, me.orgId),
         orgId: me.orgId,
         status: "NEW" as const,
         tags: ["New Lead", ...(body.immediateJoiner ? ["Immediate Joiner"] : [])],

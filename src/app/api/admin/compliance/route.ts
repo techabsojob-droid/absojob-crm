@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
-import { complianceItems, auditLogs } from "@/lib/mock/data";
+import { complianceItems, auditLogs, candidates } from "@/lib/mock/data";
 
 export async function GET(request: Request) {
     const auth = await requireRole("SUPER_ADMIN", "HR_ADMIN");
@@ -8,6 +8,12 @@ export async function GET(request: Request) {
     const me = auth.user;
 
     const url = new URL(request.url);
+    if (url.searchParams.get("summary") === "1") {
+        // Share of active candidates who gave data-processing consent (DPDP)
+        const pool = candidates.filter((c) => c.orgId === me.orgId && !c.archived);
+        const consented = pool.filter((c) => c.compliance?.dataProcessingConsent).length;
+        return NextResponse.json({ candidates: pool.length, consented, consentRate: pool.length ? Math.round((consented / pool.length) * 1000) / 10 : null });
+    }
     const q = (url.searchParams.get("q") ?? "").toLowerCase();
     const severity = url.searchParams.get("severity");
 

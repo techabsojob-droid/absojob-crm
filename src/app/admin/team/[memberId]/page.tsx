@@ -48,6 +48,7 @@ export default function Employee360ProfilePage({
         leaves?: any[];
         promotions?: any[];
         compensation?: any;
+        pipeline?: any;
     }>({
         queryKey: ["employee-360", memberId],
         queryFn: async () => {
@@ -127,6 +128,52 @@ export default function Employee360ProfilePage({
     }
 
     const { user, reporting, metrics, jobs, candidates, interviews, placements, tasks, auditLogs } = data;
+    const pipeline = data.pipeline ?? {};
+    const comp = data.compensation;
+
+    // 360° timeline from real records, newest first
+    const when = (iso: string) => new Date(iso.length === 10 ? `${iso}T00:00:00` : iso);
+    const timeline = [
+        ...(data.attendance ?? []).filter((a: any) => a.checkIn).slice(-3).map((a: any) => ({
+            at: a.checkIn.length > 10 ? a.checkIn : a.date, badge: "ATTENDANCE", badgeTone: "bg-emerald-50 text-emerald-800 border-emerald-200",
+            title: a.status === "LATE" ? "Checked in late" : "Checked in", desc: `${a.mode === "WFH" ? "Working from home" : "Office"} · ${a.date}`, icon: Clock,
+        })),
+        ...candidates.map((c: any) => ({
+            at: c.updatedAt || c.createdAt, badge: "RECRUITMENT", badgeTone: "bg-blue-50 text-blue-700 border-blue-200",
+            title: `${c.candidateName} at ${String(c.stage).replaceAll("_", " ").toLowerCase()}`, desc: `${c.jobTitle} · ${c.clientName}${c.fitScore != null ? ` · fit ${c.fitScore}%` : ""}`, icon: TrendingUp,
+        })),
+        ...tasks.filter((t: any) => t.completed && t.completedAt).map((t: any) => ({
+            at: t.completedAt, badge: "TASK", badgeTone: "bg-purple-50 text-purple-700 border-purple-200",
+            title: `Completed ${t.key ? `${t.key}: ` : ""}${t.title}`, desc: t.description || "Task marked done", icon: CheckSquare,
+        })),
+        ...placements.map((pl: any) => ({
+            at: pl.placementDate || pl.joiningDate, badge: "PLACEMENT", badgeTone: "bg-amber-50 text-amber-800 border-amber-200",
+            title: `Placed ${pl.candidateName} at ${pl.clientName}`, desc: `${pl.jobTitle} · ₹${(pl.revenueInr ?? 0).toLocaleString("en-IN")} billed`, icon: Award,
+        })),
+        ...(data.promotions ?? []).filter((p: any) => p.fromRole !== "—").map((p: any) => ({
+            at: new Date(p.date).toISOString(), badge: "PROMOTION", badgeTone: "bg-emerald-50 text-emerald-800 border-emerald-200",
+            title: `${p.fromRole} → ${p.toRole}`, desc: `${p.reason} · approved by ${p.approvedBy}`, icon: Award,
+        })),
+        ...(user.joiningDate ? [{
+            at: user.joiningDate, badge: "ONBOARDING", badgeTone: "bg-gray-100 text-gray-800 border-gray-200",
+            title: "Joined the organisation", desc: user.reportingToName ? `Reporting to ${user.reportingToName}` : "", icon: Briefcase,
+        }] : []),
+        ...auditLogs.slice(0, 10).map((a: any) => ({
+            at: a.createdAt, badge: "AUDIT", badgeTone: "bg-neutral-50 text-neutral-700 border-neutral-200",
+            title: String(a.action).replaceAll("_", " ").toLowerCase().replace(/^./, (c: string) => c.toUpperCase()), desc: a.detail, icon: History,
+        })),
+    ]
+        .filter((e) => e.at && !Number.isNaN(when(e.at).getTime()))
+        .sort((a, b) => when(b.at).getTime() - when(a.at).getTime())
+        .slice(0, 30)
+        .map((e) => ({ ...e, date: when(e.at).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: e.at.length > 10 ? "2-digit" : undefined, minute: e.at.length > 10 ? "2-digit" : undefined }) }));
+
+    const tenure = (() => {
+        if (!user.joiningDate) return "—";
+        const months = Math.max(0, Math.floor((Date.now() - when(user.joiningDate).getTime()) / (30.44 * 86400000)));
+        const y = Math.floor(months / 12), m = months % 12;
+        return [y ? `${y} Year${y > 1 ? "s" : ""}` : "", m || !y ? `${m} Month${m === 1 ? "" : "s"}` : ""].filter(Boolean).join(" ");
+    })();
     const isSuspended = user.status === "SUSPENDED" || user.status === "Archived";
 
     const tabs: Array<{
@@ -141,12 +188,12 @@ export default function Employee360ProfilePage({
         { id: "recruitment", label: "Recruitment Activity", icon: TrendingUp, badge: jobs.length + candidates.length },
         { id: "performance", label: "Performance", icon: Award },
         { id: "attendance", label: "Attendance & Leaves", icon: Clock, badge: metrics.lateArrivalsCount ? metrics.lateArrivalsCount : undefined },
-        { id: "promotions", label: "Role & Promotions", icon: TrendingUp, badge: data.promotions?.length || 2 },
+        { id: "promotions", label: "Role & Promotions", icon: TrendingUp, badge: data.promotions?.length ?? 0 },
         { id: "compensation", label: "Compensation", icon: DollarSign },
         { id: "tasks", label: "Tasks", icon: CheckSquare, badge: tasks.length },
         { id: "documents", label: "Documents", icon: FileText, badge: 3 },
         { id: "permissions", label: "Security & Access", icon: ShieldCheck },
-        { id: "timeline", label: "360° Timeline", icon: History, badge: (jobs.length + candidates.length + (data.promotions?.length || 2) + 2) },
+        { id: "timeline", label: "360° Timeline", icon: History, badge: (jobs.length + candidates.length + (data.promotions?.length ?? 0) + 2) },
         { id: "audit", label: "Audit Log", icon: Shield, badge: auditLogs.length },
     ];
 
@@ -192,15 +239,15 @@ export default function Employee360ProfilePage({
                                 <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{user.name}</h1>
                                 <Badge value={user.role} />
                                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border bg-purple-50 text-purple-700 border-purple-200">
-                                    {user.department || "Talent Acquisition"}
+                                    {user.department || "—"}
                                 </span>
                             </div>
                             <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                                 <p className="text-sm font-medium text-gray-700 flex items-center gap-2">
                                     <Briefcase className="w-4 h-4 text-emerald-700" />
-                                    {user.designation || "Senior Recruiter"}
+                                    {user.designation || "—"}
                                     <span className="text-gray-300">•</span>
-                                    <span className="text-gray-700">{user.team || "Core Recruitment Squad"}</span>
+                                    <span className="text-gray-700">{user.team || "—"}</span>
                                 </p>
                                 
                                 {/* Prominent & Clickable Reports To Pill right in the Header */}
@@ -238,11 +285,11 @@ export default function Employee360ProfilePage({
                                 </span>
                                 <span className="inline-flex items-center gap-1.5">
                                     <Phone className="w-3.5 h-3.5 text-gray-700" />
-                                    {user.workPhone || user.phone || "+91 98200 11223"}
+                                    {user.workPhone || user.phone || "—"}
                                 </span>
                                 <span className="inline-flex items-center gap-1.5">
                                     <MapPin className="w-3.5 h-3.5 text-gray-700" />
-                                    {user.location || "Mumbai HQ"} ({user.workMode || "Hybrid"})
+                                    {user.location || "—"} ({user.workMode || "—"})
                                 </span>
                             </div>
                         </div>
@@ -310,7 +357,7 @@ export default function Employee360ProfilePage({
                                         <ExternalLink className="w-3 h-3 text-emerald-600 inline" />
                                     </Link>
                                 ) : (
-                                    user.reportingToName || "Aarav Mehta (Founder & CEO)"
+                                    user.reportingToName || "No manager"
                                 )}
                             </div>
                         </div>
@@ -335,7 +382,7 @@ export default function Employee360ProfilePage({
                                         <ExternalLink className="w-3 h-3 text-purple-600 inline" />
                                     </Link>
                                 ) : (
-                                    user.secondaryManagerName || "Aarav Mehta (Head of Recruitment)"
+                                    user.secondaryManagerName || "None assigned"
                                 )}
                             </div>
                         </div>
@@ -398,7 +445,7 @@ export default function Employee360ProfilePage({
                 />
                 <StatCard
                     label="Placement Revenue"
-                    value={`₹${((metrics.revenueGeneratedInr || 240000) / 100000).toFixed(1)}L`}
+                    value={`₹${((metrics.revenueGeneratedInr ?? 0) / 100000).toFixed(1)}L`}
                     tone="emerald"
                     icon={DollarSign}
                     hint="Agency billing generated"
@@ -476,18 +523,18 @@ export default function Employee360ProfilePage({
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
                                 <div>
                                     <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wider">Conversion Ratio</p>
-                                    <p className="text-xl font-bold text-gray-900 mt-1">{metrics.conversionRate || 32}%</p>
-                                    <p className="text-[11px] text-emerald-600 font-semibold mt-0.5">Top quartile delivery</p>
+                                    <p className="text-xl font-bold text-gray-900 mt-1">{metrics.conversionRate ?? 0}%</p>
+                                    <p className="text-[11px] text-gray-500 mt-0.5">{pipeline.joined ?? 0} joined of {pipeline.applications ?? 0} profiles</p>
                                 </div>
                                 <div>
                                     <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wider">Avg Turnaround (TAT)</p>
-                                    <p className="text-xl font-bold text-gray-900 mt-1">4.2 Days</p>
+                                    <p className="text-xl font-bold text-gray-900 mt-1">{pipeline.avgDaysToFirstInterview != null ? `${pipeline.avgDaysToFirstInterview} Days` : "—"}</p>
                                     <p className="text-[11px] text-gray-500 mt-0.5">Profile to first interview</p>
                                 </div>
                                 <div>
                                     <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wider">Offer Acceptance</p>
-                                    <p className="text-xl font-bold text-gray-900 mt-1">94.8%</p>
-                                    <p className="text-[11px] text-emerald-600 font-semibold mt-0.5">Zero fallouts in 90 days</p>
+                                    <p className="text-xl font-bold text-gray-900 mt-1">{pipeline.offerAcceptancePct != null ? `${pipeline.offerAcceptancePct}%` : "—"}</p>
+                                    <p className="text-[11px] text-gray-500 mt-0.5">{pipeline.offersAccepted ?? 0} of {pipeline.offersReleased ?? 0} offers accepted</p>
                                 </div>
                             </div>
 
@@ -509,7 +556,7 @@ export default function Employee360ProfilePage({
                                                 <div className="min-w-0">
                                                     <p className="text-xs font-bold text-gray-900 truncate">{j.title}</p>
                                                     <p className="text-[11px] text-gray-500">
-                                                        {j.department || "Engineering"} • {j.location || "Mumbai"} • {j.experienceYearsRequired || 3}+ yrs
+                                                        {j.department || "General"} • {j.location || "—"} • {j.experienceMinYears ?? 0}+ yrs
                                                     </p>
                                                 </div>
                                                 <div className="flex items-center gap-2">
@@ -572,7 +619,7 @@ export default function Employee360ProfilePage({
                             <div className="space-y-3 text-xs">
                                 <div className="flex justify-between py-1.5 border-b border-gray-100">
                                     <span className="text-gray-500">Employee Code</span>
-                                    <span className="font-mono font-bold text-gray-900">{user.employeeId || "EMP-1001"}</span>
+                                    <span className="font-mono font-bold text-gray-900">{user.employeeId || "—"}</span>
                                 </div>
                                 <div className="flex justify-between py-1.5 border-b border-gray-100">
                                     <span className="text-gray-500">Department</span>
@@ -580,11 +627,11 @@ export default function Employee360ProfilePage({
                                 </div>
                                 <div className="flex justify-between py-1.5 border-b border-gray-100">
                                     <span className="text-gray-500">Team / Squad</span>
-                                    <span className="font-semibold text-gray-900">{user.team || "Technology TA"}</span>
+                                    <span className="font-semibold text-gray-900">{user.team || "—"}</span>
                                 </div>
                                 <div className="flex justify-between py-1.5 border-b border-gray-100">
                                     <span className="text-gray-500">Employment Type</span>
-                                    <span className="font-semibold text-gray-900">{user.employmentType || "Full-Time Permanent"}</span>
+                                    <span className="font-semibold text-gray-900">{user.employmentType || "—"}</span>
                                 </div>
                                 <div className="flex justify-between py-1.5 border-b border-gray-100">
                                     <span className="text-gray-500">Joining Date</span>
@@ -604,16 +651,16 @@ export default function Employee360ProfilePage({
                                             <ExternalLink className="w-3 h-3 text-emerald-600 inline" />
                                         </Link>
                                     ) : (
-                                        <span className="font-semibold text-gray-900">{user.reportingToName || "Leadership"}</span>
+                                        <span className="font-semibold text-gray-900">{user.reportingToName || "—"}</span>
                                     )}
                                 </div>
                                 <div className="flex justify-between py-1.5 border-b border-gray-100">
                                     <span className="text-gray-500">Shift Schedule</span>
-                                    <span className="font-semibold text-gray-900">{user.shift || "General (9:30 AM - 6:30 PM)"}</span>
+                                    <span className="font-semibold text-gray-900">{user.shift || "—"}</span>
                                 </div>
                                 <div className="flex justify-between py-1.5">
                                     <span className="text-gray-500">Work Mode</span>
-                                    <span className="font-semibold text-gray-900">{user.workMode || "Hybrid (Mumbai HQ)"}</span>
+                                    <span className="font-semibold text-gray-900">{user.workMode || "—"}</span>
                                 </div>
                             </div>
                         </SectionCard>
@@ -626,11 +673,11 @@ export default function Employee360ProfilePage({
                                 </div>
                                 <div>
                                     <p className="text-[11px] text-gray-400">Phone</p>
-                                    <p className="font-medium text-gray-900">{user.workPhone || user.phone || "+91 98200 11223"}</p>
+                                    <p className="font-medium text-gray-900">{user.workPhone || user.phone || "—"}</p>
                                 </div>
                                 <div>
                                     <p className="text-[11px] text-gray-400">Emergency Contact</p>
-                                    <p className="font-medium text-gray-900">{user.emergencyContact || "+91 98111 22334 (Spouse / Family)"}</p>
+                                    <p className="font-medium text-gray-900">{user.emergencyContact || "—"}</p>
                                 </div>
                             </div>
                         </SectionCard>
@@ -646,7 +693,7 @@ export default function Employee360ProfilePage({
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
                                     <p className="text-gray-400 text-[10px] uppercase font-bold">Employment Type</p>
-                                    <p className="text-sm font-bold text-gray-900 mt-1">{user.employmentType || "Full-Time"}</p>
+                                    <p className="text-sm font-bold text-gray-900 mt-1">{user.employmentType || "—"}</p>
                                 </div>
                                 <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
                                     <p className="text-gray-400 text-[10px] uppercase font-bold">Status</p>
@@ -657,7 +704,7 @@ export default function Employee360ProfilePage({
                             <div className="space-y-3 pt-2">
                                 <div className="flex justify-between py-1.5 border-b border-gray-100">
                                     <span className="text-gray-500">Official Designation</span>
-                                    <span className="font-semibold text-gray-900">{user.designation || "Senior Recruiter"}</span>
+                                    <span className="font-semibold text-gray-900">{user.designation || "—"}</span>
                                 </div>
                                 <div className="flex justify-between py-1.5 border-b border-gray-100">
                                     <span className="text-gray-500">System Role</span>
@@ -685,7 +732,7 @@ export default function Employee360ProfilePage({
                                             <ExternalLink className="w-3 h-3 text-emerald-600 inline" />
                                         </Link>
                                     ) : (
-                                        <span className="font-semibold text-gray-900">{user.reportingToName || "Leadership"}</span>
+                                        <span className="font-semibold text-gray-900">{user.reportingToName || "—"}</span>
                                     )}
                                 </div>
                                 <div className="flex justify-between py-1.5 border-b border-gray-100 items-center">
@@ -704,12 +751,12 @@ export default function Employee360ProfilePage({
                                     )}
                                 </div>
                                 <div className="flex justify-between py-1.5 border-b border-gray-100">
-                                    <span className="text-gray-500">Notice Period</span>
-                                    <span className="font-semibold text-gray-900">60 Days</span>
+                                    <span className="text-gray-500">Probation</span>
+                                    <span className="font-semibold text-gray-900">{user.probationStatus ? `${user.probationStatus.replaceAll("_", " ").toLowerCase()}${user.probationEndDate ? ` · ends ${new Date(user.probationEndDate).toLocaleDateString("en-IN")}` : ""}` : "—"}</span>
                                 </div>
                                 <div className="flex justify-between py-1.5">
-                                    <span className="text-gray-500">Cost Center / BU</span>
-                                    <span className="font-semibold text-gray-900">CC-TA-MUM-01</span>
+                                    <span className="text-gray-500">Department</span>
+                                    <span className="font-semibold text-gray-900">{user.department || "—"}</span>
                                 </div>
                             </div>
                         </div>
@@ -734,7 +781,7 @@ export default function Employee360ProfilePage({
                                 </div>
                                 <div className="flex justify-between py-1.5 border-b border-gray-100">
                                     <span className="text-gray-500">Shift Timing</span>
-                                    <span className="font-semibold text-gray-900">{user.shift || "09:30 AM - 06:30 PM IST"}</span>
+                                    <span className="font-semibold text-gray-900">{user.shift || "—"}</span>
                                 </div>
                                 <div className="flex justify-between py-1.5 border-b border-gray-100">
                                     <span className="text-gray-500">Workstation ID</span>
@@ -780,11 +827,11 @@ export default function Employee360ProfilePage({
                                             </div>
                                             <div>
                                                 <h4 className="text-sm font-bold text-gray-900 group-hover:text-emerald-700 flex items-center gap-1">
-                                                    {reporting.primaryManager?.name || user.reportingToName || "Aarav Mehta"}
+                                                    {reporting.primaryManager?.name || user.reportingToName || "—"}
                                                     <ExternalLink className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-emerald-600" />
                                                 </h4>
                                                 <p className="text-xs text-gray-500">
-                                                    {reporting.primaryManager?.designation || reporting.primaryManager?.role || "Head of Recruitment / Founder"}
+                                                    {reporting.primaryManager?.designation || reporting.primaryManager?.role || "—"}
                                                 </p>
                                             </div>
                                         </div>
@@ -834,11 +881,11 @@ export default function Employee360ProfilePage({
                                             </div>
                                             <div>
                                                 <h4 className="text-sm font-bold text-gray-900 group-hover:text-purple-700 flex items-center gap-1">
-                                                    {reporting.secondaryManager?.name || "Aarav Mehta"}
+                                                    {reporting.secondaryManager?.name || "—"}
                                                     <ExternalLink className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-purple-600" />
                                                 </h4>
                                                 <p className="text-xs text-gray-500">
-                                                    {reporting.secondaryManager?.designation || "Head of Talent Acquisition & Operations"}
+                                                    {reporting.secondaryManager?.designation || "—"}
                                                 </p>
                                             </div>
                                         </div>
@@ -862,7 +909,7 @@ export default function Employee360ProfilePage({
                                             </div>
                                             <div>
                                                 <h4 className="text-sm font-bold text-gray-900">
-                                                    {user.secondaryManagerName || "Aarav Mehta (Head of Recruitment)"}
+                                                    {user.secondaryManagerName || "None assigned"}
                                                 </h4>
                                                 <p className="text-xs text-gray-500">Functional Head</p>
                                             </div>
@@ -924,7 +971,7 @@ export default function Employee360ProfilePage({
                             </div>
                             <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
                                 <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Primary Squad</span>
-                                <p className="text-sm font-bold text-gray-900 mt-1">{user.team || "Technology TA Squad"}</p>
+                                <p className="text-sm font-bold text-gray-900 mt-1">{user.team || "—"}</p>
                                 <p className="text-[11px] text-gray-500 mt-0.5">Product & Engineering Accounts</p>
                             </div>
                             <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
@@ -986,7 +1033,7 @@ export default function Employee360ProfilePage({
                                                     </span>
                                                 </td>
                                                 <td className="py-3 px-4">
-                                                    <span className="font-semibold text-emerald-600">{c.matchScore || 85}%</span>
+                                                    <span className="font-semibold text-emerald-600">{c.fitScore ?? "—"}%</span>
                                                 </td>
                                                 <td className="py-3 px-4 text-right">
                                                     <Link
@@ -1009,60 +1056,37 @@ export default function Employee360ProfilePage({
             {/* 5. PERFORMANCE & SOURCING */}
             {activeTab === "performance" && (
                 <div className="space-y-6">
-                    <SectionCard title="Key Recruitment KPIs" subtitle="Quarterly metrics and benchmarks">
+                    <SectionCard title="Key Recruitment KPIs" subtitle="Computed from this recruiter's pipeline">
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                                <p className="text-[11px] font-semibold text-gray-500 uppercase">Profiles Sourced</p>
-                                <p className="text-2xl font-bold text-gray-900 mt-1">128</p>
-                                <span className="text-[10px] text-emerald-600 font-semibold">+18% vs target</span>
-                            </div>
-                            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                                <p className="text-[11px] font-semibold text-gray-500 uppercase">Screening Pass Rate</p>
-                                <p className="text-2xl font-bold text-blue-600 mt-1">74%</p>
-                                <span className="text-[10px] text-gray-500">Industry avg: 60%</span>
-                            </div>
-                            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                                <p className="text-[11px] font-semibold text-gray-500 uppercase">Client Interview Rate</p>
-                                <p className="text-2xl font-bold text-purple-600 mt-1">58%</p>
-                                <span className="text-[10px] text-purple-600 font-semibold">High client satisfaction</span>
-                            </div>
-                            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                                <p className="text-[11px] font-semibold text-gray-500 uppercase">Billing Contribution</p>
-                                <p className="text-2xl font-bold text-emerald-600 mt-1">₹4.8L</p>
-                                <span className="text-[10px] text-emerald-600 font-semibold">Q3 FY25</span>
-                            </div>
+                            {[
+                                { label: "Profiles Worked", value: pipeline.applications ?? 0, note: `${pipeline.offersReleased ?? 0} reached offer`, tone: "text-gray-900" },
+                                { label: "Screening Pass Rate", value: pipeline.screeningPassPct != null ? `${pipeline.screeningPassPct}%` : "—", note: "moved past screening", tone: "text-blue-600" },
+                                { label: "Interview → Offer", value: pipeline.interviewToOfferPct != null ? `${pipeline.interviewToOfferPct}%` : "—", note: pipeline.avgDaysToOffer != null ? `${pipeline.avgDaysToOffer} days to offer on average` : "no offers yet", tone: "text-purple-600" },
+                                { label: "Billing Contribution", value: `₹${((metrics.billingContributionInr ?? 0) / 100000).toFixed(1)}L`, note: metrics.billingPeriod ?? "", tone: "text-emerald-600" },
+                            ].map((k) => (
+                                <div key={k.label} className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                                    <p className="text-[11px] font-semibold text-gray-500 uppercase">{k.label}</p>
+                                    <p className={`text-2xl font-bold mt-1 ${k.tone}`}>{k.value}</p>
+                                    <span className="text-[10px] text-gray-500">{k.note}</span>
+                                </div>
+                            ))}
                         </div>
                     </SectionCard>
 
-                    <SectionCard title="Sourcing Channel Breakdown" subtitle="Candidate origin statistics">
+                    <SectionCard title="Sourcing Channel Breakdown" subtitle="Where this recruiter's candidates came from">
                         <div className="space-y-3">
-                            <div>
-                                <div className="flex justify-between text-xs mb-1">
-                                    <span className="font-semibold text-gray-700">LinkedIn Recruiter & Direct InMail</span>
-                                    <span className="text-gray-500">45%</span>
+                            {(pipeline.sourcing ?? []).length === 0 && <p className="text-xs text-gray-400">No candidates in this recruiter's pipeline yet.</p>}
+                            {(pipeline.sourcing ?? []).map((row: { source: string; count: number; pct: number }, i: number) => (
+                                <div key={row.source}>
+                                    <div className="flex justify-between text-xs mb-1">
+                                        <span className="font-semibold text-gray-700">{row.source.replaceAll("_", " ").toLowerCase().replace(/^./, (c) => c.toUpperCase())}</span>
+                                        <span className="text-gray-500">{row.pct}% · {row.count}</span>
+                                    </div>
+                                    <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                                        <div className={`h-full rounded-full ${["bg-blue-600", "bg-emerald-600", "bg-purple-600", "bg-amber-500", "bg-rose-500"][i % 5]}`} style={{ width: `${row.pct}%` }} />
+                                    </div>
                                 </div>
-                                <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                                    <div className="h-full bg-blue-600 rounded-full" style={{ width: "45%" }} />
-                                </div>
-                            </div>
-                            <div>
-                                <div className="flex justify-between text-xs mb-1">
-                                    <span className="font-semibold text-gray-700">Internal Database & Talent Pools</span>
-                                    <span className="text-gray-500">30%</span>
-                                </div>
-                                <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                                    <div className="h-full bg-emerald-600 rounded-full" style={{ width: "30%" }} />
-                                </div>
-                            </div>
-                            <div>
-                                <div className="flex justify-between text-xs mb-1">
-                                    <span className="font-semibold text-gray-700">Referrals & Alumni Networks</span>
-                                    <span className="text-gray-500">25%</span>
-                                </div>
-                                <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                                    <div className="h-full bg-purple-600 rounded-full" style={{ width: "25%" }} />
-                                </div>
-                            </div>
+                            ))}
                         </div>
                     </SectionCard>
                 </div>
@@ -1075,27 +1099,27 @@ export default function Employee360ProfilePage({
                     <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                         <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
                             <p className="text-[10px] font-bold uppercase text-emerald-800 tracking-wider">Attendance Rate</p>
-                            <p className="text-2xl font-extrabold text-emerald-700 mt-1">{metrics.attendanceRate || 96}%</p>
+                            <p className="text-2xl font-extrabold text-emerald-700 mt-1">{metrics.attendanceRate != null ? `${metrics.attendanceRate}%` : "—"}</p>
                             <span className="text-[10px] text-emerald-600 font-semibold">Past 30 Days</span>
                         </div>
                         <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100">
                             <p className="text-[10px] font-bold uppercase text-blue-800 tracking-wider">Present Days</p>
-                            <p className="text-2xl font-extrabold text-blue-700 mt-1">{metrics.presentDays || 22}</p>
+                            <p className="text-2xl font-extrabold text-blue-700 mt-1">{metrics.presentDays ?? 0}</p>
                             <span className="text-[10px] text-blue-600 font-medium">Office / Hybrid</span>
                         </div>
                         <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100">
                             <p className="text-[10px] font-bold uppercase text-amber-800 tracking-wider">Late Check-Ins</p>
-                            <p className="text-2xl font-extrabold text-amber-700 mt-1">{metrics.lateArrivalsCount || 2}</p>
+                            <p className="text-2xl font-extrabold text-amber-700 mt-1">{metrics.lateArrivalsCount ?? 0}</p>
                             <span className="text-[10px] text-amber-600 font-medium">Avg delay: 14 min</span>
                         </div>
                         <div className="p-4 bg-purple-50 rounded-2xl border border-purple-100">
                             <p className="text-[10px] font-bold uppercase text-purple-800 tracking-wider">Approved Leaves</p>
-                            <p className="text-2xl font-extrabold text-purple-700 mt-1">{metrics.leaveDays || 1}</p>
+                            <p className="text-2xl font-extrabold text-purple-700 mt-1">{metrics.leaveDays ?? 0}</p>
                             <span className="text-[10px] text-purple-600 font-medium">Casual / Sick</span>
                         </div>
                         <div className="p-4 bg-red-50 rounded-2xl border border-red-100">
                             <p className="text-[10px] font-bold uppercase text-red-800 tracking-wider">Absences</p>
-                            <p className="text-2xl font-extrabold text-red-700 mt-1">{metrics.absentDays || 0}</p>
+                            <p className="text-2xl font-extrabold text-red-700 mt-1">{metrics.absentDays ?? 0}</p>
                             <span className="text-[10px] text-red-600 font-medium">Zero unexcused</span>
                         </div>
                     </div>
@@ -1190,22 +1214,8 @@ export default function Employee360ProfilePage({
                 <div className="space-y-6">
                     <SectionCard title="Career Progression & Role History" subtitle="Chronological milestones since joining the company">
                         <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-emerald-200">
-                            {(data.promotions || [
-                                {
-                                    date: "Jul 01, 2025",
-                                    fromRole: "Associate Recruiter",
-                                    toRole: user.designation || "Senior Recruiter",
-                                    approvedBy: user.reportingToName || "Aarav Mehta",
-                                    reason: "High placement delivery and leadership within Tech squad"
-                                },
-                                {
-                                    date: "Jan 15, 2024",
-                                    fromRole: "Recruiter Trainee",
-                                    toRole: "Associate Recruiter",
-                                    approvedBy: "Aarav Mehta (Founder)",
-                                    reason: "Successful completion of recruitment boot-camp"
-                                }
-                            ]).map((p: any, idx: number) => (
+                            {(data.promotions ?? []).length === 0 && <p className="text-xs text-gray-400">No role changes recorded yet.</p>}
+                            {(data.promotions ?? []).map((p: any, idx: number) => (
                                 <div key={idx} className="relative">
                                     <span className="absolute -left-6 top-1 w-3.5 h-3.5 rounded-full bg-emerald-600 border-2 border-white ring-2 ring-emerald-200" />
                                     <div className="p-4 bg-white border border-gray-200 rounded-2xl shadow-xs">
@@ -1233,30 +1243,32 @@ export default function Employee360ProfilePage({
             {activeTab === "compensation" && (
                 <div className="space-y-6">
                     <SectionCard title="Compensation & Incentive Structure" subtitle="Restricted view for authorized leadership & HR">
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                            <div className="p-4 bg-gray-50 rounded-2xl border border-gray-200">
-                                <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Annual Base CTC</p>
-                                <p className="text-2xl font-extrabold text-gray-900 mt-1">₹7,50,000</p>
-                                <span className="text-[10px] text-emerald-600 font-semibold">Fixed monthly: ₹62,500</span>
+                        {!comp ? (
+                            <p className="text-sm text-gray-500 mb-6">Compensation is visible only to Super Admin, HR and the employee.</p>
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                                <div className="p-4 bg-gray-50 rounded-2xl border border-gray-200">
+                                    <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Annual CTC</p>
+                                    <p className="text-2xl font-extrabold text-gray-900 mt-1">{comp.currentBaseInr ? `₹${comp.currentBaseInr.toLocaleString("en-IN")}` : "Not set"}</p>
+                                    <span className="text-[10px] text-emerald-600 font-semibold">{comp.monthlyNetInr ? `Net monthly: ₹${comp.monthlyNetInr.toLocaleString("en-IN")}` : "Add salary in HR › Employees"}</span>
+                                </div>
+                                <div className="p-4 bg-gray-50 rounded-2xl border border-gray-200">
+                                    <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Revisions</p>
+                                    <p className="text-2xl font-extrabold text-purple-700 mt-1">{Math.max(0, (comp.history?.length ?? 0) - 1)}</p>
+                                    <span className="text-[10px] text-purple-600 font-semibold">approved salary changes</span>
+                                </div>
+                                <div className="p-4 bg-gray-50 rounded-2xl border border-gray-200">
+                                    <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Billing Contribution</p>
+                                    <p className="text-2xl font-extrabold text-emerald-600 mt-1">₹{((metrics.billingContributionInr ?? 0) / 100000).toFixed(1)}L</p>
+                                    <span className="text-[10px] text-gray-500 font-medium">placements in {metrics.billingPeriod ?? "this FY"}</span>
+                                </div>
                             </div>
-                            <div className="p-4 bg-gray-50 rounded-2xl border border-gray-200">
-                                <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Target Variable / Bonus</p>
-                                <p className="text-2xl font-extrabold text-purple-700 mt-1">₹1,80,000</p>
-                                <span className="text-[10px] text-purple-600 font-semibold">Placement linked commission</span>
-                            </div>
-                            <div className="p-4 bg-gray-50 rounded-2xl border border-gray-200">
-                                <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Total Realized YTD</p>
-                                <p className="text-2xl font-extrabold text-emerald-600 mt-1">₹5,10,000</p>
-                                <span className="text-[10px] text-gray-500 font-medium">9 months FY25</span>
-                            </div>
-                        </div>
+                        )}
 
                         <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 mb-3">Revision & Appraisal History</h4>
                         <div className="space-y-2">
-                            {(data.compensation?.history || [
-                                { effectiveDate: "Apr 01, 2025", amount: "₹7,50,000 / annum", type: "Annual Appraisal Revision (+15%)", approvedBy: "Aarav Mehta" },
-                                { effectiveDate: "Jan 15, 2024", amount: "₹6,50,000 / annum", type: "Starting Compensation Agreement", approvedBy: "Ananya Sen (HR)" }
-                            ]).map((c: any, idx: number) => (
+                            {(data.compensation?.history ?? []).length === 0 && <p className="text-xs text-gray-400">No revisions recorded.</p>}
+                            {(data.compensation?.history ?? []).map((c: any, idx: number) => (
                                 <div key={idx} className="p-3.5 bg-white border border-gray-200 rounded-xl flex items-center justify-between text-xs hover:border-emerald-300 transition-colors">
                                     <div>
                                         <p className="font-bold text-gray-900">{c.amount} — <span className="text-gray-600 font-normal">{c.type}</span></p>
@@ -1437,18 +1449,18 @@ export default function Employee360ProfilePage({
                             <div>
                                 <span className="text-[10px] uppercase font-bold text-gray-400">Total Milestones</span>
                                 <p className="text-xl font-bold text-gray-900 mt-0.5">
-                                    {(jobs.length + candidates.length + (data.promotions?.length || 2) + 4)} Events
+                                    {timeline.length} Events
                                 </p>
                             </div>
                             <div>
                                 <span className="text-[10px] uppercase font-bold text-gray-400">Career Tenure</span>
                                 <p className="text-xl font-bold text-emerald-600 mt-0.5">
-                                    {user.joiningDate ? "1 Year 8 Months" : "2 Years"}
+                                    {tenure}
                                 </p>
                             </div>
                             <div>
                                 <span className="text-[10px] uppercase font-bold text-gray-400">Roles Held</span>
-                                <p className="text-xl font-bold text-blue-600 mt-0.5">3 Positions</p>
+                                <p className="text-xl font-bold text-blue-600 mt-0.5">{Math.max(1, data.promotions?.length ?? 1)} Position(s)</p>
                             </div>
                             <div>
                                 <span className="text-[10px] uppercase font-bold text-gray-400">Audited Changes</span>
@@ -1458,48 +1470,8 @@ export default function Employee360ProfilePage({
 
                         {/* Interactive Timeline Events */}
                         <div className="relative pl-6 space-y-5 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-gray-200">
-                            {[
-                                {
-                                    date: "Today, 10:45 AM",
-                                    badge: "ATTENDANCE",
-                                    badgeTone: "bg-emerald-50 text-emerald-800 border-emerald-200",
-                                    title: "Biometric Check-In Recorded",
-                                    desc: `Checked in at 09:32 AM via BKC Office Portal (Within grace period).`,
-                                    icon: Clock
-                                },
-                                ...(candidates.slice(0, 3).map((c: any) => ({
-                                    date: "Yesterday",
-                                    badge: "RECRUITMENT",
-                                    badgeTone: "bg-blue-50 text-blue-700 border-blue-200",
-                                    title: `Candidate ${c.candidateName} advanced to ${c.stage}`,
-                                    desc: `Pipeline update for job: ${c.jobTitle}. Match score: ${c.matchScore}%.`,
-                                    icon: TrendingUp
-                                }))),
-                                {
-                                    date: "3 days ago",
-                                    badge: "TASK",
-                                    badgeTone: "bg-purple-50 text-purple-700 border-purple-200",
-                                    title: "Completed Candidate Follow-Up",
-                                    desc: "Verified offer letter documentation & PAN card KYC verification.",
-                                    icon: CheckSquare
-                                },
-                                {
-                                    date: "Jul 01, 2025",
-                                    badge: "PROMOTION",
-                                    badgeTone: "bg-emerald-50 text-emerald-800 border-emerald-200",
-                                    title: "Promoted to Senior Recruiter",
-                                    desc: `Approved by ${user.reportingToName || "Aarav Mehta"} following quarterly appraisal.`,
-                                    icon: Award
-                                },
-                                {
-                                    date: "Jan 15, 2024",
-                                    badge: "ONBOARDING",
-                                    badgeTone: "bg-gray-100 text-gray-800 border-gray-200",
-                                    title: "Joined AbsoJob Staffing Operations",
-                                    desc: `Welcome aboard! Initial reporting line mapped to ${user.reportingToName || "Management"}.`,
-                                    icon: Briefcase
-                                }
-                            ].map((event, idx) => {
+                            {timeline.length === 0 && <p className="text-xs text-gray-400">No activity recorded yet.</p>}
+                            {timeline.map((event, idx) => {
                                 const EventIcon = event.icon;
                                 return (
                                     <div key={idx} className="relative">
@@ -1544,7 +1516,7 @@ export default function Employee360ProfilePage({
                                             <div>
                                                 <p className="font-bold text-gray-900">{log.action || "Status Updated"}</p>
                                                 <p className="text-[11px] text-gray-500">
-                                                    By {log.actorName || "Super Admin"} • {log.details || "Administrative modification"}
+                                                    By {log.actorName || "—"} • {log.details || "Administrative modification"}
                                                 </p>
                                             </div>
                                         </div>

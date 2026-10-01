@@ -348,6 +348,9 @@ export interface TableDef { key: string; table: string; kind: "rows" | "orgMap";
 
 export const DB_SCHEMA = ${JSON.stringify(SCHEMA)};
 
+// Orders column maps when old and new code share one dev server (hot reload)
+export const REGISTRY_GENERATED_AT = ${JSON.stringify(new Date().toISOString())};
+
 export const TABLES: TableDef[] = ${JSON.stringify(data, null, 4)};
 `;
 }

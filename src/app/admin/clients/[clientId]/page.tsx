@@ -13,6 +13,7 @@ import {
 import { toast } from "sonner";
 import { PageHeader, StatCard, Badge, SectionCard, ModalShell, EmptyState, inr } from "@/components/shared/ui";
 import { SkeletonPulse } from "@/components/shared/UIStates";
+import { RelatedTasks } from "@/components/tasks/TaskWidgets";
 
 export default function ClientDetailsPage({ params }: { params: Promise<{ clientId: string }> }) {
     const { clientId } = use(params);
@@ -305,6 +306,7 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ client
             {/* TAB: OVERVIEW */}
             {activeTab === "overview" && (
                 <div className="space-y-6">
+                    <RelatedTasks relatedType="CLIENT" relatedId={clientId} recordName={client.companyName} />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/* Primary Contact */}
                         <SectionCard title="Primary Point of Contact" subtitle="Verified executive representative">

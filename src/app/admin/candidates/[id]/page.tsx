@@ -15,6 +15,8 @@ import { PageHeader, Badge, SectionCard, StatCard, EmptyState, ModalShell } from
 import { SkeletonPulse } from "@/components/shared/UIStates";
 import { toast } from "sonner";
 import { useState } from "react";
+import { profileCompleteness } from "@/lib/fit";
+import { RelatedTasks } from "@/components/tasks/TaskWidgets";
 
 export default function CandidateProfilePage() {
     const params = useParams();
@@ -314,7 +316,8 @@ export default function CandidateProfilePage() {
     const internalAuditLogs = candidate.internalAuditLogs || [];
     const tags = candidate.tags || [];
 
-    const completionScore = candidate.profileCompletionScore || 85;
+    const completeness = profileCompleteness(candidate);
+    const completionScore = completeness.score;
 
     return (
         <div className="space-y-6 animate-fade-in pb-16">
@@ -422,7 +425,7 @@ export default function CandidateProfilePage() {
                     <div>
                         <h4 className="text-xs font-bold text-neutral-800">Profile Completion Score</h4>
                         <p className="text-[11px] text-neutral-500">
-                            {completionScore >= 90 ? "Candidate profile is enterprise-ready and verified." : "Complete missing preferences & verified documents for client submission."}
+                            {completeness.missing.length === 0 ? "Profile is complete and ready for client submission." : `Missing: ${completeness.missing.join(", ")}`}
                         </p>
                     </div>
                 </div>
@@ -1382,6 +1385,7 @@ export default function CandidateProfilePage() {
                             {/* TAB: Tasks & Follow-ups */}
                             {activeTab === "tasks" && (
                                 <div className="space-y-4">
+                                    <RelatedTasks relatedType="CANDIDATE" relatedId={id} recordName={candidate.name} />
                                     <div className="flex items-center justify-between">
                                         <div>
                                             <h3 className="text-sm font-bold text-neutral-900">Recruiter Tasks & Follow-up Items</h3>

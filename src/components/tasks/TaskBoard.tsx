@@ -101,7 +101,14 @@ function Board({ title, subtitle }: { title: string; subtitle?: string }) {
     const open = (key: string | null) => {
         const next = new URLSearchParams(params.toString());
         if (key) next.set("task", key); else next.delete("task");
+        next.delete("create");
         router.replace(`${pathname}${next.size ? `?${next}` : ""}`, { scroll: false });
+    };
+    // "Create task" from the ⌘K palette arrives as ?create=1
+    const createFromUrl = params.get("create") === "1";
+    const closeCreate = () => {
+        setCreating(false);
+        if (createFromUrl) open(params.get("task"));
     };
 
     const { data: meta } = useQuery<TaskMeta>({
@@ -272,7 +279,7 @@ function Board({ title, subtitle }: { title: string; subtitle?: string }) {
                 </div>
             )}
 
-            {creating && meta && <CreateTaskModal meta={meta} onClose={() => setCreating(false)} onCreated={(t) => { setCreating(false); open(t.key); }} />}
+            {(creating || createFromUrl) && meta && <CreateTaskModal meta={meta} onClose={closeCreate} onCreated={(t) => { setCreating(false); open(t.key); }} />}
             {openKey && meta && <TaskDrawer taskKey={openKey} meta={meta} onClose={() => open(null)} />}
         </div>
     );

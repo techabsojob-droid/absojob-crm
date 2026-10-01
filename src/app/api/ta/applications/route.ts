@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
 import { applications, candidates, jobs, clients, interviews, users, referrals, addAudit, addNotification, nextIds } from "@/lib/mock/data";
+import { fitScore } from "@/lib/fit";
 import { canWorkOnApplication, isJobAssignedTo, isRecruitmentManager, markApplicationJoined, syncReferralFromApplication, validRecruiters } from "@/lib/mock/pipeline";
 import { canTransition, allowedNextStages, TERMINAL_STAGES, STAGE_ORDER, type ApplicationStage } from "@/lib/types";
 
@@ -214,7 +215,7 @@ export async function POST(request: Request) {
         jobId: body.jobId,
         stage: "SOURCED" as ApplicationStage,
         recruiterId: me.id,
-        fitScore: Number(body.fitScore) || Math.floor(50 + Math.random() * 40),
+        fitScore: Number(body.fitScore) || fitScore(cand, job),
         screeningNotes: body.screeningNotes ?? null,
         rejectionReason: null,
         expectedJoinDate: null,

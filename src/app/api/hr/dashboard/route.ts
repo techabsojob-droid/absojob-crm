@@ -85,10 +85,10 @@ export async function GET(req: NextRequest) {
 
     const attendanceTrend = past7Dates.map((dateStr) => {
         const dayAtt = attendance.filter((a) => a.orgId === me.orgId && a.date === dateStr);
-        const dayPresent = dayAtt.filter((a) => ["PRESENT", "LATE"].includes(a.status)).length || Math.floor(Math.random() * 3) + 7;
-        const dayLate = dayAtt.filter((a) => a.status === "LATE").length || Math.floor(Math.random() * 2) + 1;
-        const dayAbsent = dayAtt.filter((a) => a.status === "ABSENT").length || Math.floor(Math.random() * 2);
-        const dayWfh = dayAtt.filter((a) => a.status === "WFH").length || 1;
+        const dayPresent = dayAtt.filter((a) => ["PRESENT", "LATE"].includes(a.status)).length;
+        const dayLate = dayAtt.filter((a) => a.status === "LATE").length;
+        const dayAbsent = dayAtt.filter((a) => a.status === "ABSENT").length;
+        const dayWfh = dayAtt.filter((a) => a.status === "WFH").length;
         return {
             date: dateStr.slice(5), // MM-DD
             present: dayPresent,

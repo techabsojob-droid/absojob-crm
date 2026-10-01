@@ -48,7 +48,7 @@ export default function PerformancePage() {
                 <StatCard label="Total Hired (YTD)" value={totalJoined} icon={Award} tone="emerald" hint="placements generated" />
                 <StatCard label="Interviews Facilitated" value={totalInterviews} icon={Users} tone="primary" hint="client rounds conducted" />
                 <StatCard label="Avg Conversion Rate" value={`${avgConversion}%`} icon={TrendingUp} tone="blue" hint="screening to offer ratio" />
-                <StatCard label="Average Time to Hire" value="18 Days" icon={Clock} tone="purple" hint="from sourcing to acceptance" />
+                <StatCard label="Average Time to Hire" value={data.avgTimeToHireDays != null ? `${data.avgTimeToHireDays} Days` : "—"} icon={Clock} tone="purple" hint="from sourcing to joining" />
             </div>
 
             {/* Recruiter Throughput Chart */}
@@ -99,11 +99,13 @@ export default function PerformancePage() {
                                             {r.conversionRate}%
                                         </span>
                                     </td>
-                                    <td className="px-3 py-3.5 text-neutral-500 font-medium">16 Days</td>
+                                    <td className="px-3 py-3.5 text-neutral-500 font-medium">{r.avgTimeToHireDays != null ? `${r.avgTimeToHireDays} Days` : "—"}</td>
                                     <td className="px-5 py-3.5 text-right">
-                                        <span className="px-2 py-0.5 text-[10px] font-bold bg-emerald-50 text-emerald-700 rounded-md border border-emerald-200">
-                                            Active Capacity
-                                        </span>
+                                        {r.activePipeline > 15
+                                            ? <span className="px-2 py-0.5 text-[10px] font-bold bg-red-50 text-red-700 rounded-md border border-red-200">Over Capacity</span>
+                                            : r.activePipeline >= 8
+                                                ? <span className="px-2 py-0.5 text-[10px] font-bold bg-amber-50 text-amber-700 rounded-md border border-amber-200">At Capacity</span>
+                                                : <span className="px-2 py-0.5 text-[10px] font-bold bg-emerald-50 text-emerald-700 rounded-md border border-emerald-200">Has Capacity</span>}
                                     </td>
                                 </tr>
                             ))}

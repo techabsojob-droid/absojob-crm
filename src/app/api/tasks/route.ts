@@ -29,6 +29,12 @@ export async function GET(request: Request) {
         const v = p.get(param);
         if (v && v !== "ALL") list = list.filter((t) => pick(t) === v);
     }
+    // Tasks linked to one record, e.g. related=CANDIDATE:cand-003
+    const related = p.get("related");
+    if (related) {
+        const [rt, rid] = related.split(":");
+        list = list.filter((t) => t.relatedType === rt && t.relatedId === rid);
+    }
     const label = p.get("label");
     if (label && label !== "ALL") list = list.filter((t) => (t.labels ?? []).includes(label));
     if (q) list = list.filter((t) => [t.key, t.title, t.description, ...(t.labels ?? [])].some((s) => s?.toLowerCase().includes(q)));

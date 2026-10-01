@@ -48,6 +48,13 @@ export default function IntegrationsPage() {
 
     const connectedCount = services.filter((s) => s.status === "CONNECTED").length;
     const attentionCount = services.filter((s) => s.status === "NEEDS_ATTENTION").length;
+    const lastSync = services.map((s) => s.lastSyncAt).filter(Boolean).sort().pop() ?? null;
+    const lastSyncLabel = (() => {
+        if (!lastSync) return "Never";
+        const mins = Math.max(0, Math.round((Date.now() - new Date(lastSync).getTime()) / 60000));
+        return mins < 60 ? `${mins} min ago` : mins < 1440 ? `${Math.round(mins / 60)} h ago` : `${Math.round(mins / 1440)} d ago`;
+    })();
+    const disconnectedCount = services.filter((s) => s.status === "DISCONNECTED" || s.status === "ERROR").length;
 
     return (
         <div className="space-y-6">
@@ -60,8 +67,8 @@ export default function IntegrationsPage() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard label="Connected Services" value={connectedCount} icon={CheckCircle2} tone="emerald" hint="active live webhooks" />
                 <StatCard label="Needs Attention" value={attentionCount} icon={AlertTriangle} tone={attentionCount > 0 ? "amber" : "blue"} hint="token refresh recommended" />
-                <StatCard label="Monthly Syncs" value="18,420" icon={RefreshCw} tone="primary" hint="automated webhook events" />
-                <StatCard label="Storage Vault" value="42 GB" icon={Cloud} tone="purple" hint="encrypted candidate resumes" />
+                <StatCard label="Last Sync" value={lastSyncLabel} icon={RefreshCw} tone="primary" hint="most recent sync across services" />
+                <StatCard label="Not Connected" value={disconnectedCount} icon={Cloud} tone={disconnectedCount > 0 ? "amber" : "purple"} hint={`of ${services.length} available integrations`} />
             </div>
 
             {/* Service Cards Grid */}
