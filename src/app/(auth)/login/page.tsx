@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Eye, EyeOff, Briefcase, Lock, ShieldCheck, Users, UserRound } from "lucide-react";
+import { Eye, EyeOff, Briefcase, Lock, ShieldCheck, Users, UserRound, Wallet } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { roleHome } from "@/lib/types";
 
 const DEMO_ACCOUNTS = [
     { label: "Super Admin", icon: ShieldCheck, email: "admin@absojob.com" },
     { label: "HR Admin", icon: Users, email: "hr@absojob.com" },
+    { label: "Finance", icon: Wallet, email: "finance@absojob.com" },
     { label: "TA Manager", icon: Users, email: "neha@absojob.com" },
     { label: "Recruiter", icon: UserRound, email: "rahul.ta@absojob.com" },
     { label: "Agent", icon: Briefcase, email: "vikram@absojob.com" },
@@ -23,12 +25,7 @@ export default function LoginPage() {
 
     useEffect(() => {
         if (!user) return;
-        const home =
-            user.role === "SUPER_ADMIN" ? "/admin/dashboard"
-            : user.role === "HR_ADMIN" ? "/hr/dashboard"
-            : user.role === "TA_MANAGER" || user.role === "TA_RECRUITER" ? "/ta/dashboard"
-            : "/portal/dashboard";
-        window.location.href = home;
+        window.location.href = roleHome(user.role);
     }, [user]);
 
     const handleLogin = async (e: React.FormEvent) => {
@@ -165,6 +162,10 @@ export default function LoginPage() {
                             )}
                         </button>
                     </form>
+
+                    <p className="text-center text-sm text-neutral-500">
+                        Recruiter or placement agency? <a href="/register" className="font-bold text-primary hover:underline">Become a recruitment partner</a>
+                    </p>
 
                     {/* Demo credentials (mock mode) */}
                     <div className="mt-6 p-4 bg-neutral-50 border border-neutral-200 rounded-xl">

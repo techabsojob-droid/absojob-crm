@@ -7,7 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed:supabase": "node scripts/seed-mock-data.mjs"
+    "db:generate": "tsx --tsconfig tsconfig.json scripts/db/generate.ts",
+    "db:push": "tsx --tsconfig tsconfig.json scripts/db/push.ts --schema",
+    "db:seed": "tsx --tsconfig tsconfig.json scripts/db/push.ts --seed",
+    "db:reset": "tsx --tsconfig tsconfig.json scripts/db/push.ts --reset",
+    "db:verify": "tsx --tsconfig tsconfig.json scripts/db/verify.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -36,6 +40,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }

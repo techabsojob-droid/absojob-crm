@@ -1,11 +1,17 @@
 "use client";
 
-import { Search, Bell, ChevronDown, Loader2, Briefcase, User, Building2, Users, DollarSign } from "lucide-react";
+import { Search, Bell, ChevronDown, Loader2, Briefcase, User, Building2, Users, DollarSign, LayoutGrid } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
+import { workspacesFor, WORKSPACE_LABEL, WORKSPACE_PREFIX, type Workspace } from "@/lib/access";
+import ChangePasswordModal from "@/components/shared/ChangePasswordModal";
+
+const roleHomeFor = (ws: Workspace) => `${WORKSPACE_PREFIX[ws]}/dashboard`;
+
+
 
 interface TopBarProps {
     title?: string;
@@ -27,9 +33,14 @@ function useDebounce<T>(value: T, delay: number): T {
 export default function TopBar({ title, action }: TopBarProps) {
     const { user, logout } = useAuth();
     const router = useRouter();
+    const pathname = usePathname();
+    const workspaces = user?.role
+        ? workspacesFor(user.role).map((ws) => ({ label: WORKSPACE_LABEL[ws], href: roleHomeFor(ws), prefix: WORKSPACE_PREFIX[ws] }))
+        : [];
     
     // Dropdown States
     const [profileOpen, setProfileOpen] = useState(false);
+    const [pwOpen, setPwOpen] = useState(false);
     const [notifOpen, setNotifOpen] = useState(false);
     const [searchOpen, setSearchOpen] = useState(false);
     
@@ -87,7 +98,10 @@ export default function TopBar({ title, action }: TopBarProps) {
                 setNotifLoading(false);
             }
         };
-        if (user) fetchNotifications();
+        if (!user) return;
+        fetchNotifications();
+        const interval = setInterval(fetchNotifications, 30000);
+        return () => clearInterval(interval);
     }, [user]);
 
     const markAsRead = async (id: string) => {
@@ -97,7 +111,7 @@ export default function TopBar({ title, action }: TopBarProps) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id }),
             });
-            setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+            setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
         } catch (err) {
             console.error("Failed to mark as read:", err);
         }
@@ -113,7 +127,7 @@ export default function TopBar({ title, action }: TopBarProps) {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    const unreadCount = notifications.filter(n => !n.is_read).length;
+    const unreadCount = notifications.filter(n => !n.isRead).length;
 
     return (
         <header
@@ -210,21 +224,31 @@ export default function TopBar({ title, action }: TopBarProps) {
                                 {notifications.map((n) => (
                                     <div
                                         key={n.id}
-                                        onClick={() => { if (!n.is_read) markAsRead(n.id); if (n.link) router.push(n.link); setNotifOpen(false); }}
-                                        className={`px-4 py-4 border-b border-neutral-50 last:border-0 hover:bg-neutral-50 cursor-pointer transition-colors relative ${!n.is_read ? 'bg-primary/[0.02]' : ''}`}
+                                        onClick={() => { if (!n.isRead) markAsRead(n.id); if (n.link) router.push(n.link); setNotifOpen(false); }}
+                                        className={`px-4 py-4 border-b border-neutral-50 last:border-0 hover:bg-neutral-50 cursor-pointer transition-colors relative ${!n.isRead ? 'bg-primary/[0.02]' : ''}`}
                                     >
-                                        {!n.is_read && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />}
+                                        {!n.isRead && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />}
                                         <div className="flex justify-between items-start mb-1">
-                                            <p className={`text-xs font-bold ${!n.is_read ? 'text-neutral-900' : 'text-neutral-500'}`}>{n.title}</p>
-                                            <span className="text-[9px] text-neutral-400">{new Date(n.created_at).toLocaleDateString()}</span>
+                                            <p className={`text-xs font-bold ${!n.isRead ? 'text-neutral-900' : 'text-neutral-500'}`}>{n.title}</p>
+                                            <span className="text-[9px] text-neutral-400">{new Date(n.createdAt).toLocaleDateString("en-IN")}</span>
                                         </div>
                                         <p className="text-[11px] text-neutral-500 leading-snug line-clamp-2">{n.message}</p>
                                     </div>
                                 ))}
                             </div>
-                            <div className="px-4 pt-3 border-t border-neutral-50">
-                                <button className="w-full py-2 text-[10px] font-bold text-neutral-400 hover:text-primary transition-colors uppercase tracking-widest">View All Notifications</button>
-                            </div>
+                            {unreadCount > 0 && (
+                                <div className="px-4 pt-3 border-t border-neutral-50">
+                                    <button
+                                        onClick={async () => {
+                                            await fetch('/api/notifications', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ all: true }) });
+                                            setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+                                        }}
+                                        className="w-full py-2 text-[10px] font-bold text-neutral-400 hover:text-primary transition-colors uppercase tracking-widest"
+                                    >
+                                        Mark all as read
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
@@ -255,9 +279,38 @@ export default function TopBar({ title, action }: TopBarProps) {
                                 <p className="text-sm font-bold text-neutral-900 truncate">{user?.name}</p>
                                 <p className="text-xs text-neutral-500 truncate">{user?.email}</p>
                             </div>
-                            <Link href="/admin/settings" onClick={() => setProfileOpen(false)} className="block w-full text-left px-4 py-2.5 text-sm text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 transition-colors">
-                                Profile Settings
+                            {workspaces.length > 1 && (
+                                <>
+                                    <p className="px-4 pt-2 pb-1 text-[10px] font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-1.5">
+                                        <LayoutGrid size={11} /> Switch workspace
+                                    </p>
+                                    {workspaces.map((w) => {
+                                        const active = pathname?.startsWith(w.prefix);
+                                        return (
+                                            <Link
+                                                key={w.href}
+                                                href={w.href}
+                                                onClick={() => setProfileOpen(false)}
+                                                className={`block w-full text-left px-4 py-2 text-sm transition-colors ${active ? "text-primary font-bold bg-primary/5" : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900"}`}
+                                            >
+                                                {w.label}
+                                            </Link>
+                                        );
+                                    })}
+                                    <div className="h-px bg-neutral-100 my-1" />
+                                </>
+                            )}
+                            <Link href="/portal/profile" onClick={() => setProfileOpen(false)} className="block w-full text-left px-4 py-2.5 text-sm text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 transition-colors">
+                                My Profile
                             </Link>
+                            <button onClick={() => { setProfileOpen(false); setPwOpen(true); }} className="block w-full text-left px-4 py-2.5 text-sm text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 transition-colors">
+                                Change Password
+                            </button>
+                            {user?.role === "SUPER_ADMIN" && (
+                                <Link href="/admin/settings" onClick={() => setProfileOpen(false)} className="block w-full text-left px-4 py-2.5 text-sm text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 transition-colors">
+                                    Settings
+                                </Link>
+                            )}
                             <div className="h-px bg-neutral-100 my-1" />
                             <button onClick={logout} className="w-full text-left px-4 py-2.5 text-sm text-danger hover:bg-danger-light/30 transition-colors font-medium">
                                 Sign Out
@@ -266,6 +319,7 @@ export default function TopBar({ title, action }: TopBarProps) {
                     )}
                 </div>
             </div>
+            <ChangePasswordModal open={pwOpen} onClose={() => setPwOpen(false)} />
         </header>
     );
 }

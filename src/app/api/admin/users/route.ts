@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
-import { users, addAudit, jobs, candidates, applications, interviews, placements, tasks } from "@/lib/mock/data";
+import { users, addAudit, addNotification, jobs, candidates, applications, interviews, placements, tasks } from "@/lib/mock/data";
+import { assignableRoles, canManageUser, ensureEmployeeForUser, syncUserToEmployee, uniqueUserId } from "@/lib/mock/identity";
+import { notifyRoles } from "@/lib/mock/pipeline";
 import type { User, UserRole, UserStatus } from "@/lib/types";
 
 export async function GET(request: Request) {
@@ -67,18 +69,30 @@ export async function POST(request: Request) {
     const me = auth.user;
 
     const body = await request.json();
-    if (!body.name || !body.email || !body.role) {
+    const name = String(body.name ?? "").trim();
+    const email = String(body.email ?? "").trim().toLowerCase();
+    if (!name || !email || !body.role) {
         return NextResponse.json({ error: "name, email and role are required" }, { status: 400 });
     }
-    if (users.some((u) => u.email.toLowerCase() === String(body.email).toLowerCase())) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return NextResponse.json({ error: "Invalid email address" }, { status: 400 });
+    }
+    if (!assignableRoles(me).includes(body.role)) {
+        return NextResponse.json({ error: `You are not allowed to create ${String(body.role).replace(/_/g, " ")} accounts` }, { status: 403 });
+    }
+    if (users.some((u) => u.email.toLowerCase() === email)) {
         return NextResponse.json({ error: "Email already exists" }, { status: 409 });
+    }
+    const manager = body.reportingTo ? users.find((u) => u.id === body.reportingTo && u.orgId === me.orgId) : undefined;
+    if (body.reportingTo && !manager) {
+        return NextResponse.json({ error: "Reporting manager not found" }, { status: 400 });
     }
 
     const newUser: User = {
-        id: `usr-${Date.now().toString(36)}`,
+        id: uniqueUserId(),
         orgId: me.orgId,
-        name: body.name,
-        email: body.email,
+        name,
+        email,
         phone: body.phone ?? "",
         role: body.role as UserRole,
         status: "ACTIVE",
@@ -86,11 +100,12 @@ export async function POST(request: Request) {
         department: body.department ?? "Talent Acquisition",
         designation: body.designation ?? "Talent Partner",
         location: body.location ?? "Mumbai",
-        reportingTo: body.reportingTo ?? null,
+        reportingTo: manager?.id ?? null,
         joinedAt: new Date().toISOString(),
         deactivatedAt: null,
     };
     users.push(newUser);
+    const emp = ensureEmployeeForUser(newUser);
 
     addAudit({
         orgId: me.orgId,
@@ -99,10 +114,16 @@ export async function POST(request: Request) {
         action: "USER_CREATED",
         entity: "User",
         entityId: newUser.id,
-        detail: `${newUser.name} added as ${newUser.role} in ${newUser.department}`,
+        detail: `${newUser.name} added as ${newUser.role} in ${newUser.department}${emp ? ` (HR record ${emp.employeeId})` : ""}`,
     });
 
-    return NextResponse.json(newUser, { status: 201 });
+    notifyRoles(me.orgId, ["HR_ADMIN"], {
+        title: "New team member",
+        message: `${newUser.name} joined as ${newUser.role.replace(/_/g, " ")}${emp ? ` (${emp.employeeId}). Complete their HR profile.` : ""}`,
+        link: emp ? `/hr/employees?id=${emp.id}` : null,
+    });
+
+    return NextResponse.json({ ...newUser, employeeRecordId: emp?.id ?? null }, { status: 201 });
 }
 
 export async function PATCH(request: Request) {
@@ -114,10 +135,26 @@ export async function PATCH(request: Request) {
     const user = users.find((u) => u.id === id && u.orgId === me.orgId);
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
+    if (!canManageUser(me, user)) {
+        return NextResponse.json({ error: "You are not allowed to modify this account" }, { status: 403 });
+    }
+    if (user.id === me.id && ((role && role !== user.role) || (status && status !== user.status))) {
+        return NextResponse.json({ error: "You cannot change your own role or status" }, { status: 403 });
+    }
+    if (role && role !== user.role && !assignableRoles(me).includes(role)) {
+        return NextResponse.json({ error: `You are not allowed to assign the ${String(role).replace(/_/g, " ")} role` }, { status: 403 });
+    }
+    if (status && !["ACTIVE", "INVITED", "SUSPENDED", "EXITED"].includes(status)) {
+        return NextResponse.json({ error: `Invalid status: ${status}` }, { status: 400 });
+    }
+
     // Hierarchy Validation: Prevent circular reporting
     if (reportingTo) {
         if (reportingTo === id) {
             return NextResponse.json({ error: "An employee cannot report to themselves." }, { status: 400 });
+        }
+        if (!users.some((u) => u.id === reportingTo && u.orgId === me.orgId)) {
+            return NextResponse.json({ error: "Reporting manager not found" }, { status: 400 });
         }
         let currentParent = users.find((u) => u.id === reportingTo);
         while (currentParent && currentParent.reportingTo) {
@@ -128,25 +165,29 @@ export async function PATCH(request: Request) {
         }
     }
 
+    const changes: string[] = [];
     let action = "USER_UPDATED";
-    let detail = `${user.name} profile updated`;
 
     if (role && role !== user.role) {
+        changes.push(`role ${user.role} → ${role}`);
         user.role = role as UserRole;
-        detail = `${user.name} role changed to ${role}`;
         action = "USER_ROLE_CHANGED";
     }
     if (status && status !== user.status) {
+        changes.push(`status ${user.status} → ${status}`);
         user.status = status as UserStatus;
-        action = status === "SUSPENDED" ? "USER_SUSPENDED" : "USER_REACTIVATED";
-        detail = `${user.name} ${status === "SUSPENDED" ? "suspended" : "re-activated"}`;
-        user.deactivatedAt = status === "EXITED" ? new Date().toISOString() : null;
+        action = status === "SUSPENDED" ? "USER_SUSPENDED" : status === "EXITED" ? "USER_EXITED" : "USER_REACTIVATED";
+        user.deactivatedAt = status === "EXITED" || status === "SUSPENDED" ? new Date().toISOString() : null;
     }
-    if (department !== undefined) user.department = department;
-    if (designation !== undefined) user.designation = designation;
-    if (reportingTo !== undefined) user.reportingTo = reportingTo || null;
+    if (department !== undefined && department !== user.department) { changes.push(`department → ${department}`); user.department = department; }
+    if (designation !== undefined && designation !== user.designation) { changes.push(`designation → ${designation}`); user.designation = designation; }
+    if (reportingTo !== undefined && (reportingTo || null) !== user.reportingTo) { changes.push(`reports to → ${reportingTo || "none"}`); user.reportingTo = reportingTo || null; }
     if (location !== undefined) user.location = location;
     if (phone !== undefined) user.phone = phone;
+
+    // Keep the HR record in step (creates it if the role now needs one)
+    ensureEmployeeForUser(user);
+    syncUserToEmployee(user);
 
     addAudit({
         orgId: me.orgId,
@@ -155,8 +196,17 @@ export async function PATCH(request: Request) {
         action,
         entity: "User",
         entityId: user.id,
-        detail
+        detail: `${user.name}: ${changes.join("; ") || "profile updated"}`,
     });
+
+    if (action === "USER_ROLE_CHANGED") {
+        addNotification({
+            orgId: me.orgId, userId: user.id,
+            title: "Your access changed",
+            message: `Your role is now ${user.role.replace(/_/g, " ")}. Sign in again to see your new workspace.`,
+            link: null,
+        });
+    }
 
     return NextResponse.json(user);
 }

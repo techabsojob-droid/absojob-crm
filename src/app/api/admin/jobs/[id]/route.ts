@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
 import { getJobsFromDb, getClientsFromDb, updateJobInDb, logAudit } from "@/lib/supabase/db";
+import { isRecruitmentManager, notifyJobAssignment, resolveApprovalsFor, validRecruiters } from "@/lib/mock/pipeline";
 import {
     users,
     clients,
@@ -28,6 +29,9 @@ export async function GET(
 
     if (!job) {
         return NextResponse.json({ error: "Job requisition not found" }, { status: 404 });
+    }
+    if (!isRecruitmentManager(me) && !(job.primaryRecruiterId === me.id || (job.assignedTas || []).includes(me.id) || job.requestedById === me.id)) {
+        return NextResponse.json({ error: "This requisition is not assigned to you" }, { status: 403 });
     }
 
     const client = clients.find((c) => c.id === job.clientId) || null;
@@ -89,35 +93,44 @@ export async function GET(
         });
 
     // Offers & Placements
+    // Offers: real offer records first; stage-only applications show without invented numbers
     const jobOffers = populatedApps
         .filter((a) => ["OFFER_SENT", "OFFER_ACCEPTED", "ONBOARDING", "JOINED"].includes(a.stage))
+        .map((a) => {
+            const cand = mockCandidates.find((c) => c.id === a.candidateId);
+            const offer = cand?.offers?.find((o) => (o.applicationId ? o.applicationId === a.id : o.jobId === jobId) && o.status !== "WITHDRAWN");
+            return {
+                id: offer?.id ?? `off-${a.id}`,
+                applicationId: a.id,
+                candidateId: a.candidateId,
+                candidateName: a.candidateName,
+                jobId,
+                offeredSalaryLpa: offer?.offeredCtcLpa ?? null,
+                offeredDate: offer?.offeredDate ?? null,
+                expectedJoiningDate: offer?.joiningDate || a.expectedJoinDate || null,
+                status: a.stage === "JOINED" ? "JOINED" : (a.stage === "OFFER_ACCEPTED" || a.stage === "ONBOARDING" ? "ACCEPTED" : offer?.status ?? "SENT"),
+                approverName: appUser?.name ?? null,
+            };
+        });
+
+    // Placements: stored records, plus joined applications that predate automatic placement creation
+    const rawPlacements = (mockPlacements || []).filter((p) => p.orgId === me.orgId && p.jobId === jobId);
+    const placedCandidateIds = new Set(rawPlacements.map((p) => p.candidateId));
+    const joinedPlacements = populatedApps
+        .filter((a) => a.stage === "JOINED" && !placedCandidateIds.has(a.candidateId))
         .map((a) => ({
-            id: `off-${a.id}`,
+            id: `plc-${a.id}`,
             applicationId: a.id,
             candidateId: a.candidateId,
             candidateName: a.candidateName,
             jobId,
-            offeredSalaryLpa: (job.salaryMinLpa + job.salaryMaxLpa) / 2,
-            offeredDate: a.createdAt,
-            expectedJoiningDate: a.expectedJoinDate || new Date(Date.now() + 15 * 86400000).toISOString().split("T")[0],
-            status: a.stage === "JOINED" ? "JOINED" : (a.stage === "OFFER_ACCEPTED" ? "ACCEPTED" : "SENT"),
-            approverName: appUser?.name ?? "Super Admin"
+            clientName: client?.companyName ?? "—",
+            joiningDate: a.actualJoinDate || a.expectedJoinDate || null,
+            status: "JOINED",
+            ctcLpa: null,
+            invoiceNumber: null,
+            placementFeeInr: null,
         }));
-
-    const rawPlacements = (mockPlacements || []).filter((p: any) => p.jobId === jobId || jobAppIds.has(p.applicationId));
-    const joinedPlacements = populatedApps.filter((a) => a.stage === "JOINED").map((a) => ({
-        id: `plc-${a.id}`,
-        applicationId: a.id,
-        candidateId: a.candidateId,
-        candidateName: a.candidateName,
-        jobId,
-        clientName: client?.companyName ?? "—",
-        joiningDate: a.actualJoinDate || a.expectedJoinDate || "2026-08-15",
-        status: "JOINED",
-        ctcLpa: (job.salaryMinLpa + job.salaryMaxLpa) / 2,
-        invoiceNumber: `INV-2026-JOB-${jobId.slice(-3)}`,
-        placementFeeInr: Math.round(((job.salaryMinLpa + job.salaryMaxLpa) / 2) * 100000 * 0.0833)
-    }));
     const jobPlacements = [...rawPlacements, ...joinedPlacements];
 
     // Linked Tasks
@@ -244,6 +257,26 @@ export async function PATCH(
         return NextResponse.json({ error: "Job requisition not found" }, { status: 404 });
     }
 
+    const isElevated = me.role === "SUPER_ADMIN" || me.role === "TA_MANAGER";
+    if (!isElevated) {
+        // Recruiters may only edit jobs assigned to them, and never change status / approval / assignment
+        const assigned = existing.primaryRecruiterId === me.id || (existing.assignedTas || []).includes(me.id);
+        if (!assigned) {
+            return NextResponse.json({ error: "You can only edit requisitions assigned to you" }, { status: 403 });
+        }
+        const restricted = ["status", "approvedById", "primaryRecruiterId", "assignedTas", "taManagerId", "accountManagerId", "assignmentHistory"];
+        if (action || restricted.some((k) => updates[k] !== undefined)) {
+            return NextResponse.json(
+                { error: "Only Super Admin or TA Manager can approve, hold, close, cancel or reassign requisitions" },
+                { status: 403 }
+            );
+        }
+    }
+    // Clients cannot write computed/history fields directly
+    delete updates.requirementVersions;
+    delete updates.assignmentHistory;
+    delete updates.filled;
+
     if (action === "approve") {
         updates.status = "APPROVED";
         updates.approvedById = me.id;
@@ -304,8 +337,20 @@ export async function PATCH(
         }
     }
 
+    const newTeam = [...(updates.assignedTas || []), ...(updates.primaryRecruiterId ? [updates.primaryRecruiterId] : [])];
+    const { invalid } = validRecruiters(me.orgId, newTeam);
+    if (invalid.length) return NextResponse.json({ error: `Recruiter(s) not found: ${invalid.join(", ")}` }, { status: 400 });
+    const prevTeam = [...(existing.assignedTas || []), ...(existing.primaryRecruiterId ? [existing.primaryRecruiterId] : [])];
+
     const success = await updateJobInDb(jobId, me.orgId, updates);
     if (!success) return NextResponse.json({ error: "Failed to update job" }, { status: 500 });
+
+    const after = (await getJobsFromDb(me.orgId)).find((j) => j.id === jobId);
+    if (after) {
+        if (action === "approve") resolveApprovalsFor(jobId, "APPROVED", me);
+        if (action === "cancel") resolveApprovalsFor(jobId, "REJECTED", me, updates.cancelReason);
+        notifyJobAssignment(after, prevTeam, me);
+    }
 
     await logAudit({
         orgId: me.orgId,

@@ -1,86 +1,53 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
-import {
-    attendance, users, todayStr, nextIds, hoursWorkedOf,
-} from "@/lib/mock/data";
-import type { AttendanceRecord } from "@/lib/types";
+import { attendance, attendanceCorrections, users, hoursWorkedOf } from "@/lib/mock/data";
+import { employeeForUser } from "@/lib/mock/identity";
+import { attendanceMonth, dayKind, istNow, onApprovedLeave, punch, shiftFor, wfhAllowedOn } from "@/lib/mock/ess";
+import { body } from "@/lib/mock/fin/http";
 
-const withHours = (a: AttendanceRecord) => ({ ...a, hoursWorked: hoursWorkedOf(a) });
+const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 
-export async function GET() {
-    const auth = await requireRole("SUPER_ADMIN", "AGENT", "EMPLOYEE");
+// GET ?month=YYYY-MM — my attendance calendar (punches + leave + holidays + week-offs), shift and today's status
+export async function GET(request: Request) {
+    const auth = await requireRole();
     if ("error" in auth) return auth.error;
     const me = auth.user;
-
-    const mine = attendance
-        .filter((a) => a.orgId === me.orgId && a.userId === me.id)
-        .sort((a, b) => (a.date < b.date ? 1 : -1))
-        .map(withHours);
-
-    const monthRecords = mine.filter((r) => r.date.startsWith(todayStr.slice(0, 7)));
-    const presentDays = monthRecords.filter((r) => ["PRESENT", "WFH"].includes(r.status)).length;
-    const halfDays = monthRecords.filter((r) => r.status === "HALF_DAY").length;
-    const leaves = monthRecords.filter((r) => ["ON_LEAVE", "ABSENT"].includes(r.status)).length;
-    const lateDays = monthRecords.filter((r) => r.status === "LATE").length;
-
-    const workingDays = monthRecords.length || 1;
-    const attendanceRate = Math.round(((presentDays + halfDays * 0.5) / workingDays) * 100);
-
-    const totalHours = Math.round(mine.reduce((s, r) => s + r.hoursWorked, 0) * 10) / 10;
+    const now = istNow();
+    const m = new URL(request.url).searchParams.get("month");
+    const month = m && MONTH_RE.test(m) ? m : now.date.slice(0, 7);
+    const emp = employeeForUser(me.id);
+    const shift = shiftFor(emp, me.orgId);
+    const view = attendanceMonth(me, month);
+    const today = attendance.find((a) => a.userId === me.id && a.date === now.date);
+    const kind = dayKind(me.orgId, now.date, emp?.location);
+    const leave = onApprovedLeave(me.id, now.date);
 
     return NextResponse.json({
-        records: mine.slice(0, 60),
-        summary: { presentDays, halfDays, leaves, lateDays, attendanceRate, totalHours },
-        todayRecord: mine.find((r) => r.date === todayStr) ?? null,
-        teamView: me.role !== "SUPER_ADMIN" ? null : attendance
-            .filter((a) => a.date === todayStr)
-            .map(withHours)
-            .map((a) => ({ ...a, userName: users.find((u) => u.id === a.userId)?.name ?? "—" })),
+        month,
+        shift,
+        today: {
+            date: now.date, holiday: kind.holiday, weekOff: kind.weekOff,
+            onLeave: leave ? { type: leave.leaveType, halfDay: leave.halfDay ?? null } : null,
+            wfhAllowed: wfhAllowedOn(emp, now.date), workMode: emp?.workMode ?? "OFFICE",
+            record: today ? { ...today, hoursWorked: hoursWorkedOf(today) } : null,
+        },
+        days: view.days,
+        summary: { ...view.summary, lateDays: view.summary.late, halfDays: view.summary.halfDay, leaves: view.summary.onLeave, totalHours: view.summary.hours },
+        corrections: emp ? attendanceCorrections.filter((c) => c.employeeId === emp.id).slice(0, 20) : [],
+        // Back-compat fields used by older widgets
+        records: view.days.filter((d) => d.checkIn).reverse().map((d) => ({ id: d.date, date: d.date, status: d.status, checkIn: d.checkIn, checkOut: d.checkOut, hoursWorked: d.hours })),
+        todayRecord: today ? { ...today, hoursWorked: hoursWorkedOf(today) } : null,
+        teamView: me.role !== "SUPER_ADMIN" ? null : attendance.filter((a) => a.orgId === me.orgId && a.date === now.date).map((a) => ({ ...a, hoursWorked: hoursWorkedOf(a), userName: users.find((u) => u.id === a.userId)?.name ?? "—" })),
     });
 }
 
+// POST { action: "check_in" | "check_out", mode?: "OFFICE" | "WFH" }
 export async function POST(request: Request) {
-    const auth = await requireRole("AGENT", "EMPLOYEE", "SUPER_ADMIN");
+    const auth = await requireRole();
     if ("error" in auth) return auth.error;
-    const me = auth.user;
-
-    const { action } = await request.json();
-    const nowIso = new Date().toISOString();
-
-    let record = attendance.find((a) => a.orgId === me.orgId && a.userId === me.id && a.date === todayStr);
-
-    if (action === "check_in") {
-        if (record?.checkIn) return NextResponse.json({ error: "Already checked in today" }, { status: 409 });
-        if (!record) {
-            record = {
-                id: nextIds.attendance(),
-                orgId: me.orgId,
-                userId: me.id,
-                date: todayStr,
-                status: nowIso.includes("T10:") || new Date().getHours() >= 10 ? "LATE" : "PRESENT",
-                checkIn: nowIso,
-                checkOut: null,
-            };
-            attendance.push(record);
-        } else {
-            record.checkIn = nowIso;
-            record.status = new Date().getHours() >= 10 ? "LATE" : "PRESENT";
-        }
-        void checkStreak;
-        return NextResponse.json(record);
-    }
-
-    if (action === "check_out") {
-        if (!record?.checkIn) return NextResponse.json({ error: "Check in first" }, { status: 409 });
-        if (record.checkOut) return NextResponse.json({ error: "Already checked out" }, { status: 409 });
-        record.checkOut = nowIso;
-        const hours = (new Date(nowIso).getTime() - new Date(record.checkIn).getTime()) / 3600000;
-        if (hours > 0 && hours < 5) record.status = "HALF_DAY";
-        else if (record.status === "LATE") record.status = "LATE";
-        return NextResponse.json(record);
-    }
-
-    return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+    const b = await body(request);
+    if (!["check_in", "check_out"].includes(b.action)) return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+    const r = punch(auth.user, b.action, b.mode === "WFH" ? "WFH" : "OFFICE");
+    if ("error" in r) return NextResponse.json({ error: r.error }, { status: r.status });
+    return NextResponse.json(r.record);
 }
-
-function checkStreak() { /* placeholder for future gamification */ }

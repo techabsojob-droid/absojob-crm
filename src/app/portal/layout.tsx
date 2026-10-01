@@ -1,21 +1,7 @@
-import { redirect } from "next/navigation";
-import { getSessionUser } from "@/lib/mock/server";
+import { requireWorkspace } from "@/lib/requireWorkspace";
 import PortalLayoutClient from "./PortalLayoutClient";
 
-export default async function PortalLayout({ children }: { children: React.ReactNode }) {
-    const user = await getSessionUser();
-
-    if (!user) {
-        redirect("/login");
-    }
-
-    const portalRoles = ["AGENT", "EMPLOYEE", "SUPER_ADMIN"];
-    if (!portalRoles.includes(user.role)) {
-        redirect(user.role === "SUPER_ADMIN" ? "/admin/dashboard" : "/ta/dashboard");
-    }
-    if (user.role === "SUPER_ADMIN") {
-        // Super admin may inspect the field portal — allowed by design.
-    }
-
+export default async function Layout({ children }: { children: React.ReactNode }) {
+    await requireWorkspace("PORTAL");
     return <PortalLayoutClient>{children}</PortalLayoutClient>;
 }

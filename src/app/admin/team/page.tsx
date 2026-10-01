@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { PageHeader, StatCard, Badge, SectionCard, ModalShell, EmptyState } from "@/components/shared/ui";
 import { SkeletonPulse } from "@/components/shared/UIStates";
 
-const ROLES = ["SUPER_ADMIN", "HR_ADMIN", "TA_MANAGER", "TA_RECRUITER", "AGENT", "EMPLOYEE"] as const;
+const ROLES = ["SUPER_ADMIN", "HR_ADMIN", "FINANCE_ADMIN", "TA_MANAGER", "TA_RECRUITER", "AGENT", "EMPLOYEE"] as const;
 
 export default function TeamPage() {
     const qc = useQueryClient();
@@ -96,7 +96,7 @@ export default function TeamPage() {
     });
 
     const list = Array.isArray(team) ? team : [];
-    const managers = list.filter((u: any) => ["SUPER_ADMIN", "TA_MANAGER", "HR_ADMIN"].includes(u.role));
+    const managers = list.filter((u: any) => ["SUPER_ADMIN", "TA_MANAGER", "HR_ADMIN", "FINANCE_ADMIN"].includes(u.role));
     const activeCount = list.filter((u) => u.status === "ACTIVE").length;
     const taCount = list.filter((u) => u.role.startsWith("TA_") && u.status === "ACTIVE").length;
     const agentCount = list.filter((u) => u.role === "AGENT" && u.status === "ACTIVE").length;

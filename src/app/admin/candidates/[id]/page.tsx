@@ -8,7 +8,7 @@ import {
     CalendarCheck, UserPlus, GraduationCap, Link2, FileText, ExternalLink,
     Edit3, X, Award, Check, Video, Github, Globe, Linkedin, BookOpen, Layers,
     DollarSign, MessageSquare, PhoneCall, Send, ShieldAlert, FileCheck, CheckCircle,
-    Download, Eye, UserCheck, MessageCircle, AlertCircle, FilePlus
+    Download, Eye, UserCheck, MessageCircle, AlertCircle, FilePlus, ListTodo, Gift, Share2, History, Plus
 } from "lucide-react";
 import Link from "next/link";
 import { PageHeader, Badge, SectionCard, StatCard, EmptyState, ModalShell } from "@/components/shared/ui";
@@ -42,6 +42,32 @@ export default function CandidateProfilePage() {
         nextFollowUpDate: ""
     });
 
+    // Task, Offer, Submission modals
+    const [taskModalOpen, setTaskModalOpen] = useState(false);
+    const [taskForm, setTaskForm] = useState({
+        title: "",
+        dueDate: "",
+        priority: "MEDIUM" as "LOW" | "MEDIUM" | "HIGH",
+        assignedTo: "Current Recruiter",
+    });
+
+    const [offerModalOpen, setOfferModalOpen] = useState(false);
+    const [offerForm, setOfferForm] = useState({
+        applicationId: "",
+        offeredCtcLpa: 15,
+        joiningDate: "",
+        validityDate: "",
+    });
+
+    const [submissionModalOpen, setSubmissionModalOpen] = useState(false);
+    const [submissionForm, setSubmissionForm] = useState({
+        clientName: "",
+        positionTitle: "",
+        submittedRateOrCtc: "₹18 LPA",
+        clientFeedback: "",
+        status: "SUBMITTED" as "SUBMITTED" | "SHORTLISTED" | "INTERVIEWING" | "REJECTED" | "OFFERED",
+    });
+
     const { data, isLoading } = useQuery({
         queryKey: ["candidate", id],
         queryFn: async () => {
@@ -58,7 +84,7 @@ export default function CandidateProfilePage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
             });
-            if (!res.ok) throw new Error("Failed to update candidate");
+            if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Failed to update candidate");
             return res.json();
         },
         onSuccess: () => {
@@ -77,8 +103,8 @@ export default function CandidateProfilePage() {
                 nextFollowUpDate: ""
             });
         },
-        onError: () => {
-            toast.error("Failed to update profile");
+        onError: (err: Error) => {
+            toast.error(err.message || "Failed to update profile");
         },
     });
 
@@ -169,6 +195,63 @@ export default function CandidateProfilePage() {
         });
     };
 
+    const handleAddTask = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!taskForm.title.trim()) return;
+        updateCandidate.mutate({
+            newTask: {
+                ...taskForm,
+                completed: false,
+            }
+        }, {
+            onSuccess: () => {
+                setTaskModalOpen(false);
+                setTaskForm({ title: "", dueDate: "", priority: "MEDIUM", assignedTo: "Current Recruiter" });
+            }
+        });
+    };
+
+    const handleAddOffer = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!offerForm.applicationId) return;
+        updateCandidate.mutate({
+            newOffer: {
+                applicationId: offerForm.applicationId,
+                offeredCtcLpa: Number(offerForm.offeredCtcLpa),
+                joiningDate: offerForm.joiningDate,
+                expiryDate: offerForm.validityDate,
+            }
+        }, {
+            onSuccess: () => {
+                setOfferModalOpen(false);
+                setOfferForm({ applicationId: "", offeredCtcLpa: 15, joiningDate: "", validityDate: "" });
+            }
+        });
+    };
+
+    const respondToOffer = (offerId: string, response: "ACCEPTED" | "DECLINED" | "NEGOTIATION") => {
+        const reason = response === "ACCEPTED" ? "" : window.prompt(response === "DECLINED" ? "Reason for declining?" : "Negotiation notes?") ?? null;
+        if (reason === null) return;
+        if (response === "DECLINED" && !reason.trim()) {
+            toast.error("A decline reason is required");
+            return;
+        }
+        updateCandidate.mutate({ offerResponse: { offerId, response, reason } });
+    };
+
+    const handleAddSubmission = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!submissionForm.clientName.trim() || !submissionForm.positionTitle.trim()) return;
+        updateCandidate.mutate({
+            newSubmission: submissionForm
+        }, {
+            onSuccess: () => {
+                setSubmissionModalOpen(false);
+                setSubmissionForm({ clientName: "", positionTitle: "", submittedRateOrCtc: "₹18 LPA", clientFeedback: "", status: "SUBMITTED" });
+            }
+        });
+    };
+
     if (isLoading || !data) {
         return (
             <div className="space-y-6">
@@ -225,6 +308,10 @@ export default function CandidateProfilePage() {
     const ownership = candidate.ownership;
     const compliance = candidate.compliance;
     const referenceChecks = candidate.referenceChecks || [];
+    const offers = candidate.offers || [];
+    const candidateTasks = candidate.candidateTasks || [];
+    const clientSubmissions = candidate.clientSubmissions || [];
+    const internalAuditLogs = candidate.internalAuditLogs || [];
     const tags = candidate.tags || [];
 
     const completionScore = candidate.profileCompletionScore || 85;
@@ -610,6 +697,10 @@ export default function CandidateProfilePage() {
                                 { id: "communications", label: `Comms (${communications.length})`, icon: PhoneCall },
                                 { id: "notes", label: `Notes (${notes.length})`, icon: MessageSquare },
                                 { id: "screening", label: "Evaluation & Compliance", icon: ShieldCheck },
+                                { id: "offers", label: `Offers (${offers.length})`, icon: Gift },
+                                { id: "tasks", label: `Tasks (${candidateTasks.length})`, icon: ListTodo },
+                                { id: "submissions", label: `Submissions (${clientSubmissions.length})`, icon: Share2 },
+                                { id: "audit", label: `Audit Log (${internalAuditLogs.length})`, icon: History },
                             ].map((tab) => (
                                 <button
                                     key={tab.id}
@@ -1194,6 +1285,247 @@ export default function CandidateProfilePage() {
                                 </div>
                             )}
 
+                            {/* TAB: Offers & Compensation Packages */}
+                            {activeTab === "offers" && (
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <h3 className="text-sm font-bold text-neutral-900">Offers & Compensation Proposals</h3>
+                                            <p className="text-xs text-neutral-500">Track offer releases, negotiation status, and acceptances</p>
+                                        </div>
+                                        <button
+                                            onClick={() => setOfferModalOpen(true)}
+                                            className="px-3 py-1.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-all flex items-center gap-1.5 shadow-xs"
+                                        >
+                                            <Plus size={14} /> Log Offer Release
+                                        </button>
+                                    </div>
+
+                                    {offers.length === 0 ? (
+                                        <div className="text-center py-12 bg-neutral-50 rounded-2xl border border-dashed border-neutral-200">
+                                            <Gift className="mx-auto text-neutral-300 mb-2" size={32} />
+                                            <p className="text-xs font-bold text-neutral-600">No offers logged yet</p>
+                                            <p className="text-[11px] text-neutral-400 mt-0.5">Click Log Offer Release above when a client extends an offer</p>
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {offers.map((offer: any) => (
+                                                <div key={offer.id} className="p-4 rounded-2xl border border-neutral-200 bg-white hover:border-primary/40 transition-all shadow-xs space-y-3">
+                                                    <div className="flex items-start justify-between">
+                                                        <div>
+                                                            <h4 className="text-sm font-bold text-neutral-900">{offer.jobTitle}</h4>
+                                                            <p className="text-xs font-semibold text-neutral-500">{offer.clientName}</p>
+                                                        </div>
+                                                        <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full ${
+                                                            offer.status === "ACCEPTED" || offer.status === "JOINED" ? "bg-emerald-100 text-emerald-800" :
+                                                            ["REJECTED", "DECLINED", "WITHDRAWN", "EXPIRED"].includes(offer.status) ? "bg-rose-100 text-rose-800" :
+                                                            "bg-amber-100 text-amber-800"
+                                                        }`}>
+                                                            {offer.status}
+                                                        </span>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-2 text-xs bg-neutral-50 p-2.5 rounded-xl border border-neutral-100">
+                                                        <div>
+                                                            <span className="text-[10px] text-neutral-400 font-bold uppercase block">Offered CTC</span>
+                                                            <span className="font-extrabold text-neutral-900">₹{offer.offeredCtcLpa} LPA</span>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-[10px] text-neutral-400 font-bold uppercase block">Joining Date</span>
+                                                            <span className="font-bold text-neutral-800">{offer.joiningDate || "TBD"}</span>
+                                                        </div>
+                                                    </div>
+                                                    {(offer.expiryDate || offer.validityDate) && (
+                                                        <p className="text-[10px] text-neutral-400 font-medium">
+                                                            Valid Until: <strong className="text-neutral-600">{offer.expiryDate || offer.validityDate}</strong>
+                                                        </p>
+                                                    )}
+                                                    {offer.declineReason && (
+                                                        <p className="text-[10px] text-rose-600 font-medium">Declined: {offer.declineReason}</p>
+                                                    )}
+                                                    {["SENT", "VIEWED", "NEGOTIATION"].includes(offer.status) && (
+                                                        <div className="flex gap-1.5 pt-1">
+                                                            <button
+                                                                type="button"
+                                                                disabled={updateCandidate.isPending}
+                                                                onClick={() => respondToOffer(offer.id, "ACCEPTED")}
+                                                                className="flex-1 py-1.5 rounded-lg bg-emerald-600 text-white text-[11px] font-bold hover:bg-emerald-700 disabled:opacity-50"
+                                                            >
+                                                                Accepted
+                                                            </button>
+                                                            {offer.status !== "NEGOTIATION" && (
+                                                                <button
+                                                                    type="button"
+                                                                    disabled={updateCandidate.isPending}
+                                                                    onClick={() => respondToOffer(offer.id, "NEGOTIATION")}
+                                                                    className="flex-1 py-1.5 rounded-lg border border-amber-300 text-amber-800 text-[11px] font-bold hover:bg-amber-50 disabled:opacity-50"
+                                                                >
+                                                                    Negotiating
+                                                                </button>
+                                                            )}
+                                                            <button
+                                                                type="button"
+                                                                disabled={updateCandidate.isPending}
+                                                                onClick={() => respondToOffer(offer.id, "DECLINED")}
+                                                                className="flex-1 py-1.5 rounded-lg border border-rose-300 text-rose-700 text-[11px] font-bold hover:bg-rose-50 disabled:opacity-50"
+                                                            >
+                                                                Declined
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* TAB: Tasks & Follow-ups */}
+                            {activeTab === "tasks" && (
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <h3 className="text-sm font-bold text-neutral-900">Recruiter Tasks & Follow-up Items</h3>
+                                            <p className="text-xs text-neutral-500">Action items, pre-boarding calls, and document follow-ups</p>
+                                        </div>
+                                        <button
+                                            onClick={() => setTaskModalOpen(true)}
+                                            className="px-3 py-1.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-all flex items-center gap-1.5 shadow-xs"
+                                        >
+                                            <Plus size={14} /> Add Task
+                                        </button>
+                                    </div>
+
+                                    {candidateTasks.length === 0 ? (
+                                        <div className="text-center py-12 bg-neutral-50 rounded-2xl border border-dashed border-neutral-200">
+                                            <ListTodo className="mx-auto text-neutral-300 mb-2" size={32} />
+                                            <p className="text-xs font-bold text-neutral-600">No pending tasks for this candidate</p>
+                                            <p className="text-[11px] text-neutral-400 mt-0.5">Assign a reminder or follow-up task to keep the pipeline warm</p>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {candidateTasks.map((task: any) => (
+                                                <div key={task.id} className="p-3.5 rounded-xl border border-neutral-200 bg-white flex items-center justify-between hover:bg-neutral-50/50 transition-colors">
+                                                    <div className="flex items-center gap-3">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            defaultChecked={task.completed}
+                                                            onChange={(e) => {
+                                                                const updatedTasks = candidateTasks.map((t: any) => 
+                                                                    t.id === task.id ? { ...t, completed: e.target.checked } : t
+                                                                );
+                                                                updateCandidate.mutate({ candidateTasks: updatedTasks });
+                                                            }}
+                                                            className="w-4 h-4 rounded border-neutral-300 text-primary focus:ring-primary cursor-pointer"
+                                                        />
+                                                        <div>
+                                                            <p className={`text-xs font-bold ${task.completed ? "line-through text-neutral-400" : "text-neutral-900"}`}>
+                                                                {task.title}
+                                                            </p>
+                                                            <p className="text-[10px] text-neutral-400 font-medium">
+                                                                Assigned to {task.assignedTo || "Recruiter"} • Due: {task.dueDate || "No due date"}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${
+                                                        task.priority === "HIGH" ? "bg-rose-100 text-rose-800" :
+                                                        task.priority === "LOW" ? "bg-neutral-100 text-neutral-600" :
+                                                        "bg-amber-100 text-amber-800"
+                                                    }`}>
+                                                        {task.priority} Priority
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* TAB: Client Submissions */}
+                            {activeTab === "submissions" && (
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <h3 className="text-sm font-bold text-neutral-900">Client CV Submissions & Shortlists</h3>
+                                            <p className="text-xs text-neutral-500">Track client resumes shared, rate quoted, and client reviews</p>
+                                        </div>
+                                        <button
+                                            onClick={() => setSubmissionModalOpen(true)}
+                                            className="px-3 py-1.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-all flex items-center gap-1.5 shadow-xs"
+                                        >
+                                            <Plus size={14} /> Log Client Submission
+                                        </button>
+                                    </div>
+
+                                    {clientSubmissions.length === 0 ? (
+                                        <div className="text-center py-12 bg-neutral-50 rounded-2xl border border-dashed border-neutral-200">
+                                            <Share2 className="mx-auto text-neutral-300 mb-2" size={32} />
+                                            <p className="text-xs font-bold text-neutral-600">No client submissions logged yet</p>
+                                            <p className="text-[11px] text-neutral-400 mt-0.5">Record when this candidate profile is shared with any hiring manager</p>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2.5">
+                                            {clientSubmissions.map((sub: any) => (
+                                                <div key={sub.id} className="p-4 rounded-xl border border-neutral-200 bg-white hover:border-neutral-300 transition-colors space-y-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <div>
+                                                            <h4 className="text-xs font-bold text-neutral-900">{sub.positionTitle}</h4>
+                                                            <p className="text-[11px] text-neutral-500 font-medium">Client: <strong>{sub.clientName}</strong> • Submitted: {sub.submittedAt}</p>
+                                                        </div>
+                                                        <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800">
+                                                            {sub.status}
+                                                        </span>
+                                                    </div>
+                                                    {sub.submittedRateOrCtc && (
+                                                        <p className="text-xs text-neutral-600">
+                                                            Quoted CTC/Rate: <span className="font-bold text-neutral-900">{sub.submittedRateOrCtc}</span>
+                                                        </p>
+                                                    )}
+                                                    {sub.clientFeedback && (
+                                                        <div className="p-2.5 bg-neutral-50 rounded-lg text-xs text-neutral-600 border border-neutral-100">
+                                                            &quot;{sub.clientFeedback}&quot;
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* TAB: Internal Audit Trail */}
+                            {activeTab === "audit" && (
+                                <div className="space-y-4">
+                                    <div>
+                                        <h3 className="text-sm font-bold text-neutral-900">Candidate Audit Log & Activity Trail</h3>
+                                        <p className="text-xs text-neutral-500">Immutable record of changes, status transitions, and recruiter actions</p>
+                                    </div>
+
+                                    {internalAuditLogs.length === 0 ? (
+                                        <div className="text-center py-12 bg-neutral-50 rounded-2xl border border-dashed border-neutral-200">
+                                            <History className="mx-auto text-neutral-300 mb-2" size={32} />
+                                            <p className="text-xs font-bold text-neutral-600">No audit events recorded yet</p>
+                                            <p className="text-[11px] text-neutral-400 mt-0.5">Field changes, stage updates, and compliance events will show here</p>
+                                        </div>
+                                    ) : (
+                                        <div className="relative pl-6 space-y-4 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-neutral-200">
+                                            {internalAuditLogs.map((log: any) => (
+                                                <div key={log.id} className="relative">
+                                                    <div className="absolute -left-[27px] top-1.5 w-3.5 h-3.5 rounded-full bg-white border-2 border-primary" />
+                                                    <div className="bg-neutral-50 p-3 rounded-xl border border-neutral-200/70 text-xs space-y-1">
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="font-bold text-neutral-900">{log.action}</span>
+                                                            <span className="text-[10px] text-neutral-400 font-medium">{log.timestamp}</span>
+                                                        </div>
+                                                        <p className="text-neutral-600">{log.details}</p>
+                                                        <p className="text-[10px] text-neutral-400 font-semibold">Performed by: {log.performedBy}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                         </div>
                     </div>
                 </div>
@@ -1444,6 +1776,194 @@ export default function CandidateProfilePage() {
                         className="w-full py-3 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primary-dark transition-all disabled:opacity-50 shadow-md shadow-primary/20"
                     >
                         {updateCandidate.isPending ? "Saving..." : "Save Candidate Profile"}
+                    </button>
+                </form>
+            </ModalShell>
+
+            {/* Modal: Add Task */}
+            <ModalShell open={taskModalOpen} onClose={() => setTaskModalOpen(false)} title="Create Recruiter Task / Follow-up">
+                <form onSubmit={handleAddTask} className="space-y-4">
+                    <div>
+                        <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1">Task Title *</label>
+                        <input
+                            required
+                            value={taskForm.title}
+                            onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
+                            placeholder="e.g. Call candidate to confirm joining date"
+                            className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-xs focus:border-primary outline-none"
+                        />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1">Due Date</label>
+                            <input
+                                type="date"
+                                value={taskForm.dueDate}
+                                onChange={(e) => setTaskForm({ ...taskForm, dueDate: e.target.value })}
+                                className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-xs focus:border-primary outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1">Priority</label>
+                            <select
+                                value={taskForm.priority}
+                                onChange={(e: any) => setTaskForm({ ...taskForm, priority: e.target.value })}
+                                className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-xs font-semibold focus:border-primary outline-none"
+                            >
+                                <option value="LOW">Low</option>
+                                <option value="MEDIUM">Medium</option>
+                                <option value="HIGH">High</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1">Assigned Recruiter</label>
+                        <input
+                            value={taskForm.assignedTo}
+                            onChange={(e) => setTaskForm({ ...taskForm, assignedTo: e.target.value })}
+                            className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-xs focus:border-primary outline-none"
+                        />
+                    </div>
+                    <button
+                        type="submit"
+                        disabled={updateCandidate.isPending}
+                        className="w-full py-2.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-all disabled:opacity-50 shadow-sm"
+                    >
+                        {updateCandidate.isPending ? "Creating..." : "Create Task"}
+                    </button>
+                </form>
+            </ModalShell>
+
+            {/* Modal: Log Offer */}
+            <ModalShell open={offerModalOpen} onClose={() => setOfferModalOpen(false)} title="Log Extended Offer">
+                <form onSubmit={handleAddOffer} className="space-y-4">
+                    <div>
+                        <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1">Job Application *</label>
+                        <select
+                            required
+                            value={offerForm.applicationId}
+                            onChange={(e) => setOfferForm({ ...offerForm, applicationId: e.target.value })}
+                            className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-xs font-semibold focus:border-primary outline-none"
+                        >
+                            <option value="">Select the application this offer is for</option>
+                            {(applications || [])
+                                .filter((a: any) => !["JOINED", "REJECTED", "BACKED_OUT", "BLACKLISTED", "OFFER_ACCEPTED", "ONBOARDING"].includes(a.stage))
+                                .map((a: any) => (
+                                    <option key={a.id} value={a.id}>
+                                        {a.jobTitle} · {a.clientName} ({a.stage.replace(/_/g, " ")})
+                                    </option>
+                                ))}
+                        </select>
+                        <p className="text-[10px] text-neutral-400 mt-1">Releasing an offer moves the application to OFFER SENT. A new offer on the same application replaces the open one.</p>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1">Offered CTC (LPA) *</label>
+                        <input
+                            type="number"
+                            step="0.5"
+                            min="0.5"
+                            required
+                            value={offerForm.offeredCtcLpa}
+                            onChange={(e) => setOfferForm({ ...offerForm, offeredCtcLpa: Number(e.target.value) })}
+                            className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-xs focus:border-primary outline-none"
+                        />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1">Joining Date</label>
+                            <input
+                                type="date"
+                                value={offerForm.joiningDate}
+                                onChange={(e) => setOfferForm({ ...offerForm, joiningDate: e.target.value })}
+                                className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-xs focus:border-primary outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1">Offer Validity Date</label>
+                            <input
+                                type="date"
+                                value={offerForm.validityDate}
+                                onChange={(e) => setOfferForm({ ...offerForm, validityDate: e.target.value })}
+                                className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-xs focus:border-primary outline-none"
+                            />
+                        </div>
+                    </div>
+                    <button
+                        type="submit"
+                        disabled={updateCandidate.isPending}
+                        className="w-full py-2.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-all disabled:opacity-50 shadow-sm"
+                    >
+                        {updateCandidate.isPending ? "Saving..." : "Release Offer"}
+                    </button>
+                </form>
+            </ModalShell>
+
+            {/* Modal: Client Submission */}
+            <ModalShell open={submissionModalOpen} onClose={() => setSubmissionModalOpen(false)} title="Log Client CV Submission">
+                <form onSubmit={handleAddSubmission} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1">Client Name *</label>
+                            <input
+                                required
+                                value={submissionForm.clientName}
+                                onChange={(e) => setSubmissionForm({ ...submissionForm, clientName: e.target.value })}
+                                placeholder="e.g. Acme Corp"
+                                className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-xs focus:border-primary outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1">Position / Role *</label>
+                            <input
+                                required
+                                value={submissionForm.positionTitle}
+                                onChange={(e) => setSubmissionForm({ ...submissionForm, positionTitle: e.target.value })}
+                                placeholder="e.g. Principal Architect"
+                                className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-xs focus:border-primary outline-none"
+                            />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1">Quoted CTC / Bill Rate</label>
+                            <input
+                                value={submissionForm.submittedRateOrCtc}
+                                onChange={(e) => setSubmissionForm({ ...submissionForm, submittedRateOrCtc: e.target.value })}
+                                placeholder="e.g. ₹24 LPA or $60/hr"
+                                className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-xs focus:border-primary outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1">Initial Status</label>
+                            <select
+                                value={submissionForm.status}
+                                onChange={(e: any) => setSubmissionForm({ ...submissionForm, status: e.target.value })}
+                                className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-xs font-semibold focus:border-primary outline-none"
+                            >
+                                <option value="SUBMITTED">SUBMITTED</option>
+                                <option value="SHORTLISTED">SHORTLISTED</option>
+                                <option value="INTERVIEWING">INTERVIEWING</option>
+                                <option value="OFFERED">OFFERED</option>
+                                <option value="REJECTED">REJECTED</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1">Client Feedback / Notes</label>
+                        <textarea
+                            rows={3}
+                            value={submissionForm.clientFeedback}
+                            onChange={(e) => setSubmissionForm({ ...submissionForm, clientFeedback: e.target.value })}
+                            placeholder="Initial feedback or specific interview focus areas requested by client..."
+                            className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-xs focus:border-primary outline-none leading-relaxed"
+                        />
+                    </div>
+                    <button
+                        type="submit"
+                        disabled={updateCandidate.isPending}
+                        className="w-full py-2.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-all disabled:opacity-50 shadow-sm"
+                    >
+                        {updateCandidate.isPending ? "Logging..." : "Log Submission"}
                     </button>
                 </form>
             </ModalShell>

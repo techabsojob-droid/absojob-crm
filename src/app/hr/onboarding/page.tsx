@@ -41,9 +41,10 @@ export default function HrOnboardingPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ id, checklistItemId: itemId, completed }),
             });
-            if (!res.ok) throw new Error("Failed to update checklist");
+            if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Failed to update checklist");
             return res.json();
         },
+        onError: (err: Error) => toast.error(err.message),
         onSuccess: (updated) => {
             queryClient.invalidateQueries({ queryKey: ["hr-onboarding"] });
             queryClient.invalidateQueries({ queryKey: ["hr-dashboard"] });
@@ -52,6 +53,27 @@ export default function HrOnboardingPage() {
             }
             toast.success("Checklist progress updated");
         },
+    });
+
+    const { data: hrOwners = [] } = useQuery({
+        queryKey: ["hr-owners"],
+        queryFn: async () => {
+            const res = await fetch("/api/admin/users");
+            const list = res.ok ? await res.json() : [];
+            return (Array.isArray(list) ? list : []).filter((u: any) => ["HR_ADMIN", "SUPER_ADMIN"].includes(u.role) && u.status === "ACTIVE");
+        },
+    });
+    const assignOwner = useMutation({
+        mutationFn: async (body: { id: string; assignedHrId: string | null }) => {
+            const res = await fetch("/api/hr/onboarding", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+            if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Could not assign owner");
+            return res.json();
+        },
+        onSuccess: () => {
+            toast.success("HR owner updated");
+            queryClient.invalidateQueries({ queryKey: ["hr-onboarding"] });
+        },
+        onError: (e: Error) => toast.error(e.message),
     });
 
     const convertToEmployeeMutation = useMutation({
@@ -68,7 +90,7 @@ export default function HrOnboardingPage() {
                     salaryMonthly: monthlySalary,
                 }),
             });
-            if (!res.ok) throw new Error("Failed to create employee profile");
+            if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Failed to create employee profile");
             return res.json();
         },
         onSuccess: (data) => {
@@ -218,6 +240,21 @@ export default function HrOnboardingPage() {
                                     <span>{record.candidateLocation}</span>
                                 </div>
                             </div>
+
+                            {/* HR owner */}
+                            {record.status !== "COMPLETED" && (
+                                <div className="mt-3 flex items-center gap-2 text-xs">
+                                    <span className="font-bold text-neutral-500">HR owner</span>
+                                    <select
+                                        value={record.assignedHrId ?? ""}
+                                        onChange={(e) => assignOwner.mutate({ id: record.id, assignedHrId: e.target.value || null })}
+                                        className={`px-2 py-1 rounded-lg border text-xs font-semibold ${record.assignedHrId ? "border-neutral-200" : "border-amber-300 bg-amber-50 text-amber-800"}`}
+                                    >
+                                        <option value="">Unassigned</option>
+                                        {hrOwners.map((u: any) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                                    </select>
+                                </div>
+                            )}
 
                             {/* Checklist Snapshot */}
                             <div className="mt-5 space-y-2">

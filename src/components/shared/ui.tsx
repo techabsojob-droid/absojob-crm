@@ -131,6 +131,10 @@ const BADGE_STYLES: Record<string, string> = {
     HIGH: "bg-orange-50 text-orange-700 border-orange-100",
     MEDIUM: "bg-blue-50 text-blue-700 border-blue-100",
     LOW: "bg-neutral-100 text-neutral-500 border-neutral-200",
+    // partner KYC / client submissions / joining risk
+    VERIFIED: "bg-emerald-50 text-emerald-700 border-emerald-100",
+    PENDING_REVIEW: "bg-amber-50 text-amber-700 border-amber-100",
+    INTERVIEW_REQUESTED: "bg-violet-50 text-violet-700 border-violet-100",
     // generic
     PENDING: "bg-amber-50 text-amber-700 border-amber-100",
     APPROVED_LEDGER: "bg-blue-50 text-blue-700 border-blue-100",
@@ -164,13 +168,14 @@ export function Badge({ value, label }: { value: string; label?: string }) {
 }
 
 // ─── Empty State ─────────────────────────────────────────────
-export function EmptyState({ icon: Icon, message }: { icon: LucideIcon; message: string }) {
+export function EmptyState({ icon: Icon, message, action }: { icon: LucideIcon; message: string; action?: React.ReactNode }) {
     return (
         <div className="py-16 text-center">
             <div className="w-14 h-14 rounded-2xl bg-neutral-50 flex items-center justify-center mx-auto mb-3">
                 <Icon size={24} className="text-neutral-300" />
             </div>
             <p className="text-sm text-neutral-400 font-medium">{message}</p>
+            {action && <div className="mt-2">{action}</div>}
         </div>
     );
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
-import { leaveRequests, employees, users, addAudit, addNotification } from "@/lib/mock/data";
+import { leaveRequests, employees, users } from "@/lib/mock/data";
+import { decideLeave } from "@/lib/mock/hr";
 
 // GET: list leave requests for HR management
 export async function GET(request: Request) {
@@ -59,27 +60,8 @@ export async function PATCH(request: Request) {
         return NextResponse.json({ error: "Leave request not found" }, { status: 404 });
     }
 
-    item.status = status;
-    item.approverId = me.id;
-    if (decisionNote !== undefined) item.decisionNote = decisionNote;
-
-    addAudit({
-        orgId: me.orgId,
-        actorUserId: me.id,
-        actorRole: me.role,
-        action: `LEAVE_${status}`,
-        entity: "LeaveRequest",
-        entityId: id,
-        detail: `Leave request for user ${item.userId} ${status.toLowerCase()}`,
-    });
-
-    addNotification({
-        orgId: me.orgId,
-        userId: item.userId,
-        title: `Leave request ${status.toLowerCase()}`,
-        message: `Your leave request from ${item.fromDate} to ${item.toDate} has been ${status.toLowerCase()}.`,
-        link: "/portal/leave",
-    });
+    const result = decideLeave(me, item, status, decisionNote);
+    if (result.error) return NextResponse.json({ error: result.error }, { status: result.status });
 
     return NextResponse.json(item);
 }

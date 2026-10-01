@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
-import { commissionLedger, payouts, clients, users, addAudit } from "@/lib/mock/data";
+import { commissionLedger, payouts, clients, users, applications, referrals, addAudit, addNotification } from "@/lib/mock/data";
 
 export async function GET() {
     const auth = await requireRole("SUPER_ADMIN", "TA_MANAGER");
@@ -47,6 +47,16 @@ export async function PATCH(request: Request) {
     const entry = commissionLedger.find((l) => l.id === id && l.orgId === me.orgId);
     if (!entry) return NextResponse.json({ error: "Ledger entry not found" }, { status: 404 });
 
+    if (!["approve", "mark_paid"].includes(action)) {
+        return NextResponse.json({ error: "action must be approve or mark_paid" }, { status: 400 });
+    }
+    if (action === "approve" && entry.status !== "PENDING") {
+        return NextResponse.json({ error: `Entry is already ${entry.status.toLowerCase()}` }, { status: 409 });
+    }
+    if (action === "mark_paid" && !["APPROVED", "PENDING"].includes(entry.status)) {
+        return NextResponse.json({ error: `Entry is already ${entry.status.toLowerCase()}` }, { status: 409 });
+    }
+
     if (action === "approve") {
         entry.status = "APPROVED";
         addAudit({
@@ -61,6 +71,21 @@ export async function PATCH(request: Request) {
             orgId: me.orgId, actorUserId: me.id, actorRole: me.role,
             action: "PAYMENT_MARKED_PAID", entity: "CommissionLedgerEntry", entityId: entry.id,
             detail: `₹${Math.abs(entry.amountInr).toLocaleString("en-IN")} — ${entry.description}`,
+        });
+    }
+
+    // Keep the agent's referral and wallet in step with the ledger
+    if (entry.type === "REFERRAL_INCENTIVE" && entry.userId) {
+        if (action === "mark_paid" && entry.applicationId) {
+            const app = applications.find((a) => a.id === entry.applicationId);
+            const ref = app ? referrals.find((r) => r.agentId === entry.userId && r.candidateId === app.candidateId) : undefined;
+            if (ref) ref.incentivePaid = true;
+        }
+        addNotification({
+            orgId: me.orgId, userId: entry.userId,
+            title: action === "mark_paid" ? "Incentive paid 💸" : "Incentive approved",
+            message: `₹${Math.abs(entry.amountInr).toLocaleString("en-IN")} — ${entry.description}`,
+            link: "/portal/incentives",
         });
     }
 

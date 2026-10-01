@@ -3,7 +3,7 @@ import { requireRole } from "@/lib/mock/server";
 import { auditLogs, users } from "@/lib/mock/data";
 
 export async function GET() {
-    const auth = await requireRole("SUPER_ADMIN");
+    const auth = await requireRole("SUPER_ADMIN", "HR_ADMIN");
     if ("error" in auth) return auth.error;
     const me = auth.user;
 

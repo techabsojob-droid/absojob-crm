@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { CheckSquare, CheckCircle2, Square } from "lucide-react";
 import { toast } from "sonner";
@@ -32,6 +33,17 @@ export default function PortalTasksPage() {
         onError: () => toast.error("Failed to update task"),
     });
 
+    const [newTask, setNewTask] = useState({ title: "", dueDate: "", priority: "MEDIUM" });
+    const createMutation = useMutation({
+        mutationFn: async () => {
+            const res = await fetch("/api/portal/tasks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...newTask, dueDate: newTask.dueDate || undefined }) });
+            if (!res.ok) throw new Error((await res.json()).error ?? "Failed");
+            return res.json();
+        },
+        onSuccess: () => { toast.success("Task added"); setNewTask({ title: "", dueDate: "", priority: "MEDIUM" }); qc.invalidateQueries({ queryKey: ["portal-tasks"] }); },
+        onError: (e: Error) => toast.error(e.message),
+    });
+
     const list = Array.isArray(tasks) ? tasks : [];
     const pending = list.filter((t: any) => t.status === "PENDING");
     const completed = list.filter((t: any) => t.status === "COMPLETED");
@@ -39,6 +51,12 @@ export default function PortalTasksPage() {
     return (
         <div className="space-y-6">
             <PageHeader title="My Tasks" subtitle={`${pending.length} pending · ${completed.length} completed`} />
+            <form className="flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); if (newTask.title.trim()) createMutation.mutate(); }}>
+                <input value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} placeholder="Add a personal to-do…" className="flex-1 min-w-[220px] px-3 py-2 rounded-xl border border-neutral-200 text-sm focus:border-primary outline-none" />
+                <input type="date" value={newTask.dueDate} onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })} className="px-3 py-2 rounded-xl border border-neutral-200 text-sm" aria-label="Due date" />
+                <select value={newTask.priority} onChange={(e) => setNewTask({ ...newTask, priority: e.target.value })} className="px-3 py-2 rounded-xl border border-neutral-200 text-sm" aria-label="Priority">{["LOW", "MEDIUM", "HIGH", "URGENT"].map((p) => <option key={p}>{p}</option>)}</select>
+                <button disabled={createMutation.isPending || !newTask.title.trim()} className="px-4 py-2 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">Add</button>
+            </form>
 
             {isLoading ? (
                 <SectionCard><div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-16 bg-neutral-50 rounded-xl animate-pulse" />)}</div></SectionCard>

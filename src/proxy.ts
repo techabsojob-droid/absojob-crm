@@ -1,36 +1,20 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { SESSION_COOKIE, users } from '@/lib/mock/data'
 import { roleHome } from '@/lib/types'
-
-const PORTAL_PREFIXES: Record<string, RegExp> = {
-    ADMIN: /^\/admin(\/|$)/,
-    HR: /^\/hr(\/|$)/,
-    TA: /^\/ta(\/|$)/,
-    PORTAL: /^\/portal(\/|$)/,
-}
-
-function allowedPortals(role: string): string[] {
-    switch (role) {
-        case "SUPER_ADMIN":
-            return ["ADMIN", "HR", "TA", "PORTAL"]; // full access & control
-        case "HR_ADMIN":
-            return ["HR"];
-        case "TA_MANAGER":
-        case "TA_RECRUITER":
-            return ["TA"];
-        default:
-            return ["PORTAL"];
-    }
-}
+import { verifySession } from '@/lib/session'
+import { canAccessWorkspace, workspaceOfPath } from '@/lib/access'
+import { ensureFresh } from '@/lib/db/sync'
 
 export default async function proxy(request: NextRequest) {
-    const sessionId = request.cookies.get(SESSION_COOKIE)?.value
+    const sessionId = await verifySession(request.cookies.get(SESSION_COOKIE)?.value)
+    // Logins live in Supabase; if it's unreachable the API routes report it, pages fall through to /login
+    if (sessionId) await ensureFresh().catch(() => {})
     const user = sessionId ? users.find((u) => u.id === sessionId) : undefined
 
     const pathname = request.nextUrl.pathname
     const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/register')
-    const isProtectedRoute =
-        pathname.startsWith('/admin') || pathname.startsWith('/hr') || pathname.startsWith('/ta') || pathname.startsWith('/portal')
+    const workspace = workspaceOfPath(pathname)
+    const isProtectedRoute = workspace !== null
     const isRootRoute = pathname === '/'
 
     // 1. Unauthenticated → login
@@ -56,10 +40,8 @@ export default async function proxy(request: NextRequest) {
     }
 
     // 3. RBAC portal guard
-    if (user && isProtectedRoute) {
-        const portals = allowedPortals(user.role)
-        const hasAccess = portals.some((p) => PORTAL_PREFIXES[p].test(pathname))
-        if (!hasAccess) {
+    if (user && workspace) {
+        if (!canAccessWorkspace(user.role, workspace)) {
             const url = request.nextUrl.clone()
             url.pathname = roleHome(user.role)
             return NextResponse.redirect(url)

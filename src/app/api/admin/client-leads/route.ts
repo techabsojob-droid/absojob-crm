@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
 import { clientLeads, clients } from "@/lib/mock/data";
+import { addAudit } from "@/lib/mock/data";
 import type { ClientLead, Client } from "@/lib/types";
 
 export async function GET(request: Request) {
@@ -90,7 +91,7 @@ export async function PATCH(request: Request) {
                 orgId: me.orgId,
                 companyName: item.companyName,
                 industry: item.industry,
-                website: `https://${item.companyName.toLowerCase().replace(/[^a-z0-9]/g, "")}.com`,
+                website: (item as { website?: string | null }).website ?? null,
                 contactPerson: item.contactPerson,
                 contactEmail: item.email,
                 contactPhone: item.phone,
@@ -107,6 +108,11 @@ export async function PATCH(request: Request) {
             };
             clients.unshift(newClient);
             item.convertedClientId = newClient.id;
+            addAudit({
+                orgId: me.orgId, actorUserId: me.id, actorRole: me.role,
+                action: "CLIENT_LEAD_CONVERTED", entity: "Client", entityId: newClient.id,
+                detail: `${item.companyName} converted from lead ${item.id}`,
+            });
         }
     }
 

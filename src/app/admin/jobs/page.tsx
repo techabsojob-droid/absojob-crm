@@ -71,7 +71,7 @@ export default function AdminJobsPage() {
     const { data: teamMembers } = useQuery({
         queryKey: ["team-members"],
         queryFn: async () => {
-            const res = await fetch("/api/admin/attendance");
+            const res = await fetch("/api/admin/team-members");
             if (!res.ok) return [];
             const d = await res.json();
             return d.users || [];
