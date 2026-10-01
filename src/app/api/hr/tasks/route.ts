@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
 import { tasks, users, employees, addAudit, addNotification, nextIds } from "@/lib/mock/data";
 import type { Task } from "@/lib/types";
+import { taskLinkFor } from "@/lib/tasks";
 
 // GET /api/hr/tasks
 export async function GET(request: Request) {
@@ -83,12 +84,13 @@ export async function POST(request: Request) {
         });
 
         if (assignedToId && assignedToId !== me.id) {
+            const assignee = users.find((u) => u.id === assignedToId);
             addNotification({
                 orgId: me.orgId,
                 userId: assignedToId,
                 title: "New Task Assigned",
                 message: `${me.name} assigned you a new task: ${newTask.title}`,
-                link: "/hr/tasks",
+                link: assignee ? taskLinkFor(assignee.role) : "/portal/tasks",
             });
         }
 

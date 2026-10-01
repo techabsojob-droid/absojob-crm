@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
 import { getClientsFromDb, getJobsFromDb, logAudit } from "@/lib/supabase/db";
-import { createAdminClient } from "@/lib/supabase/admin";
 import {
     users,
     candidates as mockCandidates,
@@ -22,42 +21,9 @@ export async function GET(
     const me = auth.user;
     const { clientId } = await params;
 
-    const supabase = createAdminClient();
-
     // 1. Fetch Client Details
     const dbClients = await getClientsFromDb(me.orgId);
-    let client = dbClients.find((c) => c.id === clientId);
-
-    if (!client) {
-        const { data: directClient } = await supabase
-            .from("companies")
-            .select("*")
-            .eq("id", clientId)
-            .single();
-
-        if (directClient) {
-            client = {
-                id: directClient.id,
-                orgId: directClient.org_id,
-                companyName: directClient.company_name || directClient.name,
-                industry: directClient.industry || "Other",
-                website: directClient.website,
-                contactPerson: directClient.contact_person || "Contact",
-                contactEmail: directClient.contact_email || "",
-                contactPhone: directClient.contact_phone || "",
-                address: directClient.address || directClient.location,
-                status: directClient.status || "ACTIVE",
-                agreementUrl: null,
-                commissionRate: Number(directClient.commission_rate) || 8.33,
-                creditDays: Number(directClient.credit_days) || 30,
-                accountManagerId: directClient.account_manager_id,
-                estimatedValue: directClient.estimated_value || "—",
-                notes: directClient.notes,
-                createdAt: directClient.created_at,
-                updatedAt: directClient.updated_at || directClient.created_at,
-            };
-        }
-    }
+    const client = dbClients.find((c) => c.id === clientId);
 
     if (!client) {
         return NextResponse.json({ error: "Client not found" }, { status: 404 });

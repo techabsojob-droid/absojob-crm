@@ -1,17 +1,10 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
 import { tasks, users, applications, addAudit, addNotification } from "@/lib/mock/data";
-import type { Task, User } from "@/lib/types";
+import type { Task } from "@/lib/types";
+import { canAssignTo, taskLinkFor } from "@/lib/tasks";
 
 const TASK_MANAGERS = ["SUPER_ADMIN", "HR_ADMIN", "TA_MANAGER"];
-
-/** Who an actor may assign tasks to. Recruiters assign to themselves only. */
-function canAssignTo(me: User, target: User): boolean {
-    if (target.orgId !== me.orgId || target.status !== "ACTIVE") return false;
-    if (me.role === "SUPER_ADMIN" || me.role === "HR_ADMIN") return true;
-    if (me.role === "TA_MANAGER") return ["TA_MANAGER", "TA_RECRUITER", "AGENT"].includes(target.role) || target.id === me.id;
-    return target.id === me.id;
-}
 
 export async function GET(request: Request) {
     const auth = await requireRole("SUPER_ADMIN", "HR_ADMIN", "TA_MANAGER", "TA_RECRUITER");
@@ -102,7 +95,7 @@ export async function POST(request: Request) {
             orgId: me.orgId, userId: assignee.id,
             title: "New task assigned",
             message: `${me.name}: ${newTask.title}${newTask.dueDate ? ` (due ${newTask.dueDate})` : ""}`,
-            link: ["AGENT", "EMPLOYEE"].includes(assignee.role) ? "/portal/tasks" : assignee.role === "HR_ADMIN" ? "/hr/tasks" : "/ta/tasks",
+            link: taskLinkFor(assignee.role),
         });
     }
 
@@ -159,7 +152,7 @@ export async function PATCH(request: Request) {
                 orgId: me.orgId, userId: assignee.id,
                 title: "Task assigned to you",
                 message: `${me.name}: ${item.title}`,
-                link: ["AGENT", "EMPLOYEE"].includes(assignee.role) ? "/portal/tasks" : assignee.role === "HR_ADMIN" ? "/hr/tasks" : "/ta/tasks",
+                link: taskLinkFor(assignee.role),
             });
         }
     }
