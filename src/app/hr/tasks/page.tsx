@@ -10,6 +10,7 @@ import {
     Calendar, CheckCircle2, User, Flag, X, ArrowUpDown
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { AssigneeSelect } from "@/components/shared/AssigneeSelect";
 
 interface TaskItem {
     id: string;
@@ -39,6 +40,7 @@ export default function HRTasksPage() {
     const [description, setDescription] = useState("");
     const [priority, setPriority] = useState<"LOW" | "MEDIUM" | "HIGH" | "URGENT">("MEDIUM");
     const [dueDate, setDueDate] = useState(new Date().toISOString().split("T")[0]);
+    const [assignedToId, setAssignedToId] = useState("");
 
     const { data: tasks = [], isLoading } = useQuery<TaskItem[]>({
         queryKey: ["hr-tasks", activeTab, priorityFilter, search],
@@ -74,7 +76,7 @@ export default function HRTasksPage() {
     });
 
     const createMutation = useMutation({
-        mutationFn: async (data: { title: string; description: string; priority: string; dueDate: string }) => {
+        mutationFn: async (data: { title: string; description: string; priority: string; dueDate: string; assignedToId: string }) => {
             const res = await fetch("/api/hr/tasks", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -89,6 +91,7 @@ export default function HRTasksPage() {
             setCreateModalOpen(false);
             setTitle("");
             setDescription("");
+            setAssignedToId("");
         },
         onError: () => {
             toast.error("Failed to create task");
@@ -303,6 +306,13 @@ export default function HRTasksPage() {
                                 />
                             </div>
 
+                            <AssigneeSelect
+                                value={assignedToId}
+                                onChange={setAssignedToId}
+                                labelClassName="text-xs font-bold text-neutral-700 block mb-1"
+                                className="w-full px-3 py-2 bg-neutral-50 rounded-xl text-sm font-semibold border border-neutral-200 focus:outline-none"
+                            />
+
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
                                     <label className="text-xs font-bold text-neutral-700 block mb-1">Priority</label>
@@ -342,7 +352,7 @@ export default function HRTasksPage() {
                                         toast.error("Please enter a task title");
                                         return;
                                     }
-                                    createMutation.mutate({ title, description, priority, dueDate });
+                                    createMutation.mutate({ title, description, priority, dueDate, assignedToId });
                                 }}
                                 disabled={createMutation.isPending}
                                 className="px-5 py-2 rounded-xl bg-primary text-white text-sm font-bold shadow-xs hover:bg-primary/90 transition-colors"

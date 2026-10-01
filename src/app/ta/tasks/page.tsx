@@ -11,6 +11,7 @@ import {
 import { toast } from "sonner";
 import { PageHeader, StatCard, Badge, SectionCard, ModalShell, EmptyState } from "@/components/shared/ui";
 import { SkeletonPulse } from "@/components/shared/UIStates";
+import { AssigneeSelect } from "@/components/shared/AssigneeSelect";
 
 const TASK_TYPES = [
     { id: "CANDIDATE_FOLLOWUP", label: "Candidate Follow-up" },
@@ -40,6 +41,7 @@ export default function TaTasksPage() {
         dueDate: new Date().toISOString().split("T")[0],
         candidateId: "",
         jobId: "",
+        assignedToId: "",
     });
 
     // Fetch Tasks
@@ -133,6 +135,7 @@ export default function TaTasksPage() {
                 dueDate: new Date().toISOString().split("T")[0],
                 candidateId: "",
                 jobId: "",
+                assignedToId: "",
             });
             qc.invalidateQueries({ queryKey: ["ta-tasks-all"] });
             qc.invalidateQueries({ queryKey: ["ta-dashboard"] });
@@ -479,6 +482,7 @@ export default function TaTasksPage() {
                                 description: taskForm.description,
                                 priority: taskForm.priority,
                                 dueDate: taskForm.dueDate,
+                                assignedToId: taskForm.assignedToId,
                             });
                         }}
                         className="space-y-4"
@@ -505,6 +509,12 @@ export default function TaTasksPage() {
                                 className="w-full px-3.5 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl outline-none"
                             />
                         </div>
+
+                        <AssigneeSelect
+                            value={taskForm.assignedToId}
+                            onChange={(id) => setTaskForm({ ...taskForm, assignedToId: id })}
+                            className="w-full mt-1 px-3 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl font-bold"
+                        />
 
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1">

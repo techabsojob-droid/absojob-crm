@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { PageHeader, StatCard, Badge, SectionCard, ModalShell, EmptyState } from "@/components/shared/ui";
 import { SkeletonPulse } from "@/components/shared/UIStates";
 import type { Task } from "@/lib/types";
+import { AssigneeSelect } from "@/components/shared/AssigneeSelect";
 
 export default function AdminTasksPage() {
     const qc = useQueryClient();
@@ -20,6 +21,7 @@ export default function AdminTasksPage() {
         description: "",
         dueDate: "",
         priority: "HIGH",
+        assignedToId: "",
     });
 
     const { data: tasks = [], isLoading } = useQuery<any[]>({
@@ -44,7 +46,7 @@ export default function AdminTasksPage() {
         onSuccess: () => {
             toast.success("Task created and assigned.");
             setCreateOpen(false);
-            setForm({ title: "", description: "", dueDate: "", priority: "HIGH" });
+            setForm({ title: "", description: "", dueDate: "", priority: "HIGH", assignedToId: "" });
             qc.invalidateQueries({ queryKey: ["admin-tasks"] });
         },
         onError: () => toast.error("Error creating task"),
@@ -218,6 +220,7 @@ export default function AdminTasksPage() {
                                 className="w-full mt-1 p-2.5 text-xs bg-neutral-50 border border-neutral-200 rounded-xl"
                             />
                         </div>
+                        <AssigneeSelect value={form.assignedToId} onChange={(id) => setForm({ ...form, assignedToId: id })} />
                         <div className="grid grid-cols-2 gap-3">
                             <div>
                                 <label className="text-xs font-bold text-neutral-700">Due Date</label>
