@@ -7,10 +7,12 @@ import { dbErrorResponse, syncRequest } from "@/lib/db/request";
 import "./identity";
 
 export async function getSessionUser(): Promise<User | null> {
-    await syncRequest();
+    // Read the cookie before touching the database: this marks the page dynamic,
+    // so `next build` never needs DATABASE_URL while prerendering
     const store = await cookies();
     const id = await verifySession(store.get(SESSION_COOKIE)?.value);
     if (!id) return null;
+    await syncRequest();
     return users.find((u) => u.id === id) ?? null;
 }
 
