@@ -1,14 +1,24 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
 import { employees, users, attendance, leaveRequests, payrollRecords, performanceReviews, assets, documents, addAudit, addNotification, todayStr } from "@/lib/mock/data";
-import { canManageUser, ensureUserForEmployee, nextEmployeeCode, syncEmployeeToUser, uniqueEmployeeId, userForEmployee } from "@/lib/mock/identity";
+import { canManageUser, ensureUserForEmployee, issueTempPassword, nextEmployeeCode, syncEmployeeToUser, uniqueEmployeeId, userForEmployee } from "@/lib/mock/identity";
 import type { Employee } from "@/lib/types";
 
 // GET: list employees or get single employee details by id
+// Salary, bank, PAN and personal details are for Super Admin and HR only
+const SENSITIVE = ["salary", "bankDetails", "personalDetails", "emergencyContact", "personalEmail"] as const;
+function forViewer<T extends Record<string, unknown>>(record: T, fullAccess: boolean): T {
+    if (fullAccess) return record;
+    const copy = { ...record };
+    for (const k of SENSITIVE) delete copy[k];
+    return copy;
+}
+
 export async function GET(request: Request) {
     const auth = await requireRole("SUPER_ADMIN", "HR_ADMIN", "TA_MANAGER");
     if ("error" in auth) return auth.error;
     const me = auth.user;
+    const fullAccess = me.role === "SUPER_ADMIN" || me.role === "HR_ADMIN";
 
     const url = new URL(request.url);
     const id = url.searchParams.get("id");
@@ -29,10 +39,10 @@ export async function GET(request: Request) {
         const empDocs = documents.filter((d) => d.employeeId === emp.id);
 
         return NextResponse.json({
-            ...emp,
+            ...forViewer({ ...emp }, fullAccess),
             attendanceHistory: empAttendance,
             leaveHistory: empLeaves,
-            payrollHistory: empPayroll,
+            payrollHistory: fullAccess ? empPayroll : [],
             performanceReviews: empPerformance,
             assignedAssets: empAssets,
             documents: empDocs,
@@ -57,7 +67,7 @@ export async function GET(request: Request) {
         list = list.filter((e) => e.status === status);
     }
 
-    return NextResponse.json(list);
+    return NextResponse.json(list.map((e) => forViewer({ ...e }, fullAccess)));
 }
 
 // POST: create new employee manually (also provisions their self-service login)
@@ -127,6 +137,8 @@ export async function POST(request: Request) {
 
     employees.unshift(newEmp);
     const login = ensureUserForEmployee(newEmp);
+    // New logins get a one-time password that HR shares with the employee
+    const tempPassword = login.passwordHash ? null : issueTempPassword(login);
 
     addAudit({
         orgId: me.orgId,
@@ -147,7 +159,7 @@ export async function POST(request: Request) {
         });
     }
 
-    return NextResponse.json(newEmp, { status: 201 });
+    return NextResponse.json({ ...newEmp, loginEmail: login.email, tempPassword }, { status: 201 });
 }
 
 // Fields HR may edit on an employee record

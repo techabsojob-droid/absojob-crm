@@ -11,7 +11,8 @@
     "db:push": "tsx --tsconfig tsconfig.json scripts/db/push.ts --schema",
     "db:seed": "tsx --tsconfig tsconfig.json scripts/db/push.ts --seed",
     "db:reset": "tsx --tsconfig tsconfig.json scripts/db/push.ts --reset",
-    "db:verify": "tsx --tsconfig tsconfig.json scripts/db/verify.ts"
+    "db:verify": "tsx --tsconfig tsconfig.json scripts/db/verify.ts",
+    "db:set-passwords": "tsx --tsconfig tsconfig.json scripts/db/set-passwords.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

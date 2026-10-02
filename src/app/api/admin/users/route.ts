@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
 import { users, addAudit, addNotification, jobs, candidates, applications, interviews, placements, tasks } from "@/lib/mock/data";
-import { assignableRoles, canManageUser, ensureEmployeeForUser, syncUserToEmployee, uniqueUserId } from "@/lib/mock/identity";
+import { assignableRoles, canManageUser, ensureEmployeeForUser, issueTempPassword, publicUser, syncUserToEmployee, uniqueUserId } from "@/lib/mock/identity";
+import { hashPassword, passwordPolicyError } from "@/lib/password";
 import { notifyRoles } from "@/lib/mock/pipeline";
 import type { User, UserRole, UserStatus } from "@/lib/types";
 
@@ -27,7 +28,7 @@ export async function GET(request: Request) {
             const userTasks = tasks.filter((t) => t.assignedToId === u.id && !t.completed);
 
             return {
-                ...u,
+                ...publicUser(u),
                 employeeId: `EMP-${u.id.replace(/[^0-9a-zA-Z]/g, "").slice(-4).toUpperCase() || "1001"}`,
                 reportingToName: manager?.name ?? null,
                 reportingToRole: manager?.role ?? null,
@@ -104,6 +105,15 @@ export async function POST(request: Request) {
         joinedAt: new Date().toISOString(),
         deactivatedAt: null,
     };
+    // Admin may set a password; otherwise a one-time temporary password is issued and shown once
+    let tempPassword: string | null = null;
+    if (body.password) {
+        const err = passwordPolicyError(String(body.password));
+        if (err) return NextResponse.json({ error: err }, { status: 400 });
+        newUser.passwordHash = hashPassword(String(body.password));
+    } else {
+        tempPassword = issueTempPassword(newUser);
+    }
     users.push(newUser);
     const emp = ensureEmployeeForUser(newUser);
 
@@ -123,7 +133,7 @@ export async function POST(request: Request) {
         link: emp ? `/hr/employees?id=${emp.id}` : null,
     });
 
-    return NextResponse.json({ ...newUser, employeeRecordId: emp?.id ?? null }, { status: 201 });
+    return NextResponse.json({ ...publicUser(newUser), employeeRecordId: emp?.id ?? null, tempPassword }, { status: 201 });
 }
 
 export async function PATCH(request: Request) {
@@ -131,12 +141,21 @@ export async function PATCH(request: Request) {
     if ("error" in auth) return auth.error;
     const me = auth.user;
 
-    const { id, role, status, department, designation, reportingTo, location, phone } = await request.json();
+    const { id, role, status, department, designation, reportingTo, location, phone, resetPassword } = await request.json();
     const user = users.find((u) => u.id === id && u.orgId === me.orgId);
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     if (!canManageUser(me, user)) {
         return NextResponse.json({ error: "You are not allowed to modify this account" }, { status: 403 });
+    }
+
+    // Reset: issue a new one-time password (the old one stops working immediately)
+    if (resetPassword) {
+        if (user.id === me.id) return NextResponse.json({ error: "Use Change password for your own account" }, { status: 400 });
+        const tempPassword = issueTempPassword(user);
+        addAudit({ orgId: me.orgId, actorUserId: me.id, actorRole: me.role, action: "PASSWORD_RESET", entity: "User", entityId: user.id, detail: `Temporary password issued for ${user.name}` });
+        addNotification({ orgId: me.orgId, userId: user.id, title: "Password reset", message: `${me.name} reset your password. Sign in with the temporary password they share, then change it.`, link: null });
+        return NextResponse.json({ success: true, tempPassword, name: user.name, email: user.email });
     }
     if (user.id === me.id && ((role && role !== user.role) || (status && status !== user.status))) {
         return NextResponse.json({ error: "You cannot change your own role or status" }, { status: 403 });
@@ -208,5 +227,5 @@ export async function PATCH(request: Request) {
         });
     }
 
-    return NextResponse.json(user);
+    return NextResponse.json(publicUser(user));
 }

@@ -22,3 +22,13 @@ export function passwordPolicyError(pw: string): string | null {
     if (pw.length > 128) return "Password is too long";
     return null;
 }
+
+/** Random temporary password that meets the policy, e.g. "Kp7m-Qx3r-Vt9w". */
+export function generateTempPassword(): string {
+    const letters = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz"; // no look-alikes
+    const digits = "23456789";
+    const bytes = randomBytes(12);
+    const group = (o: number) =>
+        letters[bytes[o] % letters.length] + letters[bytes[o + 1] % letters.length] + digits[bytes[o + 2] % digits.length] + letters[bytes[o + 3] % letters.length];
+    return `${group(0)}-${group(4)}-${group(8)}`;
+}

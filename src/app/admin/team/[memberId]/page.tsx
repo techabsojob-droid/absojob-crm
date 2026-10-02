@@ -12,6 +12,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { StatCard, Badge, SectionCard, ModalShell, EmptyState } from "@/components/shared/ui";
+import { useAuth } from "@/lib/auth";
+import { TempPasswordDialog, type IssuedLogin } from "@/components/shared/TempPasswordDialog";
+import { KeyRound } from "lucide-react";
 
 export default function Employee360ProfilePage({
     params,
@@ -58,13 +61,31 @@ export default function Employee360ProfilePage({
         },
     });
 
+    const { user: viewer } = useAuth();
+    const canResetPassword = viewer?.role === "SUPER_ADMIN" || viewer?.role === "HR_ADMIN";
+    const [issued, setIssued] = useState<IssuedLogin | null>(null);
+    const resetPasswordMutation = useMutation({
+        mutationFn: async () => {
+            const res = await fetch("/api/admin/users", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: memberId, resetPassword: true }),
+            });
+            const d = await res.json();
+            if (!res.ok) throw new Error(d.error ?? "Could not reset the password");
+            return d;
+        },
+        onSuccess: (d) => setIssued({ name: d.name, email: d.email, password: d.tempPassword }),
+        onError: (e: Error) => toast.error(e.message),
+    });
+
     const updateStatusMutation = useMutation({
         mutationFn: async ({ status, role, department }: { status?: string; role?: string; department?: string }) => {
             const res = await fetch("/api/admin/users", {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    userId: memberId,
+                    id: memberId,
                     ...(status && { status }),
                     ...(role && { role }),
                     ...(department && { department }),
@@ -199,6 +220,7 @@ export default function Employee360ProfilePage({
 
     return (
         <div className="space-y-6 max-w-7xl mx-auto pb-16">
+            <TempPasswordDialog login={issued} onClose={() => setIssued(null)} />
             {/* Top Breadcrumb & Return Link */}
             <div className="flex items-center justify-between">
                 <Link
@@ -308,6 +330,17 @@ export default function Employee360ProfilePage({
                             <Edit3 className="w-3.5 h-3.5" />
                             Role & Dept
                         </button>
+
+                        {canResetPassword && viewer?.id !== memberId && (
+                            <button
+                                onClick={() => { if (confirm(`Reset ${user.name}'s password? Their current password will stop working.`)) resetPasswordMutation.mutate(); }}
+                                disabled={resetPasswordMutation.isPending}
+                                className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-300 hover:border-gray-400 px-3 py-2 rounded-xl transition-colors shadow-sm disabled:opacity-60"
+                            >
+                                <KeyRound className="w-3.5 h-3.5" />
+                                Reset password
+                            </button>
+                        )}
 
                         <button
                             onClick={() => {

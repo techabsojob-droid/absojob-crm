@@ -11,6 +11,7 @@ import { PageHeader, StatCard, Badge, SectionCard, ModalShell, inr } from "@/com
 import { SkeletonPulse } from "@/components/shared/UIStates";
 import { toast } from "sonner";
 import Link from "next/link";
+import { TempPasswordDialog, type IssuedLogin } from "@/components/shared/TempPasswordDialog";
 
 export default function HrOnboardingPage() {
     const queryClient = useQueryClient();
@@ -76,6 +77,7 @@ export default function HrOnboardingPage() {
         onError: (e: Error) => toast.error(e.message),
     });
 
+    const [issued, setIssued] = useState<IssuedLogin | null>(null);
     const convertToEmployeeMutation = useMutation({
         mutationFn: async (payload: any) => {
             const res = await fetch("/api/hr/onboarding", {
@@ -100,6 +102,7 @@ export default function HrOnboardingPage() {
             setConvertModalOpen(false);
             setSelectedRecord(null);
             toast.success(`Employee ${data.employee.employeeId} created successfully!`);
+            if (data.login?.tempPassword) setIssued({ name: data.employee.name, email: data.login.email, password: data.login.tempPassword });
         },
         onError: (err: any) => {
             toast.error(err.message || "Failed to convert to employee");
@@ -134,6 +137,7 @@ export default function HrOnboardingPage() {
 
     return (
         <div className="space-y-8 animate-fade-in">
+            <TempPasswordDialog login={issued} onClose={() => setIssued(null)} />
             <PageHeader
                 title="Employee Onboarding & Conversion"
                 subtitle="Transform selected recruitment candidates into active organizational employees"

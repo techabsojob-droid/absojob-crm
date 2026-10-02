@@ -21,6 +21,7 @@ export async function GET() {
     const auth = await requireRole("SUPER_ADMIN", "HR_ADMIN", "TA_MANAGER");
     if ("error" in auth) return auth.error;
     const me = auth.user;
+    const pay = me.role === "SUPER_ADMIN" || me.role === "HR_ADMIN"; // TA managers get no salary figures
 
     const orgEmps = employees.filter((e) => e.orgId === me.orgId && e.status === "ACTIVE");
     const totalHeadcount = orgEmps.length;
@@ -71,9 +72,9 @@ export async function GET() {
         overview: {
             headcount: totalHeadcount,
             attendanceRate: attPct != null ? `${attPct}%` : "—",
-            monthlyPayroll: totalPayrollNet,
+            monthlyPayroll: pay ? totalPayrollNet : null,
             payrollMonth,
-            averageSalary: avgSalary,
+            averageSalary: pay ? avgSalary : null,
             openPositions: openJobs,
             totalCandidates: totalCands,
             hiresJoined: joinedCount,
@@ -89,7 +90,7 @@ export async function GET() {
             workMode: tally(orgEmps, (e) => e.workMode?.toLowerCase()),
         },
         attendanceTrend,
-        payrollByDept,
+        payrollByDept: pay ? payrollByDept : [],
         recruitmentFunnel: [
             { stage: "In Pipeline", count: orgApps.length },
             { stage: "Shortlisted", count: orgApps.filter((a) => SHORTLISTED.includes(a.stage)).length },

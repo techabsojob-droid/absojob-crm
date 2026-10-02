@@ -1,19 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Eye, EyeOff, Briefcase, Lock, ShieldCheck, Users, UserRound, Wallet } from "lucide-react";
+import { Eye, EyeOff, Briefcase, Lock } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { roleHome } from "@/lib/types";
-
-const DEMO_ACCOUNTS = [
-    { label: "Super Admin", icon: ShieldCheck, email: "admin@absojob.com" },
-    { label: "HR Admin", icon: Users, email: "hr@absojob.com" },
-    { label: "Finance", icon: Wallet, email: "finance@absojob.com" },
-    { label: "TA Manager", icon: Users, email: "neha@absojob.com" },
-    { label: "Recruiter", icon: UserRound, email: "rahul.ta@absojob.com" },
-    { label: "Agent", icon: Briefcase, email: "vikram@absojob.com" },
-    { label: "Employee", icon: Briefcase, email: "kavya@absojob.com" },
-];
 
 export default function LoginPage() {
     const { user } = useAuth();
@@ -167,22 +157,6 @@ export default function LoginPage() {
                         Recruiter or placement agency? <a href="/register" className="font-bold text-primary hover:underline">Become a recruitment partner</a>
                     </p>
 
-                    {/* Demo credentials (mock mode) */}
-                    <div className="mt-6 p-4 bg-neutral-50 border border-neutral-200 rounded-xl">
-                        <p className="font-bold text-neutral-600 uppercase tracking-wider text-xs mb-2.5">Demo Accounts — password: <span className="font-mono text-primary">demo123</span></p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
-                            {DEMO_ACCOUNTS.map(({ label, email: e }) => (
-                                <button key={e}
-                                    onClick={() => { setEmail(e); setPassword("demo123"); }}
-                                    className="flex items-center justify-between group text-left px-2 py-1 -mx-2 rounded-lg hover:bg-white transition-colors"
-                                >
-                                    <span className="text-[11px] font-bold text-neutral-600">{label}</span>
-                                    <span className="text-[10px] font-mono text-neutral-400 group-hover:text-primary truncate max-w-[160px]">{e}</span>
-                                </button>
-                            ))}
-                        </div>
-                        <p className="text-[10px] text-neutral-400 mt-2">Click any role to auto-fill credentials.</p>
-                    </div>
 
                 </div>
             </div>

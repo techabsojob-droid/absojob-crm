@@ -31,10 +31,16 @@ npm run db:push      # create tables, add new columns to existing ones (never dr
 npm run db:seed      # replace all CRM data with the demo data
 npm run db:reset     # drop the crm schema, recreate it, load demo data
 npm run db:verify    # check Supabase returns exactly the demo data
+npm run db:set-passwords  # give every active user without a password a strong one (add -- --all to rotate everyone)
 npm run db:generate  # rebuild the SQL files after changing src/lib/types.ts or the mock seed
 ```
 
 All of them use `DATABASE_URL` from `.env`.
+
+**Passwords:** the demo data has no passwords, so run `npm run db:set-passwords` after every
+`db:seed` / `db:reset`. The new passwords are written to `CREDENTIALS.local.md`, which is
+gitignored. Share them privately, then delete the file. New accounts created in the app get a
+one-time password shown to the admin, and Admin › Team › profile › **Reset password** issues a new one.
 
 ## How the app uses it
 

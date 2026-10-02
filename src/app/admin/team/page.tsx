@@ -11,6 +11,7 @@ import {
 import { toast } from "sonner";
 import { PageHeader, StatCard, Badge, SectionCard, ModalShell, EmptyState } from "@/components/shared/ui";
 import { SkeletonPulse } from "@/components/shared/UIStates";
+import { TempPasswordDialog, type IssuedLogin } from "@/components/shared/TempPasswordDialog";
 
 const ROLES = ["SUPER_ADMIN", "HR_ADMIN", "FINANCE_ADMIN", "TA_MANAGER", "TA_RECRUITER", "AGENT", "EMPLOYEE"] as const;
 
@@ -50,6 +51,7 @@ export default function TeamPage() {
         },
     });
 
+    const [issued, setIssued] = useState<IssuedLogin | null>(null);
     const createMutation = useMutation({
         mutationFn: async () => {
             const res = await fetch("/api/admin/users", {
@@ -61,8 +63,9 @@ export default function TeamPage() {
             if (!res.ok) throw new Error(data.error ?? "Failed to create user");
             return data;
         },
-        onSuccess: () => {
-            toast.success("Team member successfully invited and added.");
+        onSuccess: (data) => {
+            toast.success("Team member added.");
+            if (data.tempPassword) setIssued({ name: data.name, email: data.email, password: data.tempPassword });
             setModalOpen(false);
             setStep(1);
             setForm({
@@ -107,6 +110,7 @@ export default function TeamPage() {
 
     return (
         <div className="space-y-6 animate-fade-in">
+            <TempPasswordDialog login={issued} onClose={() => setIssued(null)} />
             <PageHeader
                 title="Team Management & Organizational Hierarchy"
                 subtitle="People, roles, reporting managers (solid & dotted lines) and cross-functional recruitment squads"
