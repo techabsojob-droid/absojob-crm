@@ -16,7 +16,7 @@ interface Comment { id: string; body: string; createdAt: string; editedAt: strin
 interface HistoryItem { id: string; action: "CREATED" | "UPDATED" | "COMMENTED"; field: string | null; fromValue: string | null; toValue: string | null; actorId: string; actorName: string; createdAt: string }
 type Detail = TaskRow & { comments: Comment[]; history: HistoryItem[] };
 
-const input = "w-full px-2.5 py-1.5 text-xs bg-white border border-neutral-200 rounded-lg outline-none focus:ring-2 focus:ring-primary/20 disabled:bg-transparent disabled:border-transparent disabled:px-0 disabled:text-neutral-800 disabled:appearance-none";
+const input = "w-full min-w-0 px-2.5 py-1.5 text-xs bg-white border border-neutral-200 rounded-lg outline-none focus:ring-2 focus:ring-primary/20 disabled:bg-transparent disabled:border-transparent disabled:px-0 disabled:text-neutral-800 disabled:appearance-none";
 
 function readable(field: string | null, v: string | null) {
     if (v == null) return "None";
@@ -190,7 +190,7 @@ export function TaskDrawer({ taskKey, meta, onClose }: { taskKey: string; meta: 
                 {error && <div className="flex-1 flex items-center justify-center text-sm text-neutral-500">{(error as Error).message}</div>}
 
                 {t && (
-                    <div className="flex-1 overflow-y-auto grid grid-cols-1 lg:grid-cols-[1fr_300px]">
+                    <div className="flex-1 overflow-y-auto grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px]">
                         {/* Left: summary, description, activity */}
                         <div className="p-6 space-y-6 min-w-0">
                             <input
@@ -305,7 +305,7 @@ export function TaskDrawer({ taskKey, meta, onClose }: { taskKey: string; meta: 
                         </div>
 
                         {/* Right: details */}
-                        <div className="border-t lg:border-t-0 lg:border-l border-neutral-100 bg-neutral-50/40 p-5 space-y-5">
+                        <div className="min-w-0 border-t lg:border-t-0 lg:border-l border-neutral-100 bg-neutral-50/40 p-5 space-y-5">
                             <select
                                 value={t.status}
                                 disabled={!t.canEdit}
@@ -317,7 +317,7 @@ export function TaskDrawer({ taskKey, meta, onClose }: { taskKey: string; meta: 
 
                             <div className="rounded-xl border border-neutral-200 bg-white">
                                 <div className="px-4 py-2.5 border-b border-neutral-100 text-xs font-bold text-neutral-700">Details</div>
-                                <dl className="p-4 grid grid-cols-[90px_1fr] gap-x-3 gap-y-3.5 items-center text-xs">
+                                <dl className="p-4 grid grid-cols-[84px_minmax(0,1fr)] gap-x-3 gap-y-3.5 items-center text-xs">
                                     <dt className="text-neutral-500 font-semibold">Assignee</dt>
                                     <dd className="flex items-center gap-2 min-w-0">
                                         <Avatar person={t.assignee} size={22} />
@@ -328,10 +328,10 @@ export function TaskDrawer({ taskKey, meta, onClose }: { taskKey: string; meta: 
                                     </dd>
 
                                     <dt className="text-neutral-500 font-semibold">Reporter</dt>
-                                    <dd className="flex items-center gap-2"><Avatar person={t.reporter} size={22} /> <span className="font-medium text-neutral-800">{t.reporter?.name ?? "—"}</span></dd>
+                                    <dd className="flex items-center gap-2 min-w-0"><Avatar person={t.reporter} size={22} /> <span className="font-medium text-neutral-800 truncate">{t.reporter?.name ?? "—"}</span></dd>
 
                                     <dt className="text-neutral-500 font-semibold">Priority</dt>
-                                    <dd className="flex items-center gap-1.5">
+                                    <dd className="flex items-center gap-1.5 min-w-0">
                                         <PriorityIcon priority={t.priority} />
                                         <select value={t.priority} disabled={!t.canEdit} onChange={(e) => update.mutate({ priority: e.target.value })} className={input}>
                                             {(Object.keys(PRIORITY_META) as (keyof typeof PRIORITY_META)[]).map((p) => <option key={p} value={p}>{PRIORITY_META[p].label}</option>)}
@@ -339,7 +339,7 @@ export function TaskDrawer({ taskKey, meta, onClose }: { taskKey: string; meta: 
                                     </dd>
 
                                     <dt className="text-neutral-500 font-semibold">Type</dt>
-                                    <dd className="flex items-center gap-1.5">
+                                    <dd className="flex items-center gap-1.5 min-w-0">
                                         <TypeIcon type={t.type} />
                                         <select value={t.type} disabled={!t.canEdit} onChange={(e) => update.mutate({ type: e.target.value })} className={input}>
                                             {TASK_TYPES.map((k) => <option key={k} value={k}>{TYPE_META[k].label}</option>)}
@@ -354,16 +354,16 @@ export function TaskDrawer({ taskKey, meta, onClose }: { taskKey: string; meta: 
                                     </dd>
 
                                     <dt className="text-neutral-500 font-semibold">Start date</dt>
-                                    <dd><input type="date" value={t.startDate ?? ""} disabled={!t.canEdit} onChange={(e) => update.mutate({ startDate: e.target.value || null })} className={input} /></dd>
+                                    <dd className="min-w-0"><input type="date" value={t.startDate ?? ""} disabled={!t.canEdit} onChange={(e) => update.mutate({ startDate: e.target.value || null })} className={input} /></dd>
 
                                     <dt className="text-neutral-500 font-semibold">Due date</dt>
-                                    <dd className="flex items-center gap-2">
+                                    <dd className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
                                         <input type="date" value={t.dueDate?.slice(0, 10) ?? ""} disabled={!t.canEdit} onChange={(e) => update.mutate({ dueDate: e.target.value || null })} className={`${input} ${t.isOverdue ? "text-red-600 font-bold" : ""}`} />
                                         {t.isOverdue && <span className="text-[10px] font-bold text-red-600 whitespace-nowrap">Overdue</span>}
                                     </dd>
 
                                     <dt className="text-neutral-500 font-semibold">Estimate</dt>
-                                    <dd className="flex items-center gap-1">
+                                    <dd className="flex items-center gap-1 min-w-0">
                                         <input type="number" min="0" step="0.5" key={String(t.estimateHours)} defaultValue={t.estimateHours ?? ""} disabled={!t.canEdit}
                                             onBlur={(e) => String(t.estimateHours ?? "") !== e.target.value && update.mutate({ estimateHours: e.target.value === "" ? null : Number(e.target.value) })}
                                             placeholder="—" className={input} />
@@ -371,7 +371,7 @@ export function TaskDrawer({ taskKey, meta, onClose }: { taskKey: string; meta: 
                                     </dd>
 
                                     <dt className="text-neutral-500 font-semibold self-start pt-0.5">Watchers</dt>
-                                    <dd className="flex flex-wrap gap-1">
+                                    <dd className="flex flex-wrap gap-1 min-w-0">
                                         {t.watchers.length ? t.watchers.map((w) => <Avatar key={w.id} person={w} size={22} />) : <span className="text-neutral-400">None</span>}
                                     </dd>
                                 </dl>

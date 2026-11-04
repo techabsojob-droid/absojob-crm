@@ -84,7 +84,7 @@ export async function PATCH(request: Request) {
     if (cand.blacklisted) return NextResponse.json({ error: "Candidate is blacklisted" }, { status: 422 });
 
     let app = applications.find(
-        (a) => a.orgId === me.orgId && a.candidateId === cand.id && a.jobId === job.id && !["REJECTED", "BACKED_OUT", "BLACKLISTED"].includes(a.stage)
+        (a) => a.orgId === me.orgId && a.candidateId === cand.id && a.jobId === job.id && !["REJECTED", "BACKED_OUT", "NOT_INTERESTED", "WITHDRAWN", "BLACKLISTED"].includes(a.stage)
     );
     if (!app) {
         // Owner: the job's primary recruiter, else the reviewer

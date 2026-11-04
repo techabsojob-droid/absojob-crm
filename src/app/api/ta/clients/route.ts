@@ -30,7 +30,7 @@ export async function GET() {
             id: c.id, companyName: c.companyName, industry: c.industry, status: c.status, website: c.website ?? null,
             contactPerson: c.contactPerson, contactEmail: c.contactEmail, contactPhone: c.contactPhone,
             openJobs: cJobs.filter((j) => OPEN.includes(j.status)).map((j) => ({ id: j.id, title: j.title, openings: j.openings - j.filled, status: j.status })),
-            activeCandidates: apps.filter((a) => !["JOINED", "REJECTED", "BACKED_OUT", "BLACKLISTED"].includes(a.stage)).length,
+            activeCandidates: apps.filter((a) => !["JOINED", "REJECTED", "BACKED_OUT", "NOT_INTERESTED", "WITHDRAWN", "BLACKLISTED"].includes(a.stage)).length,
             joined: apps.filter((a) => a.stage === "JOINED").length,
             awaitingFeedback: subs.filter((s) => s.clientId === c.id && s.status === "PENDING_REVIEW" && jobIds.has(s.jobId)).map((s) => ({ ...s, daysWaiting: Math.floor((Date.now() - +new Date(s.submittedAt)) / 86400000) })),
             communications: clientCommunications.filter((m) => m.clientId === c.id).sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)).slice(0, 30),

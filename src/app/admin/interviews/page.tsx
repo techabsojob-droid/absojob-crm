@@ -60,7 +60,7 @@ export default function AdminInterviewsMonitorPage() {
 
     const list = Array.isArray(interviews) ? interviews : [];
     const activeApps = Array.isArray(pipelineApps)
-        ? pipelineApps.filter((a: any) => !["JOINED", "REJECTED", "BACKED_OUT"].includes(a.stage))
+        ? pipelineApps.filter((a: any) => !["JOINED", "REJECTED", "BACKED_OUT", "NOT_INTERESTED", "WITHDRAWN"].includes(a.stage))
         : [];
 
     return (

@@ -30,6 +30,20 @@ export function nextCandidateCode(list: Pick<Candidate, "orgId" | "candidateCode
     return `CAN-${String(max + 1).padStart(4, "0")}`;
 }
 
+/** Next sequential requisition code for an org within a year, e.g. REQ-2026-0007. */
+export function nextRequisitionCode(list: Pick<JobRequisition, "orgId" | "requisitionCode">[], orgId: string, year = new Date().getFullYear()): string {
+    const prefix = `REQ-${year}-`;
+    const max = list
+        .filter((j) => j.orgId === orgId && j.requisitionCode?.startsWith(prefix))
+        .reduce((m, j) => Math.max(m, Number(j.requisitionCode!.slice(prefix.length)) || 0), 0);
+    return `${prefix}${String(max + 1).padStart(4, "0")}`;
+}
+
+/** Code to show for a requisition; older rows without a code fall back to their id. */
+export function requisitionLabel(j: Pick<JobRequisition, "id" | "requisitionCode">): string {
+    return j.requisitionCode || (j.id.startsWith("job-") ? `REQ-${j.id.slice(4)}` : j.id);
+}
+
 /** Share of the profile fields recruiters rely on that are filled in, 0–100. */
 export function profileCompleteness(c: Partial<Candidate>): { score: number; missing: string[] } {
     const checks: [string, boolean][] = [

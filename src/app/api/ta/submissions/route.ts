@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     const app = applications.find((a) => a.id === b.applicationId && a.orgId === me.orgId);
     if (!app) return NextResponse.json({ error: "Application not found" }, { status: 404 });
     if (!canWorkOnApplication(me, app)) return NextResponse.json({ error: "This application is not assigned to you" }, { status: 403 });
-    if (["REJECTED", "BACKED_OUT", "BLACKLISTED", "JOINED"].includes(app.stage)) return bad(`Application is ${app.stage.replace(/_/g, " ").toLowerCase()}`);
+    if (["REJECTED", "BACKED_OUT", "NOT_INTERESTED", "WITHDRAWN", "BLACKLISTED", "JOINED"].includes(app.stage)) return bad(`Application is ${app.stage.replace(/_/g, " ").toLowerCase()}`);
     const cand = candidates.find((c) => c.id === app.candidateId)!;
     const job = jobs.find((j) => j.id === app.jobId);
     const client = job ? clients.find((c) => c.id === job.clientId) : undefined;

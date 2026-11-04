@@ -32,7 +32,7 @@ create table if not exists crm.referrals (
   agent_id            text,
   candidate_id        text,
   job_id              text,
-  status              text, -- REJECTED | SUBMITTED | UNDER_REVIEW | SHORTLISTED | HIRED
+  status              text, -- REJECTED | SHORTLISTED | SUBMITTED | UNDER_REVIEW | HIRED
   incentive_amount    numeric,
   incentive_paid      boolean,
   review_notes        text,

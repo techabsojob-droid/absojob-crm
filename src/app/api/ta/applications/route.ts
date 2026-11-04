@@ -5,7 +5,7 @@ import { fitScore } from "@/lib/fit";
 import { canWorkOnApplication, isJobAssignedTo, isRecruitmentManager, markApplicationJoined, syncReferralFromApplication, validRecruiters } from "@/lib/mock/pipeline";
 import { canTransition, allowedNextStages, TERMINAL_STAGES, STAGE_ORDER, type ApplicationStage } from "@/lib/types";
 
-const ALL_STAGES = new Set<string>([...STAGE_ORDER, "ON_HOLD", "REJECTED", "BACKED_OUT", "BLACKLISTED"]);
+const ALL_STAGES = new Set<string>([...STAGE_ORDER, "ON_HOLD", "REJECTED", "BACKED_OUT", "NOT_INTERESTED", "WITHDRAWN", "BLACKLISTED"]);
 
 // GET: pipeline applications (mine / org-wide for manager), joined with candidate + job
 export async function GET(request: Request) {
@@ -63,7 +63,7 @@ export async function PATCH(request: Request) {
     if ("error" in auth) return auth.error;
     const me = auth.user;
 
-    const { id, stage, screeningNotes, rejectionReason, holdReason, joinDate, recruiterId } = await request.json();
+    const { id, stage, screeningNotes, rejectionReason, holdReason, joinDate, recruiterId, overrideOpenings } = await request.json();
     const app = applications.find((a) => a.id === id && a.orgId === me.orgId);
     if (!app) return NextResponse.json({ error: "Application not found" }, { status: 404 });
 
@@ -150,6 +150,11 @@ export async function PATCH(request: Request) {
         }
 
         if (target === "JOINED") {
+            // Filled positions can't exceed openings unless a team lead deliberately overrides it
+            const job = jobs.find((j) => j.id === app.jobId);
+            if (job && (job.filled || 0) >= (job.openings || 0) && !(isRecruitmentManager(me) && overrideOpenings === true)) {
+                return NextResponse.json({ error: `All ${job.openings} opening(s) for ${job.title} are already filled. A team lead must increase the openings or override.` }, { status: 422 });
+            }
             markApplicationJoined(app, me, joinDate || app.expectedJoinDate || new Date().toISOString().split("T")[0]);
         } else {
             app.stage = target;
@@ -204,7 +209,7 @@ export async function POST(request: Request) {
     }
 
     const dup = applications.find(
-        (a) => a.orgId === me.orgId && a.candidateId === body.candidateId && a.jobId === body.jobId && !["REJECTED", "BACKED_OUT", "BLACKLISTED"].includes(a.stage)
+        (a) => a.orgId === me.orgId && a.candidateId === body.candidateId && a.jobId === body.jobId && !["REJECTED", "BACKED_OUT", "NOT_INTERESTED", "WITHDRAWN", "BLACKLISTED"].includes(a.stage)
     );
     if (dup) return NextResponse.json({ error: "Candidate already in pipeline for this job" }, { status: 409 });
 

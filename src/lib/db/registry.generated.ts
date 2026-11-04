@@ -8,7 +8,7 @@ export interface TableDef { key: string; table: string; kind: "rows" | "orgMap";
 export const DB_SCHEMA = "crm";
 
 // Orders column maps when old and new code share one dev server (hot reload)
-export const REGISTRY_GENERATED_AT = "2026-10-01T16:26:23.373Z";
+export const REGISTRY_GENERATED_AT = "2026-11-04T20:18:25.194Z";
 
 export const TABLES: TableDef[] = [
     {
@@ -489,6 +489,234 @@ export const TABLES: TableDef[] = [
                 "type": "text"
             },
             {
+                "field": "requisitionCode",
+                "column": "requisition_code",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "clientRequisitionId",
+                "column": "client_requisition_id",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "jobCategory",
+                "column": "job_category",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "requisitionType",
+                "column": "requisition_type",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "salaryType",
+                "column": "salary_type",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "salaryAmountMin",
+                "column": "salary_amount_min",
+                "type": "numeric",
+                "omitIfNull": true
+            },
+            {
+                "field": "salaryAmountMax",
+                "column": "salary_amount_max",
+                "type": "numeric",
+                "omitIfNull": true
+            },
+            {
+                "field": "minimumQualification",
+                "column": "minimum_qualification",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "preferredQualification",
+                "column": "preferred_qualification",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "descriptionHtml",
+                "column": "description_html",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "responsibilitiesHtml",
+                "column": "responsibilities_html",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "additionalRequirements",
+                "column": "additional_requirements",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "hiringReason",
+                "column": "hiring_reason",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "recruiterTeam",
+                "column": "recruiter_team",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "locationStateCode",
+                "column": "location_state_code",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "locationState",
+                "column": "location_state",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "locationDistrictId",
+                "column": "location_district_id",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "locationDistrict",
+                "column": "location_district",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "locationCityId",
+                "column": "location_city_id",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "locationLocality",
+                "column": "location_locality",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "locationPincode",
+                "column": "location_pincode",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "officeAddress",
+                "column": "office_address",
+                "type": "jsonb",
+                "omitIfNull": true
+            },
+            {
+                "field": "remoteLocationPreference",
+                "column": "remote_location_preference",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "relocationRequired",
+                "column": "relocation_required",
+                "type": "boolean",
+                "omitIfNull": true
+            },
+            {
+                "field": "travelRequired",
+                "column": "travel_required",
+                "type": "boolean",
+                "omitIfNull": true
+            },
+            {
+                "field": "clientContactName",
+                "column": "client_contact_name",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "clientContactEmail",
+                "column": "client_contact_email",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "clientContactPhone",
+                "column": "client_contact_phone",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "billingType",
+                "column": "billing_type",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "placementFeePct",
+                "column": "placement_fee_pct",
+                "type": "numeric",
+                "omitIfNull": true
+            },
+            {
+                "field": "contractType",
+                "column": "contract_type",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "replacementGuaranteeDays",
+                "column": "replacement_guarantee_days",
+                "type": "numeric",
+                "omitIfNull": true
+            },
+            {
+                "field": "commercialNotes",
+                "column": "commercial_notes",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "updatedById",
+                "column": "updated_by_id",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "submittedAt",
+                "column": "submitted_at",
+                "type": "timestamptz",
+                "omitIfNull": true
+            },
+            {
+                "field": "approvedAt",
+                "column": "approved_at",
+                "type": "timestamptz",
+                "omitIfNull": true
+            },
+            {
+                "field": "rejectionReason",
+                "column": "rejection_reason",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "closedAt",
+                "column": "closed_at",
+                "type": "timestamptz",
+                "omitIfNull": true
+            },
+            {
                 "field": "clientId",
                 "column": "client_id",
                 "type": "text"
@@ -530,6 +758,72 @@ export const TABLES: TableDef[] = [
                 "field": "employmentType",
                 "column": "employment_type",
                 "type": "text"
+            },
+            {
+                "field": "jobLevel",
+                "column": "job_level",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "vacancyType",
+                "column": "vacancy_type",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "replacementFor",
+                "column": "replacement_for",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "shiftTiming",
+                "column": "shift_timing",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "joiningPreference",
+                "column": "joining_preference",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "hiringManagerName",
+                "column": "hiring_manager_name",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "interviewRounds",
+                "column": "interview_rounds",
+                "type": "text[]",
+                "omitIfNull": true
+            },
+            {
+                "field": "internalNotes",
+                "column": "internal_notes",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "published",
+                "column": "published",
+                "type": "boolean",
+                "omitIfNull": true
+            },
+            {
+                "field": "publishedAt",
+                "column": "published_at",
+                "type": "timestamptz",
+                "omitIfNull": true
+            },
+            {
+                "field": "publishedById",
+                "column": "published_by_id",
+                "type": "text",
+                "omitIfNull": true
             },
             {
                 "field": "priority",
@@ -1301,6 +1595,546 @@ export const TABLES: TableDef[] = [
             {
                 "field": "updatedAt",
                 "column": "updated_at",
+                "type": "timestamptz"
+            }
+        ]
+    },
+    {
+        "key": "callActivities",
+        "table": "call_activities",
+        "kind": "rows",
+        "pk": [
+            "id"
+        ],
+        "columns": [
+            {
+                "field": "id",
+                "column": "id",
+                "type": "text"
+            },
+            {
+                "field": "orgId",
+                "column": "org_id",
+                "type": "text"
+            },
+            {
+                "field": "candidateId",
+                "column": "candidate_id",
+                "type": "text"
+            },
+            {
+                "field": "applicationId",
+                "column": "application_id",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "jobId",
+                "column": "job_id",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "recruiterId",
+                "column": "recruiter_id",
+                "type": "text"
+            },
+            {
+                "field": "calledAt",
+                "column": "called_at",
+                "type": "timestamptz"
+            },
+            {
+                "field": "durationMins",
+                "column": "duration_mins",
+                "type": "numeric"
+            },
+            {
+                "field": "callType",
+                "column": "call_type",
+                "type": "text"
+            },
+            {
+                "field": "callStatus",
+                "column": "call_status",
+                "type": "text"
+            },
+            {
+                "field": "purpose",
+                "column": "purpose",
+                "type": "text"
+            },
+            {
+                "field": "candidateInterest",
+                "column": "candidate_interest",
+                "type": "text"
+            },
+            {
+                "field": "communicationRating",
+                "column": "communication_rating",
+                "type": "text"
+            },
+            {
+                "field": "technicalRating",
+                "column": "technical_rating",
+                "type": "text"
+            },
+            {
+                "field": "screeningFeedback",
+                "column": "screening_feedback",
+                "type": "text"
+            },
+            {
+                "field": "reasonForJobChange",
+                "column": "reason_for_job_change",
+                "type": "text"
+            },
+            {
+                "field": "callOutcome",
+                "column": "call_outcome",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "attitudeRating",
+                "column": "attitude_rating",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "overallRating",
+                "column": "overall_rating",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "roleFit",
+                "column": "role_fit",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "skillsAssessed",
+                "column": "skills_assessed",
+                "type": "text[]",
+                "omitIfNull": true
+            },
+            {
+                "field": "strengths",
+                "column": "strengths",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "concerns",
+                "column": "concerns",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "offerInHand",
+                "column": "offer_in_hand",
+                "type": "boolean",
+                "omitIfNull": true
+            },
+            {
+                "field": "offerInHandCtcLpa",
+                "column": "offer_in_hand_ctc_lpa",
+                "type": "numeric",
+                "omitIfNull": true
+            },
+            {
+                "field": "willingToRelocate",
+                "column": "willing_to_relocate",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "currentLocation",
+                "column": "current_location",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "interviewAvailability",
+                "column": "interview_availability",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "recordingUrl",
+                "column": "recording_url",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "remarks",
+                "column": "remarks",
+                "type": "text"
+            },
+            {
+                "field": "nextAction",
+                "column": "next_action",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "followUpDate",
+                "column": "follow_up_date",
+                "type": "date"
+            },
+            {
+                "field": "followUpTaskId",
+                "column": "follow_up_task_id",
+                "type": "text"
+            },
+            {
+                "field": "currentCtcLpa",
+                "column": "current_ctc_lpa",
+                "type": "numeric"
+            },
+            {
+                "field": "expectedCtcLpa",
+                "column": "expected_ctc_lpa",
+                "type": "numeric"
+            },
+            {
+                "field": "noticePeriodDays",
+                "column": "notice_period_days",
+                "type": "numeric"
+            },
+            {
+                "field": "createdAt",
+                "column": "created_at",
+                "type": "timestamptz"
+            }
+        ]
+    },
+    {
+        "key": "externalCalls",
+        "table": "external_calls",
+        "kind": "rows",
+        "pk": [
+            "id"
+        ],
+        "columns": [
+            {
+                "field": "id",
+                "column": "id",
+                "type": "text"
+            },
+            {
+                "field": "orgId",
+                "column": "org_id",
+                "type": "text"
+            },
+            {
+                "field": "recruiterId",
+                "column": "recruiter_id",
+                "type": "text"
+            },
+            {
+                "field": "personName",
+                "column": "person_name",
+                "type": "text"
+            },
+            {
+                "field": "phone",
+                "column": "phone",
+                "type": "text"
+            },
+            {
+                "field": "email",
+                "column": "email",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "source",
+                "column": "source",
+                "type": "text"
+            },
+            {
+                "field": "sourceDetail",
+                "column": "source_detail",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "currentCompany",
+                "column": "current_company",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "currentDesignation",
+                "column": "current_designation",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "totalExperienceYears",
+                "column": "total_experience_years",
+                "type": "numeric",
+                "omitIfNull": true
+            },
+            {
+                "field": "skills",
+                "column": "skills",
+                "type": "text[]",
+                "omitIfNull": true
+            },
+            {
+                "field": "jobId",
+                "column": "job_id",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "calledAt",
+                "column": "called_at",
+                "type": "timestamptz"
+            },
+            {
+                "field": "durationMins",
+                "column": "duration_mins",
+                "type": "numeric",
+                "omitIfNull": true
+            },
+            {
+                "field": "callType",
+                "column": "call_type",
+                "type": "text"
+            },
+            {
+                "field": "callStatus",
+                "column": "call_status",
+                "type": "text"
+            },
+            {
+                "field": "purpose",
+                "column": "purpose",
+                "type": "text"
+            },
+            {
+                "field": "candidateInterest",
+                "column": "candidate_interest",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "communicationRating",
+                "column": "communication_rating",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "technicalRating",
+                "column": "technical_rating",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "attitudeRating",
+                "column": "attitude_rating",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "overallRating",
+                "column": "overall_rating",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "roleFit",
+                "column": "role_fit",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "skillsAssessed",
+                "column": "skills_assessed",
+                "type": "text[]",
+                "omitIfNull": true
+            },
+            {
+                "field": "strengths",
+                "column": "strengths",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "concerns",
+                "column": "concerns",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "screeningFeedback",
+                "column": "screening_feedback",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "reasonForJobChange",
+                "column": "reason_for_job_change",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "currentCtcLpa",
+                "column": "current_ctc_lpa",
+                "type": "numeric",
+                "omitIfNull": true
+            },
+            {
+                "field": "expectedCtcLpa",
+                "column": "expected_ctc_lpa",
+                "type": "numeric",
+                "omitIfNull": true
+            },
+            {
+                "field": "noticePeriodDays",
+                "column": "notice_period_days",
+                "type": "numeric",
+                "omitIfNull": true
+            },
+            {
+                "field": "offerInHand",
+                "column": "offer_in_hand",
+                "type": "boolean",
+                "omitIfNull": true
+            },
+            {
+                "field": "offerInHandCtcLpa",
+                "column": "offer_in_hand_ctc_lpa",
+                "type": "numeric",
+                "omitIfNull": true
+            },
+            {
+                "field": "willingToRelocate",
+                "column": "willing_to_relocate",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "currentLocation",
+                "column": "current_location",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "interviewAvailability",
+                "column": "interview_availability",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "recordingUrl",
+                "column": "recording_url",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "callOutcome",
+                "column": "call_outcome",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "remarks",
+                "column": "remarks",
+                "type": "text"
+            },
+            {
+                "field": "nextAction",
+                "column": "next_action",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "followUpDate",
+                "column": "follow_up_date",
+                "type": "date",
+                "omitIfNull": true
+            },
+            {
+                "field": "followUpTaskId",
+                "column": "follow_up_task_id",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "convertedCandidateId",
+                "column": "converted_candidate_id",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "convertedAt",
+                "column": "converted_at",
+                "type": "timestamptz",
+                "omitIfNull": true
+            },
+            {
+                "field": "createdAt",
+                "column": "created_at",
+                "type": "timestamptz"
+            }
+        ]
+    },
+    {
+        "key": "customLocalities",
+        "table": "custom_localities",
+        "kind": "rows",
+        "pk": [
+            "id"
+        ],
+        "columns": [
+            {
+                "field": "id",
+                "column": "id",
+                "type": "text"
+            },
+            {
+                "field": "orgId",
+                "column": "org_id",
+                "type": "text"
+            },
+            {
+                "field": "stateCode",
+                "column": "state_code",
+                "type": "text"
+            },
+            {
+                "field": "districtId",
+                "column": "district_id",
+                "type": "text"
+            },
+            {
+                "field": "cityId",
+                "column": "city_id",
+                "type": "text"
+            },
+            {
+                "field": "name",
+                "column": "name",
+                "type": "text"
+            },
+            {
+                "field": "pincode",
+                "column": "pincode",
+                "type": "text"
+            },
+            {
+                "field": "createdById",
+                "column": "created_by_id",
+                "type": "text"
+            },
+            {
+                "field": "createdAt",
+                "column": "created_at",
                 "type": "timestamptz"
             }
         ]

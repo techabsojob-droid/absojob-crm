@@ -9,7 +9,7 @@ create table if not exists crm.tasks (
   id                      text not null,
   org_id                  text not null,
   key                     text,
-  type                    text, -- MEETING | TASK | FOLLOW_UP | CALL | DOCUMENTS | INTERVIEW
+  type                    text, -- MEETING | FOLLOW_UP | TASK | CALL | DOCUMENTS | INTERVIEW
   status                  text, -- IN_PROGRESS | IN_REVIEW | TODO | BLOCKED | DONE
   assigned_to_id          text,
   created_by_id           text,

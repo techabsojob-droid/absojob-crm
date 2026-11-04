@@ -140,7 +140,7 @@ export function LabelInput({ value, onChange, suggestions }: { value: string[]; 
     const open = suggestions.filter((s) => !value.includes(s) && s.includes(draft.toLowerCase())).slice(0, 8);
     return (
         <div>
-            <div className="flex flex-wrap items-center gap-1 min-h-[38px] px-2 py-1.5 bg-neutral-50 border border-neutral-200 rounded-xl focus-within:ring-2 focus-within:ring-primary/20">
+            <div className="flex flex-wrap items-center gap-1 min-w-0 min-h-[38px] px-2 py-1.5 bg-neutral-50 border border-neutral-200 rounded-xl focus-within:ring-2 focus-within:ring-primary/20">
                 {value.map((l) => <LabelChip key={l} label={l} onRemove={() => onChange(value.filter((x) => x !== l))} />)}
                 <input
                     value={draft}
@@ -151,7 +151,7 @@ export function LabelInput({ value, onChange, suggestions }: { value: string[]; 
                     }}
                     onBlur={() => draft && add(draft)}
                     placeholder={value.length ? "" : "Type a label and press Enter"}
-                    className="flex-1 min-w-[120px] bg-transparent text-xs outline-none py-0.5"
+                    className="flex-1 min-w-[80px] w-full bg-transparent text-xs outline-none py-0.5"
                 />
             </div>
             {open.length > 0 && (

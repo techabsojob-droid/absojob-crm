@@ -46,6 +46,15 @@ create trigger candidates_sync after insert or update or delete or truncate on c
 drop trigger if exists applications_sync on crm.applications;
 create trigger applications_sync after insert or update or delete or truncate on crm.applications
   for each statement execute function crm.bump_sync_version();
+drop trigger if exists call_activities_sync on crm.call_activities;
+create trigger call_activities_sync after insert or update or delete or truncate on crm.call_activities
+  for each statement execute function crm.bump_sync_version();
+drop trigger if exists external_calls_sync on crm.external_calls;
+create trigger external_calls_sync after insert or update or delete or truncate on crm.external_calls
+  for each statement execute function crm.bump_sync_version();
+drop trigger if exists custom_localities_sync on crm.custom_localities;
+create trigger custom_localities_sync after insert or update or delete or truncate on crm.custom_localities
+  for each statement execute function crm.bump_sync_version();
 drop trigger if exists interviews_sync on crm.interviews;
 create trigger interviews_sync after insert or update or delete or truncate on crm.interviews
   for each statement execute function crm.bump_sync_version();
@@ -249,6 +258,9 @@ alter table crm.client_communications enable row level security;
 alter table crm.jobs enable row level security;
 alter table crm.candidates enable row level security;
 alter table crm.applications enable row level security;
+alter table crm.call_activities enable row level security;
+alter table crm.external_calls enable row level security;
+alter table crm.custom_localities enable row level security;
 alter table crm.interviews enable row level security;
 alter table crm.placements enable row level security;
 alter table crm.message_templates enable row level security;

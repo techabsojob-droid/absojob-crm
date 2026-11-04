@@ -10,10 +10,10 @@ create table if not exists crm.attendance_records (
   org_id              text not null,
   user_id             text,
   date                date,
-  status              text, -- ON_LEAVE | WFH | PRESENT | ABSENT | LATE | HALF_DAY
+  status              text, -- WFH | ON_LEAVE | PRESENT | ABSENT | LATE | HALF_DAY
   check_in            text,
   check_out           text,
-  mode                text, -- OFFICE | WFH
+  mode                text, -- WFH | OFFICE
   late_by_minutes     numeric,
   worked_on_off_day   boolean,
   _extra              jsonb not null default '{}'::jsonb, -- values that don't fit a typed column (kept losslessly)

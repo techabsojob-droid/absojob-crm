@@ -84,6 +84,9 @@ export async function PATCH(request: Request) {
             if (job) {
                 job.status = "APPROVED";
                 job.approvedById = me.id;
+                job.approvedAt = new Date().toISOString();
+                job.statusReason = undefined;
+                job.updatedById = me.id;
                 job.updatedAt = new Date().toISOString();
                 notifyJobAssignment(job, [], me);
             }
@@ -94,11 +97,25 @@ export async function PATCH(request: Request) {
             const job = jobs.find((j) => j.id === item.relatedRecordId);
             if (job) {
                 job.status = "CANCELLED";
+                job.rejectionReason = String(reviewComment).trim();
+                job.cancelReason = `Rejected: ${String(reviewComment).trim()}`;
+                job.closedAt = new Date().toISOString();
+                job.updatedById = me.id;
                 job.updatedAt = new Date().toISOString();
             }
         }
     } else if (action === "REQUEST_CHANGES") {
         item.status = "CHANGES_REQUESTED";
+        // A requisition goes back to its author as a draft to edit and resubmit
+        if (item.type === "JOB_REQUISITION" && item.relatedRecordType === "JOB") {
+            const job = jobs.find((j) => j.id === item.relatedRecordId);
+            if (job && job.status === "PENDING_APPROVAL") {
+                job.status = "DRAFT";
+                job.statusReason = `Changes requested by ${me.name}: ${String(reviewComment).trim()}`;
+                job.updatedById = me.id;
+                job.updatedAt = new Date().toISOString();
+            }
+        }
     }
 
     // Add immutable audit log

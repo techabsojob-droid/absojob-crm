@@ -23,7 +23,7 @@ export const DOMAINS: DomainFile[] = [
         file: "02_recruitment.sql",
         title: "Recruitment — clients, jobs, candidates, pipeline",
         about: "The TA workspace: client accounts, requisitions, the candidate bank, applications moving through stages, interviews and placements.",
-        tables: ["clients", "clientLeads", "clientCommunications", "jobs", "candidates", "applications", "interviews", "placements", "messageTemplates", "recruiterTargets"],
+        tables: ["clients", "clientLeads", "clientCommunications", "jobs", "candidates", "applications", "callActivities", "externalCalls", "customLocalities", "interviews", "placements", "messageTemplates", "recruiterTargets"],
     },
     {
         file: "03_partners.sql",
@@ -99,6 +99,8 @@ export const REFERENCES: Record<string, Record<string, string>> = {
     jobs: { clientId: "clients" },
     candidates: { referredByUserId: "users" },
     applications: { candidateId: "candidates", jobId: "jobs", recruiterId: "users" },
+    callActivities: { candidateId: "candidates", applicationId: "applications", jobId: "jobs", recruiterId: "users" },
+    externalCalls: { recruiterId: "users", jobId: "jobs", convertedCandidateId: "candidates" },
     interviews: { applicationId: "applications" },
     placements: { candidateId: "candidates", jobId: "jobs", clientId: "clients" },
     recruiterTargets: { recruiterId: "users" },
@@ -145,6 +147,9 @@ export const REFERENCES: Record<string, Record<string, string>> = {
 };
 
 export const TABLE_COMMENTS: Record<string, string> = {
+    customLocalities: "Localities / areas recruiters typed in that are not in the India Post directory (e.g. \"Hinjewadi Phase 1\"), stored once per city + name + PIN and suggested afterwards. State / district / city ids refer to the built-in India location dataset.",
+    externalCalls: "Calls to people who are not in the candidate database yet (numbers from job portals, Excel sheets, references). One row per call with the person's details and the same feedback as a candidate call; linked to the candidate once they are added.",
+    callActivities: "One row per recruiter call with a candidate (status, interest, ratings, remarks, next action). Rows are appended, never overwritten, so the full call history is kept.",
     organizations: "One row per tenant (staffing agency).",
     users: "Every login: admins, HR, finance, TA, field agents, employees. password_hash is NULL for seeded demo users (they use the demo password).",
     organizationSettingsSeed: "Agency profile and preferences, one JSON document per organization.",

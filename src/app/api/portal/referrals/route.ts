@@ -136,7 +136,7 @@ export async function POST(request: Request) {
     if (claim) {
         return NextResponse.json({ error: "This candidate was already referred by another partner and is under their ownership." }, { status: 409 });
     }
-    if (!isNew && applications.some((a) => a.candidateId === candidate!.id && !["REJECTED", "BACKED_OUT", "JOINED"].includes(a.stage))) {
+    if (!isNew && applications.some((a) => a.candidateId === candidate!.id && !["REJECTED", "BACKED_OUT", "NOT_INTERESTED", "WITHDRAWN", "JOINED"].includes(a.stage))) {
         return NextResponse.json({ error: "This candidate is already in an active hiring process with us." }, { status: 409 });
     }
 

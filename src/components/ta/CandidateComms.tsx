@@ -22,7 +22,7 @@ const OUTCOMES = ["Connected", "No Answer", "Interested", "Not Interested", "Cal
 
 /** Candidate communication centre: templated email / WhatsApp / SMS, call & meeting logs, follow-ups. */
 export default function CandidateComms({ candidateId, applications }: { candidateId: string; applications: { id: string; jobTitle: string; clientName: string; stage: string }[] }) {
-    const [appId, setAppId] = useState(applications.find((a) => !["REJECTED", "JOINED", "BACKED_OUT"].includes(a.stage))?.id ?? "");
+    const [appId, setAppId] = useState(applications.find((a) => !["REJECTED", "JOINED", "BACKED_OUT", "NOT_INTERESTED", "WITHDRAWN"].includes(a.stage))?.id ?? "");
     const { data } = useQuery<Data>({ queryKey: ["cand-comms", candidateId], queryFn: () => api(`/api/ta/communications?candidateId=${candidateId}`) });
     const { data: tpls } = useQuery<Tpl[]>({ queryKey: ["ta-templates", candidateId, appId], queryFn: () => api(`/api/ta/templates?candidateId=${candidateId}${appId ? `&applicationId=${appId}` : ""}`) });
     const [f, setF] = useState({ channel: "EMAIL", direction: "OUTGOING", subject: "", message: "", outcome: "Connected", nextFollowUpDate: "" });

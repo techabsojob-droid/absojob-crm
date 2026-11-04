@@ -28,7 +28,7 @@ export async function GET() {
 
     // 2. Pipeline candidates requiring action (stuck > 3 days or client round)
     const pipelineActionNeeded = orgApps.filter((a) => {
-        if (["REJECTED", "JOINED", "BACKED_OUT", "BLACKLISTED"].includes(a.stage)) return false;
+        if (["REJECTED", "JOINED", "BACKED_OUT", "NOT_INTERESTED", "WITHDRAWN", "BLACKLISTED"].includes(a.stage)) return false;
         const daysInStage = Math.floor((now.getTime() - new Date(a.updatedAt || a.createdAt).getTime()) / 86400000);
         return daysInStage >= 3 || a.stage === "CLIENT_ROUND" || a.stage === "OFFER_SENT";
     }).length;

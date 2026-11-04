@@ -14,8 +14,9 @@ import type {
   EmployeeBenefit, HrPolicyItem, WorkflowAutomationRule,
   Invoice, Expense, FinanceSettings, Receipt, RecurringInvoice, Vendor, VendorBill, ContractAssignment, Timesheet,
   FnfPayment, PayeeProfile, BankStatementLine, ManualJournal, Budget, EmailMessage, StoredFile,
-  AgentProfile, ReferralMessage, MessageTemplate, ClientCommunication, RecruiterTarget,
+  AgentProfile, ReferralMessage, MessageTemplate, ClientCommunication, RecruiterTarget, CallActivity, ExternalCallLog, CustomLocality,
 } from "@/lib/types";
+import { nextRequisitionCode } from "@/lib/fit";
 
 import { attachStore } from "@/lib/db/sync";
 
@@ -475,7 +476,7 @@ export const jobs: JobRequisition[] = persist("jobs", () => ([
     createdAt: daysAgo(15),
     updatedAt: daysAgo(2)
   },
-]));
+] satisfies JobRequisition[]).reduce<JobRequisition[]>((acc, j) => [...acc, { ...j, requisitionCode: nextRequisitionCode(acc, j.orgId, new Date(j.createdAt).getFullYear()) }], []));
 
 // ─── Candidates ───────────────────────────────────────────────
 
@@ -966,6 +967,21 @@ export const interviews: Interview[] = persist("interviews", () => ([
   mkInterview({ applicationId: "app-002", round: "TECH_1", mode: "VIDEO", scheduledAt: daysAhead(0, 14, 45), durationMins: 45, interviewerName: "Rahul Sharma", status: "SCHEDULED", outcome: "PENDING", score: null, feedback: null, meetingLink: "https://meet.google.com/conflict-test", createdBy: "usr-ta1" }),
 ]));
 
+// ─── Call activity (every recruiter call is its own row) ──────
+
+export const callActivities: CallActivity[] = persist("callActivities", () => ([
+  { id: "call-001", orgId: ORG_1, candidateId: applications[0].candidateId, applicationId: applications[0].id, jobId: applications[0].jobId, recruiterId: "usr-ta1", calledAt: daysAgo(6, 2), durationMins: 6, callType: "OUTGOING", callStatus: "CONNECTED", purpose: "INITIAL_SCREENING", candidateInterest: "INTERESTED", communicationRating: "GOOD", technicalRating: "MODERATE", screeningFeedback: "Good communication, hands-on with Node.js and PostgreSQL. Looking for a job change.", reasonForJobChange: "Better opportunity and salary hike", remarks: "Interested in the role. Resume shortlisted for technical round.", nextAction: "SCHEDULE_TECH_INTERVIEW", followUpDate: null, followUpTaskId: null, currentCtcLpa: null, expectedCtcLpa: null, noticePeriodDays: null, createdAt: daysAgo(6, 2) },
+  { id: "call-002", orgId: ORG_1, candidateId: applications[1].candidateId, applicationId: applications[1].id, jobId: applications[1].jobId, recruiterId: "usr-ta1", calledAt: daysAgo(3, 5), durationMins: null, callType: "OUTGOING", callStatus: "NOT_ANSWERED", purpose: "FOLLOW_UP", candidateInterest: null, communicationRating: null, technicalRating: null, screeningFeedback: null, reasonForJobChange: null, remarks: "No answer. Will try again in the evening.", nextAction: "CALL_BACK", followUpDate: null, followUpTaskId: null, currentCtcLpa: null, expectedCtcLpa: null, noticePeriodDays: null, createdAt: daysAgo(3, 5) },
+]));
+
+// ─── Outside-data calls (people not yet in the candidate database) ──
+
+export const externalCalls: ExternalCallLog[] = persist("externalCalls", () => ([] as ExternalCallLog[]));
+
+// ─── Localities recruiters added that the India Post directory doesn't have ──
+
+export const customLocalities: CustomLocality[] = persist("customLocalities", () => ([] as CustomLocality[]));
+
 // ─── Referrals (agent-submitted candidates) ───────────────────
 
 export const referrals: Referral[] = persist("referrals", () => ([
@@ -1156,6 +1172,8 @@ export const nextIds = {
   candidate: () => nextId("cand-", candidates),
   application: () => nextId("app-", applications),
   interview: () => nextId("itr-", interviews),
+  call: () => nextId("call-", callActivities),
+  externalCall: () => nextId("xcall-", externalCalls),
   referral: () => nextId("ref-", referrals),
   ledger: () => nextId("led-", commissionLedger),
   payout: () => nextId("pay-", payouts),

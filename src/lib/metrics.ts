@@ -5,8 +5,8 @@ import type { Application, ApplicationStage, Candidate, Interview, PlacementReco
 const DAY = 86400000;
 const OFFERED: ApplicationStage[] = ["OFFER_SENT", "OFFER_ACCEPTED", "ONBOARDING", "JOINED"];
 const ACCEPTED: ApplicationStage[] = ["OFFER_ACCEPTED", "ONBOARDING", "JOINED"];
-const PAST_SCREENING: ApplicationStage[] = ["INTERVIEW_SCHEDULED", "TECH_ROUND", "CLIENT_ROUND", "HR_ROUND", ...OFFERED];
-const SCREENED: ApplicationStage[] = [...PAST_SCREENING, "REJECTED", "BACKED_OUT"];
+const PAST_SCREENING: ApplicationStage[] = ["SHORTLISTED", "INTERVIEW_SCHEDULED", "TECH_ROUND", "CLIENT_ROUND", "HR_ROUND", "INTERVIEW_COMPLETED", "SELECTED", ...OFFERED];
+const SCREENED: ApplicationStage[] = [...PAST_SCREENING, "REJECTED", "BACKED_OUT", "NOT_INTERESTED", "WITHDRAWN"];
 
 const avg = (xs: number[]) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : null);
 const round1 = (n: number | null) => (n == null ? null : Math.round(n * 10) / 10);

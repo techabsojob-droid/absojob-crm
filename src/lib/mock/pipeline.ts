@@ -38,7 +38,7 @@ export function markApplicationJoined(app: Application, actor: User, joinDate: s
 
     if (job) {
         job.filled = Math.min(job.openings, (job.filled || 0) + 1);
-        if (job.filled >= job.openings) job.status = "FULFILLED";
+        if (job.filled >= job.openings) { job.status = "FULFILLED"; job.closedAt = now; }
         job.updatedAt = now;
     }
 
@@ -121,9 +121,9 @@ export function referralIncentiveFor(ctcLpa: number): number {
     return 5000;
 }
 
-const ACTIVE_REVIEW: string[] = ["SOURCED", "SCREENING"];
-const SHORTLIST: string[] = ["INTERVIEW_SCHEDULED", "TECH_ROUND", "CLIENT_ROUND", "HR_ROUND", "OFFER_SENT", "OFFER_ACCEPTED", "ONBOARDING"];
-const CLOSED: string[] = ["REJECTED", "BACKED_OUT", "BLACKLISTED"];
+const ACTIVE_REVIEW: string[] = ["SOURCED", "CONTACTED", "SCREENING"];
+const SHORTLIST: string[] = ["SHORTLISTED", "INTERVIEW_SCHEDULED", "TECH_ROUND", "CLIENT_ROUND", "HR_ROUND", "INTERVIEW_COMPLETED", "SELECTED", "OFFER_SENT", "OFFER_ACCEPTED", "ONBOARDING"];
+const CLOSED: string[] = ["REJECTED", "BACKED_OUT", "NOT_INTERESTED", "WITHDRAWN", "BLACKLISTED"];
 
 /**
  * Mirrors an application's progress onto the agent's referral and, on joining,

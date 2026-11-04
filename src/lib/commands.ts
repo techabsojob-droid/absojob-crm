@@ -31,9 +31,10 @@ export const COMMANDS: Record<Workspace, Command[]> = {
     TA: [
         action("Create task", "/ta/tasks?create=1", "new todo ticket follow up"),
         action("Add candidate", "/ta/candidates", "new profile resume upload"),
-        action("Raise requisition", "/ta/requisitions", "new job opening"),
+        action("Raise requisition", "/ta/requisitions/new", "new job opening create requisition"),
         page("TA overview", "/ta/dashboard", "home"),
-        page("Requisitions", "/ta/requisitions", "jobs openings"),
+        page("Job Listing", "/ta/requisitions", "requisitions jobs openings"),
+        page("Calls", "/ta/calls", "call log phone screening feedback"),
         page("Pipeline", "/ta/pipeline", "kanban stages board"),
         page("Candidates", "/ta/candidates", "talent"),
         page("Interviews", "/ta/interviews", "schedule feedback"),

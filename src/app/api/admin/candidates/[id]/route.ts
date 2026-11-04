@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
-import { candidates, applications, interviews, jobs, clients, users, referrals, addAudit, addNotification } from "@/lib/mock/data";
+import { candidates, applications, interviews, jobs, clients, users, referrals, callActivities, externalCalls, auditLogs, tasks, addAudit, addNotification } from "@/lib/mock/data";
 import { canWorkOnApplication, notifyRoles, syncReferralFromApplication } from "@/lib/mock/pipeline";
-import { canTransition } from "@/lib/types";
+import { canTransition, stageLabel } from "@/lib/types";
 
 const ELEVATED_ROLES = ["SUPER_ADMIN", "TA_MANAGER"];
 // Fields only Super Admin / TA Manager may change
@@ -91,12 +91,23 @@ export async function GET(
             icon: "BRIEFCASE",
         });
 
-        // Stage moves (approximate via updatedAt)
-        if (!["SOURCED", "REJECTED", "BACKED_OUT"].includes(app.stage)) {
+        // Status history from the audit trail ("OLD → NEW"); fall back to the latest stage for older records
+        const moves = auditLogs.filter((l) => l.entity === "Application" && l.entityId === app.id && (l.action === "STAGE_MOVED" || l.action === "CANDIDATE_REJECTED"));
+        for (const m of moves) {
+            const arrow = m.detail.match(/([A-Z_]+) → ([A-Z_]+)(.*)$/);
+            timeline.push({
+                date: m.createdAt,
+                type: "STATUS",
+                title: arrow ? `Status: ${stageLabel(arrow[1])} → ${stageLabel(arrow[2])}` : "Status changed",
+                detail: `${label}${arrow?.[3]?.trim() ? ` ${arrow[3].trim()}` : ""} · by ${users.find((u) => u.id === m.actorUserId)?.name ?? "system"}`,
+                icon: "ARROW_RIGHT",
+            });
+        }
+        if (!moves.length && !["SOURCED", "REJECTED", "BACKED_OUT", "NOT_INTERESTED", "WITHDRAWN"].includes(app.stage)) {
             timeline.push({
                 date: app.updatedAt,
-                type: "STAGE_MOVE",
-                title: `Stage: ${app.stage.replaceAll("_", " ")}`,
+                type: "STATUS",
+                title: `Stage: ${stageLabel(app.stage)}`,
                 detail: label,
                 icon: "ARROW_RIGHT",
             });
@@ -110,7 +121,7 @@ export async function GET(
                 icon: "CHECK_CIRCLE",
             });
         }
-        if (app.stage === "REJECTED") {
+        if (app.stage === "REJECTED" && !moves.some((m) => m.action === "CANDIDATE_REJECTED")) {
             timeline.push({
                 date: app.updatedAt,
                 type: "REJECTED",
@@ -132,6 +143,65 @@ export async function GET(
         });
     });
 
+    // Recruiter calls
+    callActivities.filter((c) => c.candidateId === candidate.id && c.orgId === me.orgId).forEach((c) => {
+        timeline.push({
+            date: c.calledAt,
+            type: "CALL",
+            title: `Call: ${c.purpose.replaceAll("_", " ").toLowerCase()} (${c.callStatus.replaceAll("_", " ").toLowerCase()})`,
+            detail: `${users.find((u) => u.id === c.recruiterId)?.name ?? "Recruiter"} · ${c.callOutcome ? `${c.callOutcome} — ` : ""}${c.remarks.slice(0, 140)}`,
+            icon: "PHONE",
+        });
+    });
+
+    // Calls made from outside data before the person was added to the database
+    externalCalls.filter((c) => c.orgId === me.orgId && c.convertedCandidateId === candidate.id).forEach((c) => {
+        timeline.push({
+            date: c.calledAt,
+            type: "CALL",
+            title: `Call (outside data · ${c.source.replaceAll("_", " ").toLowerCase()}): ${c.callStatus.replaceAll("_", " ").toLowerCase()}`,
+            detail: `${users.find((u) => u.id === c.recruiterId)?.name ?? "Recruiter"} · ${c.callOutcome ? `${c.callOutcome} — ` : ""}${c.remarks.slice(0, 140)}`,
+            icon: "PHONE",
+        });
+    });
+
+    // Emails, WhatsApp and other logged communication
+    (candidate.communications ?? []).forEach((m) => {
+        timeline.push({
+            date: m.createdAt,
+            type: m.type === "EMAIL" ? "EMAIL" : "MESSAGE",
+            title: `${m.type === "EMAIL" ? "Email" : m.type.charAt(0) + m.type.slice(1).toLowerCase()} ${m.direction === "INCOMING" ? "received" : "sent"}${m.subject ? `: ${m.subject}` : ""}`,
+            detail: `${m.createdByName}${m.outcome ? ` · ${m.outcome}` : ""}${m.message ? ` · ${m.message.slice(0, 140)}` : ""}`,
+            icon: "MAIL",
+        });
+    });
+
+    // Follow-ups (reminder tasks against this candidate): when set and when done
+    tasks.filter((t) => t.orgId === me.orgId && t.type === "FOLLOW_UP" && t.relatedType === "CANDIDATE" && t.relatedId === candidate.id).forEach((t) => {
+        const who = users.find((u) => u.id === t.assignedToId)?.name ?? "Recruiter";
+        timeline.push({
+            date: t.createdAt,
+            type: "FOLLOW_UP",
+            title: `Follow-up set for ${t.dueDate}`,
+            detail: `${who} · ${t.title}`,
+            icon: "CALENDAR",
+        });
+        if (t.completed && t.completedAt) {
+            timeline.push({ date: t.completedAt, type: "FOLLOW_UP", title: "Follow-up completed", detail: `${who} · ${t.title}`, icon: "CHECK_CIRCLE" });
+        }
+    });
+
+    // Recruiter remarks (private notes only for their author)
+    (candidate.notes ?? []).filter((n) => !n.isPrivate || n.authorName === me.name).forEach((n) => {
+        timeline.push({
+            date: n.createdAt,
+            type: "REMARK",
+            title: `Remark · ${n.category}`,
+            detail: `${n.authorName} · ${n.text.slice(0, 160)}`,
+            icon: "MESSAGE",
+        });
+    });
+
     // Sort timeline newest first
     timeline.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
@@ -147,7 +217,7 @@ export async function GET(
         ) / 10
         : null;
 
-    const activeApp = candApps.find((a) => !["REJECTED", "BACKED_OUT", "BLACKLISTED"].includes(a.stage));
+    const activeApp = candApps.find((a) => !["REJECTED", "BACKED_OUT", "NOT_INTERESTED", "WITHDRAWN", "BLACKLISTED"].includes(a.stage));
     const activeJob = activeApp ? jobs.find((j) => j.id === activeApp.jobId) : undefined;
     const activeClient = activeJob ? clients.find((c) => c.id === activeJob.clientId) : undefined;
 
@@ -164,7 +234,7 @@ export async function GET(
         timeline,
         stats: {
             totalApplications: candApps.length,
-            activeApplications: candApps.filter((a) => !["REJECTED", "BACKED_OUT", "BLACKLISTED"].includes(a.stage)).length,
+            activeApplications: candApps.filter((a) => !["REJECTED", "BACKED_OUT", "NOT_INTERESTED", "WITHDRAWN", "BLACKLISTED"].includes(a.stage)).length,
             totalInterviews,
             completedInterviews,
             avgInterviewScore: avgScore,

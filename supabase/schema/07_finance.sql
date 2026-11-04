@@ -122,7 +122,7 @@ create table if not exists crm.recurring_invoices (
   client_id         text,
   description       text,
   amount            numeric,
-  frequency         text, -- QUARTERLY | MONTHLY
+  frequency         text, -- MONTHLY | QUARTERLY
   next_date         date,
   end_date          date,
   auto_send         boolean,
@@ -229,7 +229,7 @@ create table if not exists crm.contract_assignments (
   worker_email      text,
   candidate_id      text,
   role              text,
-  rate_type         text, -- MONTHLY | DAILY | HOURLY
+  rate_type         text, -- MONTHLY | HOURLY | DAILY
   bill_rate         numeric,
   pay_rate          numeric,
   start_date        date,

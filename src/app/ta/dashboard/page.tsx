@@ -17,9 +17,13 @@ import {
     ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, Legend
 } from "recharts";
 import { MyWork } from "@/components/tasks/TaskWidgets";
+import FollowUpsPanel from "@/components/ta/FollowUpsPanel";
+import AddCandidateDialog from "@/components/ta/AddCandidateDialog";
+import { useAuth } from "@/lib/auth";
 
 export default function TaCommandCenterDashboard() {
     const qc = useQueryClient();
+    const { user } = useAuth();
 
     // Global Filters State
     const [period, setPeriod] = useState<string>("THIS_MONTH");
@@ -34,39 +38,11 @@ export default function TaCommandCenterDashboard() {
     const [reqSearch, setReqSearch] = useState<string>("");
 
     // Quick Action Modals
-    const [createReqOpen, setCreateReqOpen] = useState(false);
     const [addCandOpen, setAddCandOpen] = useState(false);
     const [scheduleInterviewOpen, setScheduleInterviewOpen] = useState(false);
     const [createTaskOpen, setCreateTaskOpen] = useState(false);
 
     // Form States
-    const [reqForm, setReqForm] = useState({
-        title: "",
-        clientId: "",
-        department: "Engineering",
-        openings: "1",
-        salaryMinLpa: "12",
-        salaryMaxLpa: "20",
-        priority: "HIGH",
-        location: "Mumbai",
-        skills: "React, Node.js",
-        description: "Looking for a seasoned professional to join our core team.",
-    });
-
-    const [candForm, setCandForm] = useState({
-        name: "",
-        email: "",
-        phone: "",
-        currentCompany: "",
-        currentDesignation: "",
-        totalExperienceYears: "4",
-        currentCtcLpa: "12",
-        expectedCtcLpa: "18",
-        noticePeriodDays: "30",
-        location: "Mumbai",
-        skills: "JavaScript, TypeScript",
-        source: "LINKEDIN",
-    });
 
     const [interviewForm, setInterviewForm] = useState({
         applicationId: "",
@@ -116,73 +92,7 @@ export default function TaCommandCenterDashboard() {
     });
 
     // Mutations for Quick Actions
-    const createReqMutation = useMutation({
-        mutationFn: async (payload: any) => {
-            const res = await fetch("/api/admin/jobs", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
-            });
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.error || "Failed to create requisition");
-            }
-            return res.json();
-        },
-        onSuccess: () => {
-            toast.success("Job requisition created successfully!");
-            setCreateReqOpen(false);
-            setReqForm({
-                title: "",
-                clientId: "",
-                department: "Engineering",
-                openings: "1",
-                salaryMinLpa: "12",
-                salaryMaxLpa: "20",
-                priority: "HIGH",
-                location: "Mumbai",
-                skills: "React, Node.js",
-                description: "Looking for a seasoned professional to join our core team.",
-            });
-            qc.invalidateQueries({ queryKey: ["ta-command-center"] });
-        },
-        onError: (err: any) => toast.error(err.message),
-    });
 
-    const addCandMutation = useMutation({
-        mutationFn: async (payload: any) => {
-            const res = await fetch("/api/admin/candidates", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
-            });
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.error || "Failed to add candidate");
-            }
-            return res.json();
-        },
-        onSuccess: () => {
-            toast.success("Candidate added to talent pool!");
-            setAddCandOpen(false);
-            setCandForm({
-                name: "",
-                email: "",
-                phone: "",
-                currentCompany: "",
-                currentDesignation: "",
-                totalExperienceYears: "4",
-                currentCtcLpa: "12",
-                expectedCtcLpa: "18",
-                noticePeriodDays: "30",
-                location: "Mumbai",
-                skills: "JavaScript, TypeScript",
-                source: "LINKEDIN",
-            });
-            qc.invalidateQueries({ queryKey: ["ta-command-center"] });
-        },
-        onError: (err: any) => toast.error(err.message),
-    });
 
     const scheduleInterviewMutation = useMutation({
         mutationFn: async (payload: any) => {
@@ -340,12 +250,12 @@ export default function TaCommandCenterDashboard() {
                     </button>
 
                     {/* Action buttons */}
-                    <button
-                        onClick={() => setCreateReqOpen(true)}
-                        className="px-3.5 py-2 bg-primary text-white hover:bg-primary-dark rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                    <Link
+                        href="/ta/requisitions/new"
+                        className="px-3.5 py-2 bg-primary text-white hover:bg-primary-dark rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors"
                     >
                         <Plus size={13} /> Requisition
-                    </button>
+                    </Link>
                     <button
                         onClick={() => setAddCandOpen(true)}
                         className="px-3 py-2 bg-white border border-neutral-200 text-neutral-700 hover:bg-neutral-50 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
@@ -482,7 +392,7 @@ export default function TaCommandCenterDashboard() {
                 <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-3">Recruitment & Operations Core</p>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
                     <StatCard
-                        label="Open Requisitions"
+                        label="Open Jobs"
                         value={k.openRequisitions}
                         icon={Briefcase}
                         tone="primary"
@@ -588,6 +498,8 @@ export default function TaCommandCenterDashboard() {
             </div>
 
             <MyWork />
+
+            <FollowUpsPanel canSeeTeam={user?.role === "SUPER_ADMIN" || user?.role === "TA_MANAGER"} />
 
             {/* 5. Actionable Alerts / Needs Immediate Attention (SuperAdmin alerts look) */}
             {data.attentionItems.length > 0 && (
@@ -852,7 +764,7 @@ export default function TaCommandCenterDashboard() {
             {/* 8. Recruiter Performance & Workload Matrix (Standard Table as SuperAdmin) */}
             <SectionCard
                 title="Recruiter Performance & Capacity Matrix"
-                subtitle="Factual throughput across Requisitions, Pipeline, Interviews, Tasks and Overdue items"
+                subtitle="Factual throughput across Job Listing, Pipeline, Interviews, Tasks and Overdue items"
                 action={
                     <Link href="/ta/tasks" className="text-xs font-bold text-primary hover:underline flex items-center gap-1">
                         Task Delegation <ArrowRight size={12} />
@@ -905,11 +817,11 @@ export default function TaCommandCenterDashboard() {
 
             {/* 9. Priority Positions & Requisitions Command (Search + Tabs like SuperAdmin) */}
             <SectionCard
-                title="Priority Requisitions & SLA Countdown"
+                title="Priority Jobs & SLA Countdown"
                 subtitle="Monitors open requisitions, candidate pipeline coverage, and SLA target dates"
                 action={
                     <Link href="/ta/requisitions" className="text-xs font-bold text-primary hover:underline flex items-center gap-1">
-                        All Requisitions <ArrowRight size={12} />
+                        Job Listing <ArrowRight size={12} />
                     </Link>
                 }
             >
@@ -1103,297 +1015,8 @@ export default function TaCommandCenterDashboard() {
                 </div>
             </SectionCard>
 
-            {/* ─── MODAL: CREATE REQUISITION ─── */}
-            <ModalShell open={createReqOpen} onClose={() => setCreateReqOpen(false)} title="Create New Requisition" wide>
-                <form
-                    onSubmit={(e) => {
-                        e.preventDefault();
-                        if (!reqForm.title || !reqForm.clientId) {
-                            toast.error("Please fill in job title and client");
-                            return;
-                        }
-                        createReqMutation.mutate({
-                            ...reqForm,
-                            openings: Number(reqForm.openings),
-                            salaryMinLpa: Number(reqForm.salaryMinLpa),
-                            salaryMaxLpa: Number(reqForm.salaryMaxLpa),
-                        });
-                    }}
-                    className="space-y-4 text-xs"
-                >
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="font-bold text-neutral-700 block mb-1">Job Title *</label>
-                            <input
-                                type="text"
-                                required
-                                value={reqForm.title}
-                                onChange={(e) => setReqForm({ ...reqForm, title: e.target.value })}
-                                placeholder="e.g. Lead Frontend Architect"
-                                className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-xs focus:ring-1 focus:ring-primary focus:outline-none"
-                            />
-                        </div>
-                        <div>
-                            <label className="font-bold text-neutral-700 block mb-1">Client *</label>
-                            <select
-                                required
-                                value={reqForm.clientId}
-                                onChange={(e) => setReqForm({ ...reqForm, clientId: e.target.value })}
-                                className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-xs focus:ring-1 focus:ring-primary focus:outline-none"
-                            >
-                                <option value="">Select Client</option>
-                                {clientOptions.map((c: any) => (
-                                    <option key={c.id} value={c.id}>{c.companyName}</option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-3">
-                        <div>
-                            <label className="font-bold text-neutral-700 block mb-1">Openings</label>
-                            <input
-                                type="number"
-                                min="1"
-                                value={reqForm.openings}
-                                onChange={(e) => setReqForm({ ...reqForm, openings: e.target.value })}
-                                className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-xs"
-                            />
-                        </div>
-                        <div>
-                            <label className="font-bold text-neutral-700 block mb-1">Min LPA</label>
-                            <input
-                                type="number"
-                                value={reqForm.salaryMinLpa}
-                                onChange={(e) => setReqForm({ ...reqForm, salaryMinLpa: e.target.value })}
-                                className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-xs"
-                            />
-                        </div>
-                        <div>
-                            <label className="font-bold text-neutral-700 block mb-1">Max LPA</label>
-                            <input
-                                type="number"
-                                value={reqForm.salaryMaxLpa}
-                                onChange={(e) => setReqForm({ ...reqForm, salaryMaxLpa: e.target.value })}
-                                className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-xs"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="font-bold text-neutral-700 block mb-1">Priority</label>
-                            <select
-                                value={reqForm.priority}
-                                onChange={(e) => setReqForm({ ...reqForm, priority: e.target.value })}
-                                className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-xs"
-                            >
-                                <option value="LOW">Low</option>
-                                <option value="MEDIUM">Medium</option>
-                                <option value="HIGH">High</option>
-                                <option value="URGENT">Urgent</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="font-bold text-neutral-700 block mb-1">Location</label>
-                            <input
-                                type="text"
-                                value={reqForm.location}
-                                onChange={(e) => setReqForm({ ...reqForm, location: e.target.value })}
-                                className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-xs"
-                            />
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="font-bold text-neutral-700 block mb-1">Required Skills (comma separated)</label>
-                        <input
-                            type="text"
-                            value={reqForm.skills}
-                            onChange={(e) => setReqForm({ ...reqForm, skills: e.target.value })}
-                            className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-xs"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="font-bold text-neutral-700 block mb-1">Job Description</label>
-                        <textarea
-                            rows={3}
-                            value={reqForm.description}
-                            onChange={(e) => setReqForm({ ...reqForm, description: e.target.value })}
-                            className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-xs"
-                        />
-                    </div>
-
-                    <div className="flex justify-end gap-2 pt-3 border-t border-neutral-100">
-                        <button
-                            type="button"
-                            onClick={() => setCreateReqOpen(false)}
-                            className="px-4 py-2 rounded-xl border border-neutral-200 text-neutral-600 font-bold hover:bg-neutral-50"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={createReqMutation.isPending}
-                            className="px-5 py-2 rounded-xl bg-primary text-white font-bold hover:bg-primary/95 disabled:opacity-50"
-                        >
-                            {createReqMutation.isPending ? "Creating..." : "Create Requisition"}
-                        </button>
-                    </div>
-                </form>
-            </ModalShell>
-
-            {/* ─── MODAL: ADD CANDIDATE ─── */}
-            <ModalShell open={addCandOpen} onClose={() => setAddCandOpen(false)} title="Add Candidate to Talent Pool" wide>
-                <form
-                    onSubmit={(e) => {
-                        e.preventDefault();
-                        if (!candForm.name || !candForm.email) {
-                            toast.error("Candidate name and email are required");
-                            return;
-                        }
-                        addCandMutation.mutate({
-                            ...candForm,
-                            totalExperienceYears: Number(candForm.totalExperienceYears),
-                            currentCtcLpa: Number(candForm.currentCtcLpa),
-                            expectedCtcLpa: Number(candForm.expectedCtcLpa),
-                            noticePeriodDays: Number(candForm.noticePeriodDays),
-                        });
-                    }}
-                    className="space-y-4 text-xs"
-                >
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="font-bold text-neutral-700 block mb-1">Full Name *</label>
-                            <input
-                                type="text"
-                                required
-                                value={candForm.name}
-                                onChange={(e) => setCandForm({ ...candForm, name: e.target.value })}
-                                placeholder="e.g. Rohit Deshmukh"
-                                className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-xs focus:ring-1 focus:ring-primary focus:outline-none"
-                            />
-                        </div>
-                        <div>
-                            <label className="font-bold text-neutral-700 block mb-1">Email *</label>
-                            <input
-                                type="email"
-                                required
-                                value={candForm.email}
-                                onChange={(e) => setCandForm({ ...candForm, email: e.target.value })}
-                                placeholder="rohit@example.com"
-                                className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-xs focus:ring-1 focus:ring-primary focus:outline-none"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-3">
-                        <div>
-                            <label className="font-bold text-neutral-700 block mb-1">Phone</label>
-                            <input
-                                type="text"
-                                value={candForm.phone}
-                                onChange={(e) => setCandForm({ ...candForm, phone: e.target.value })}
-                                placeholder="+91 98765 43210"
-                                className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-xs"
-                            />
-                        </div>
-                        <div>
-                            <label className="font-bold text-neutral-700 block mb-1">Experience (Yrs)</label>
-                            <input
-                                type="number"
-                                value={candForm.totalExperienceYears}
-                                onChange={(e) => setCandForm({ ...candForm, totalExperienceYears: e.target.value })}
-                                className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-xs"
-                            />
-                        </div>
-                        <div>
-                            <label className="font-bold text-neutral-700 block mb-1">Notice (Days)</label>
-                            <input
-                                type="number"
-                                value={candForm.noticePeriodDays}
-                                onChange={(e) => setCandForm({ ...candForm, noticePeriodDays: e.target.value })}
-                                className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-xs"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="font-bold text-neutral-700 block mb-1">Current Company</label>
-                            <input
-                                type="text"
-                                value={candForm.currentCompany}
-                                onChange={(e) => setCandForm({ ...candForm, currentCompany: e.target.value })}
-                                className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-xs"
-                            />
-                        </div>
-                        <div>
-                            <label className="font-bold text-neutral-700 block mb-1">Current Designation</label>
-                            <input
-                                type="text"
-                                value={candForm.currentDesignation}
-                                onChange={(e) => setCandForm({ ...candForm, currentDesignation: e.target.value })}
-                                className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-xs"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="font-bold text-neutral-700 block mb-1">Expected CTC (LPA)</label>
-                            <input
-                                type="number"
-                                value={candForm.expectedCtcLpa}
-                                onChange={(e) => setCandForm({ ...candForm, expectedCtcLpa: e.target.value })}
-                                className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-xs"
-                            />
-                        </div>
-                        <div>
-                            <label className="font-bold text-neutral-700 block mb-1">Sourcing Channel</label>
-                            <select
-                                value={candForm.source}
-                                onChange={(e) => setCandForm({ ...candForm, source: e.target.value })}
-                                className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-xs"
-                            >
-                                <option value="LINKEDIN">LinkedIn</option>
-                                <option value="JOB_PORTAL">Job Portal</option>
-                                <option value="DATABASE">Internal Database</option>
-                                <option value="AGENT_REFERRAL">Agent Referral</option>
-                                <option value="WALK_IN">Direct / Walk-In</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="font-bold text-neutral-700 block mb-1">Key Skills (comma separated)</label>
-                        <input
-                            type="text"
-                            value={candForm.skills}
-                            onChange={(e) => setCandForm({ ...candForm, skills: e.target.value })}
-                            className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-xs"
-                        />
-                    </div>
-
-                    <div className="flex justify-end gap-2 pt-3 border-t border-neutral-100">
-                        <button
-                            type="button"
-                            onClick={() => setAddCandOpen(false)}
-                            className="px-4 py-2 rounded-xl border border-neutral-200 text-neutral-600 font-bold hover:bg-neutral-50"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={addCandMutation.isPending}
-                            className="px-5 py-2 rounded-xl bg-primary text-white font-bold hover:bg-primary/95 disabled:opacity-50"
-                        >
-                            {addCandMutation.isPending ? "Adding..." : "Add Candidate"}
-                        </button>
-                    </div>
-                </form>
-            </ModalShell>
+            {/* ─── ADD CANDIDATE — same flow as everywhere in the TA portal ─── */}
+            {addCandOpen && <AddCandidateDialog jobChoice="optional" onClose={() => setAddCandOpen(false)} />}
 
             {/* ─── MODAL: SCHEDULE INTERVIEW ─── */}
             <ModalShell open={scheduleInterviewOpen} onClose={() => setScheduleInterviewOpen(false)} title="Schedule Candidate Interview">

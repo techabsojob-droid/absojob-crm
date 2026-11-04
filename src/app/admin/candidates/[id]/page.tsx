@@ -1851,7 +1851,7 @@ export default function CandidateProfilePage() {
                         >
                             <option value="">Select the application this offer is for</option>
                             {(applications || [])
-                                .filter((a: any) => !["JOINED", "REJECTED", "BACKED_OUT", "BLACKLISTED", "OFFER_ACCEPTED", "ONBOARDING"].includes(a.stage))
+                                .filter((a: any) => !["JOINED", "REJECTED", "BACKED_OUT", "NOT_INTERESTED", "WITHDRAWN", "BLACKLISTED", "OFFER_ACCEPTED", "ONBOARDING"].includes(a.stage))
                                 .map((a: any) => (
                                     <option key={a.id} value={a.id}>
                                         {a.jobTitle} · {a.clientName} ({a.stage.replace(/_/g, " ")})

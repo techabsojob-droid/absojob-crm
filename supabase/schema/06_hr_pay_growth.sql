@@ -175,7 +175,7 @@ create table if not exists crm.hr_policies (
   id                      text not null,
   org_id                  text not null,
   title                   text,
-  category                text, -- LEAVE | WFH | ATTENDANCE | PAYROLL | CODE_OF_CONDUCT | BENEFITS
+  category                text, -- WFH | LEAVE | ATTENDANCE | PAYROLL | CODE_OF_CONDUCT | BENEFITS
   version                 text,
   effective_date          date,
   acknowledgement_count   numeric,

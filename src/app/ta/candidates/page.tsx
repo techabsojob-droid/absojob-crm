@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader, Badge, SectionCard, ModalShell, EmptyState, StatCard } from "@/components/shared/ui";
+import AddCandidateDialog from "@/components/ta/AddCandidateDialog";
 import { SkeletonPulse } from "@/components/shared/UIStates";
 
 export default function TaCandidatesPage() {
@@ -41,22 +42,7 @@ export default function TaCandidatesPage() {
         fitScore: "85",
     });
 
-    // Form: New Candidate with Duplicate Detection
-    const [newCandForm, setNewCandForm] = useState({
-        name: "",
-        email: "",
-        phone: "",
-        currentDesignation: "",
-        currentCompany: "",
-        totalExperienceYears: "4",
-        currentCtcLpa: "12",
-        expectedCtcLpa: "18",
-        noticePeriodDays: "30",
-        location: "Bangalore",
-        skills: "React, Node.js, TypeScript",
-        source: "LINKEDIN",
-        rating: 4,
-    });
+
 
     // Fetch Candidates
     const { data: candidates, isLoading } = useQuery({
@@ -108,58 +94,10 @@ export default function TaCandidatesPage() {
         onError: (e: Error) => toast.error(e.message),
     });
 
-    // Mutation: Create Candidate
-    const createCandidateMutation = useMutation({
-        mutationFn: async (payload: any) => {
-            const res = await fetch("/api/admin/candidates", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
-            });
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.error || "Failed to create candidate");
-            }
-            return res.json();
-        },
-        onSuccess: () => {
-            toast.success("Candidate profile created successfully!");
-            setAddModalOpen(false);
-            setNewCandForm({
-                name: "",
-                email: "",
-                phone: "",
-                currentDesignation: "",
-                currentCompany: "",
-                totalExperienceYears: "4",
-                currentCtcLpa: "12",
-                expectedCtcLpa: "18",
-                noticePeriodDays: "30",
-                location: "Bangalore",
-                skills: "React, Node.js, TypeScript",
-                source: "LINKEDIN",
-                rating: 4,
-            });
-            qc.invalidateQueries({ queryKey: ["ta-candidates-all"] });
-        },
-        onError: (err: any) => toast.error(err.message),
-    });
 
     const allCandidates = Array.isArray(candidates) ? candidates.filter((c: any) => !c.blacklisted) : [];
     const activeJobs = Array.isArray(jobs) ? jobs.filter((j: any) => !["FULFILLED", "CLOSED", "CANCELLED"].includes(j.status)) : [];
 
-    // Duplicate Detection for the Add Candidate Modal
-    const duplicateCandidate = useMemo(() => {
-        if (!newCandForm.email && !newCandForm.phone) return null;
-        const normEmail = newCandForm.email.toLowerCase().trim();
-        const normPhone = newCandForm.phone.replace(/[^0-9]/g, "");
-
-        return allCandidates.find((c: any) => {
-            if (normEmail && c.email && c.email.toLowerCase().trim() === normEmail) return true;
-            if (normPhone && c.phone && c.phone.replace(/[^0-9]/g, "").includes(normPhone)) return true;
-            return false;
-        });
-    }, [newCandForm.email, newCandForm.phone, allCandidates]);
 
     // Filtered Candidates
     const filteredCandidates = useMemo(() => {
@@ -942,224 +880,8 @@ export default function TaCandidatesPage() {
                 </ModalShell>
             )}
 
-            {/* Modal: Add New Candidate (with LIVE Duplicate Check) */}
-            {addModalOpen && (
-                <ModalShell
-                    title="Add Candidate to Database"
-                    onClose={() => setAddModalOpen(false)}
-                >
-                    <form
-                        onSubmit={(e) => {
-                            e.preventDefault();
-                            if (!newCandForm.name || !newCandForm.email) {
-                                toast.error("Please fill Name and Email");
-                                return;
-                            }
-                            createCandidateMutation.mutate({
-                                name: newCandForm.name,
-                                email: newCandForm.email,
-                                phone: newCandForm.phone,
-                                currentDesignation: newCandForm.currentDesignation,
-                                currentCompany: newCandForm.currentCompany,
-                                totalExperienceYears: parseFloat(newCandForm.totalExperienceYears) || 0,
-                                currentCtcLpa: parseFloat(newCandForm.currentCtcLpa) || 0,
-                                expectedCtcLpa: parseFloat(newCandForm.expectedCtcLpa) || 0,
-                                noticePeriodDays: parseInt(newCandForm.noticePeriodDays) || 30,
-                                location: newCandForm.location,
-                                skills: newCandForm.skills.split(",").map((s) => s.trim()).filter(Boolean),
-                                source: newCandForm.source,
-                                rating: newCandForm.rating,
-                            });
-                        }}
-                        className="space-y-4"
-                    >
-                        {/* Duplicate Alert Banner */}
-                        {duplicateCandidate && (
-                            <div className="p-3.5 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-800 space-y-1">
-                                <div className="flex items-center gap-1.5 font-bold">
-                                    <AlertTriangle size={15} className="text-amber-600" />
-                                    <span>Possible Duplicate Candidate Detected</span>
-                                </div>
-                                <p>
-                                    A profile already exists for <strong>{duplicateCandidate.name}</strong> ({duplicateCandidate.email} · {duplicateCandidate.phone}).
-                                </p>
-                            </div>
-                        )}
-
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-neutral-700">Full Name *</label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={newCandForm.name}
-                                    onChange={(e) => setNewCandForm({ ...newCandForm, name: e.target.value })}
-                                    className="w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl focus:bg-white focus:border-primary outline-none"
-                                />
-                            </div>
-
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-neutral-700">Email Address *</label>
-                                <input
-                                    type="email"
-                                    required
-                                    value={newCandForm.email}
-                                    onChange={(e) => setNewCandForm({ ...newCandForm, email: e.target.value })}
-                                    className="w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl focus:bg-white focus:border-primary outline-none"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-neutral-700">Phone Number</label>
-                                <input
-                                    type="text"
-                                    value={newCandForm.phone}
-                                    onChange={(e) => setNewCandForm({ ...newCandForm, phone: e.target.value })}
-                                    placeholder="+91 98765 43210"
-                                    className="w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl focus:bg-white focus:border-primary outline-none"
-                                />
-                            </div>
-
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-neutral-700">Location</label>
-                                <input
-                                    type="text"
-                                    value={newCandForm.location}
-                                    onChange={(e) => setNewCandForm({ ...newCandForm, location: e.target.value })}
-                                    className="w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl focus:bg-white focus:border-primary outline-none"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-neutral-700">Current Role</label>
-                                <input
-                                    type="text"
-                                    value={newCandForm.currentDesignation}
-                                    onChange={(e) => setNewCandForm({ ...newCandForm, currentDesignation: e.target.value })}
-                                    placeholder="Senior Software Engineer"
-                                    className="w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl focus:bg-white focus:border-primary outline-none"
-                                />
-                            </div>
-
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-neutral-700">Current Company</label>
-                                <input
-                                    type="text"
-                                    value={newCandForm.currentCompany}
-                                    onChange={(e) => setNewCandForm({ ...newCandForm, currentCompany: e.target.value })}
-                                    placeholder="TechNova Corp"
-                                    className="w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl focus:bg-white focus:border-primary outline-none"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-4 gap-2">
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-neutral-700">Exp (Yrs)</label>
-                                <input
-                                    type="number"
-                                    value={newCandForm.totalExperienceYears}
-                                    onChange={(e) => setNewCandForm({ ...newCandForm, totalExperienceYears: e.target.value })}
-                                    className="w-full px-2.5 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl"
-                                />
-                            </div>
-
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-neutral-700">Cur CTC (L)</label>
-                                <input
-                                    type="number"
-                                    value={newCandForm.currentCtcLpa}
-                                    onChange={(e) => setNewCandForm({ ...newCandForm, currentCtcLpa: e.target.value })}
-                                    className="w-full px-2.5 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl"
-                                />
-                            </div>
-
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-neutral-700">Exp CTC (L)</label>
-                                <input
-                                    type="number"
-                                    value={newCandForm.expectedCtcLpa}
-                                    onChange={(e) => setNewCandForm({ ...newCandForm, expectedCtcLpa: e.target.value })}
-                                    className="w-full px-2.5 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl"
-                                />
-                            </div>
-
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-neutral-700">Notice (Days)</label>
-                                <input
-                                    type="number"
-                                    value={newCandForm.noticePeriodDays}
-                                    onChange={(e) => setNewCandForm({ ...newCandForm, noticePeriodDays: e.target.value })}
-                                    className="w-full px-2.5 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-neutral-700">Key Skills (Comma separated)</label>
-                            <input
-                                type="text"
-                                value={newCandForm.skills}
-                                onChange={(e) => setNewCandForm({ ...newCandForm, skills: e.target.value })}
-                                placeholder="React, Node.js, Python, AWS"
-                                className="w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl focus:bg-white focus:border-primary outline-none"
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-neutral-700">Source</label>
-                                <select
-                                    value={newCandForm.source}
-                                    onChange={(e) => setNewCandForm({ ...newCandForm, source: e.target.value })}
-                                    className="w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl"
-                                >
-                                    <option value="LINKEDIN">LinkedIn</option>
-                                    <option value="NAUKRI">Naukri</option>
-                                    <option value="REFERRAL">Referral</option>
-                                    <option value="DIRECT">Direct Sourced</option>
-                                    <option value="AGENCY">Agency</option>
-                                </select>
-                            </div>
-
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-neutral-700">Initial Rating (1–5)</label>
-                                <select
-                                    value={newCandForm.rating}
-                                    onChange={(e) => setNewCandForm({ ...newCandForm, rating: parseInt(e.target.value) })}
-                                    className="w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl"
-                                >
-                                    <option value={5}>5 Stars (Strong Match)</option>
-                                    <option value={4}>4 Stars (Good Candidate)</option>
-                                    <option value={3}>3 Stars (Average)</option>
-                                    <option value={2}>2 Stars (Below Par)</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div className="flex justify-end gap-2 pt-2 border-t border-neutral-100">
-                            <button
-                                type="button"
-                                onClick={() => setAddModalOpen(false)}
-                                className="px-4 py-2 border border-neutral-200 text-neutral-600 rounded-xl text-xs font-bold"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="submit"
-                                disabled={createCandidateMutation.isPending}
-                                className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-xl text-xs font-bold shadow-md shadow-primary/20 disabled:opacity-50"
-                            >
-                                {createCandidateMutation.isPending ? "Creating…" : "Save Candidate"}
-                            </button>
-                        </div>
-                    </form>
-                </ModalShell>
-            )}
+            {/* Add Candidate — same flow as everywhere in the TA portal (resume auto-fill, duplicate check, optional job) */}
+            {addModalOpen && <AddCandidateDialog jobChoice="optional" onClose={() => setAddModalOpen(false)} />}
         </div>
     );
 }

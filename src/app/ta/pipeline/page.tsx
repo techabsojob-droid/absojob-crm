@@ -12,18 +12,23 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader, Badge, SectionCard, EmptyState, ModalShell, StatCard } from "@/components/shared/ui";
+import AddCandidateDialog from "@/components/ta/AddCandidateDialog";
 import { SkeletonPulse } from "@/components/shared/UIStates";
-import { canTransition, type ApplicationStage } from "@/lib/types";
+import { canTransition, stageLabel, type ApplicationStage } from "@/lib/types";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 
 const STAGES = [
     "SOURCED",
+    "CONTACTED",
     "SCREENING",
+    "SHORTLISTED",
     "INTERVIEW_SCHEDULED",
     "TECH_ROUND",
     "CLIENT_ROUND",
     "HR_ROUND",
+    "INTERVIEW_COMPLETED",
+    "SELECTED",
     "OFFER_SENT",
     "OFFER_ACCEPTED",
     "ONBOARDING",
@@ -67,13 +72,6 @@ export default function TaPipelinePage() {
     });
     const [reasonText, setReasonText] = useState("");
 
-    // Add Candidate form
-    const [addForm, setAddForm] = useState({
-        candidateId: "",
-        jobId: "",
-        screeningNotes: "",
-        fitScore: "85",
-    });
 
     // Fetch applications
     const { data: apps, isLoading } = useQuery({
@@ -118,7 +116,7 @@ export default function TaPipelinePage() {
             return res.json();
         },
         onSuccess: (updated, vars) => {
-            toast.success(`Candidate moved to ${vars.stage.replace(/_/g, " ")}`);
+            toast.success(`Candidate moved to ${stageLabel(vars.stage)}`);
             setPreviewApp((p: any) => (p && p.id === updated.id ? { ...p, ...updated } : p));
             setReasonAction(null);
             setReasonText("");
@@ -142,7 +140,7 @@ export default function TaPipelinePage() {
             return { moved: results.filter((r) => r === null).length, errors: results.filter((r): r is string => r !== null) };
         },
         onSuccess: ({ moved, errors }) => {
-            if (moved > 0) toast.success(`Moved ${moved} candidate(s) to ${bulkTargetStage.replace(/_/g, " ")}`);
+            if (moved > 0) toast.success(`Moved ${moved} candidate(s) to ${stageLabel(bulkTargetStage)}`);
             if (errors.length > 0) toast.error(`${errors.length} could not be moved: ${errors[0]}`);
             setSelectedIds([]);
             setBulkMoveModalOpen(false);
@@ -151,28 +149,6 @@ export default function TaPipelinePage() {
         onError: () => toast.error("Failed to move candidates"),
     });
 
-    const addCandidateMutation = useMutation({
-        mutationFn: async (payload: any) => {
-            const res = await fetch("/api/ta/applications", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
-            });
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.error || "Failed to add candidate");
-            }
-            return res.json();
-        },
-        onSuccess: () => {
-            toast.success("Candidate added to pipeline (SOURCED)!");
-            setAddModalOpen(false);
-            setAddForm({ candidateId: "", jobId: "", screeningNotes: "", fitScore: "85" });
-            qc.invalidateQueries({ queryKey: ["pipeline"] });
-            qc.invalidateQueries({ queryKey: ["ta-dashboard"] });
-        },
-        onError: (err: any) => toast.error(err.message),
-    });
 
     // Offer: release (→ OFFER_SENT) and record the candidate's response
     const offerMutation = useMutation({
@@ -228,7 +204,7 @@ export default function TaPipelinePage() {
         },
     });
 
-    const rawList = Array.isArray(apps) ? apps.filter((a: any) => !["JOINED", "REJECTED", "BACKED_OUT", "BLACKLISTED"].includes(a.stage)) : [];
+    const rawList = Array.isArray(apps) ? apps.filter((a: any) => !["JOINED", "REJECTED", "BACKED_OUT", "NOT_INTERESTED", "WITHDRAWN", "BLACKLISTED"].includes(a.stage)) : [];
     const jobList = Array.isArray(jobs) ? jobs : [];
     const candidatePool = Array.isArray(allCandidates) ? allCandidates : [];
 
@@ -417,7 +393,7 @@ export default function TaPipelinePage() {
                             onChange={(e) => setJobFilter(e.target.value)}
                             className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold text-neutral-700 outline-none hover:bg-neutral-100 cursor-pointer max-w-[200px] truncate"
                         >
-                            <option value="ALL">All Requisitions ({rawList.length})</option>
+                            <option value="ALL">All Jobs ({rawList.length})</option>
                             {jobList.map((j: any) => (
                                 <option key={j.id} value={j.id}>{j.title}</option>
                             ))}
@@ -431,7 +407,7 @@ export default function TaPipelinePage() {
                         >
                             <option value="ALL">All Stages</option>
                             {COLUMNS.map((s) => (
-                                <option key={s} value={s}>{s.replace(/_/g, " ")}</option>
+                                <option key={s} value={s}>{stageLabel(s)}</option>
                             ))}
                         </select>
 
@@ -599,7 +575,7 @@ export default function TaPipelinePage() {
                                     {/* Stage Column Header */}
                                     <div className="flex items-center justify-between px-1 mb-2.5">
                                         <span className="text-[10px] font-black uppercase tracking-wider text-neutral-600 leading-tight">
-                                            {stage.replace(/_/g, " ")}
+                                            {stageLabel(stage)}
                                         </span>
                                         <span className={`text-[10px] font-black rounded-md px-1.5 py-0.5 border ${
                                             isColumnOver
@@ -613,7 +589,7 @@ export default function TaPipelinePage() {
                                     {/* Drop Feedback Badge */}
                                     {isColumnOver && (
                                         <div className="py-2 px-2.5 bg-emerald-100/90 border border-emerald-300 rounded-xl text-center text-[10px] font-black text-emerald-800 animate-pulse mb-2.5 flex items-center justify-center gap-1.5">
-                                            <Sparkles size={11} /> Drop to move to {stage.replace(/_/g, " ")}
+                                            <Sparkles size={11} /> Drop to move to {stageLabel(stage)}
                                         </div>
                                     )}
 
@@ -732,7 +708,7 @@ export default function TaPipelinePage() {
                                                             onClick={() => moveMutation.mutate({ id: a.id, stage: a.stageBeforeHold || "SCREENING" })}
                                                             className="px-2 py-0.5 rounded-md bg-primary/10 text-primary text-[9px] font-bold hover:bg-primary hover:text-white disabled:opacity-40"
                                                         >
-                                                            Resume → {(a.stageBeforeHold || "SCREENING").replace(/_/g, " ")}
+                                                            Resume → {stageLabel(a.stageBeforeHold || "SCREENING")}
                                                         </button>
                                                     </div>
                                                     ) : (
@@ -1023,11 +999,11 @@ export default function TaPipelinePage() {
                                         }}
                                         className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-bold text-neutral-800"
                                     >
-                                        <option value={previewApp.stage}>{previewApp.stage.replace(/_/g, " ")} (current)</option>
-                                        {[...STAGES, "ON_HOLD", "REJECTED", "BACKED_OUT"]
+                                        <option value={previewApp.stage}>{stageLabel(previewApp.stage)} (current)</option>
+                                        {[...STAGES, "ON_HOLD", "REJECTED", "BACKED_OUT", "NOT_INTERESTED", "WITHDRAWN"]
                                             .filter((s) => s !== "ONBOARDING" && can(previewApp.stage, s))
                                             .map((s) => (
-                                                <option key={s} value={s}>{s.replace(/_/g, " ")}</option>
+                                                <option key={s} value={s}>{stageLabel(s)}</option>
                                             ))}
                                     </select>
                                 </div>
@@ -1078,104 +1054,8 @@ export default function TaPipelinePage() {
                 </div>
             )}
 
-            {/* Modal: Add Candidate to Pipeline */}
-            {addModalOpen && (
-                <ModalShell
-                    title="Add Candidate to Pipeline"
-                    onClose={() => setAddModalOpen(false)}
-                >
-                    <form
-                        onSubmit={(e) => {
-                            e.preventDefault();
-                            if (!addForm.candidateId || !addForm.jobId) {
-                                toast.error("Please select both a candidate and a requisition");
-                                return;
-                            }
-                            addCandidateMutation.mutate({
-                                candidateId: addForm.candidateId,
-                                jobId: addForm.jobId,
-                                screeningNotes: addForm.screeningNotes,
-                                fitScore: parseInt(addForm.fitScore) || undefined,
-                            });
-                        }}
-                        className="space-y-4"
-                    >
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-neutral-700">Select Candidate *</label>
-                            <select
-                                required
-                                value={addForm.candidateId}
-                                onChange={(e) => setAddForm({ ...addForm, candidateId: e.target.value })}
-                                className="w-full px-3.5 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl focus:bg-white focus:border-primary outline-none"
-                            >
-                                <option value="">Select Candidate from Pool</option>
-                                {candidatePool.map((c: any) => (
-                                    <option key={c.id} value={c.id}>
-                                        {c.name} ({c.currentDesignation || c.location || "Profile"} · {c.totalExperienceYears}y exp)
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-neutral-700">Target Requisition *</label>
-                            <select
-                                required
-                                value={addForm.jobId}
-                                onChange={(e) => setAddForm({ ...addForm, jobId: e.target.value })}
-                                className="w-full px-3.5 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl focus:bg-white focus:border-primary outline-none"
-                            >
-                                <option value="">Select Active Requisition</option>
-                                {jobList.map((j: any) => (
-                                    <option key={j.id} value={j.id}>
-                                        {j.title} ({j.clientName} · {j.openings} openings)
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-neutral-700">Estimated Match / Fit Score (0-100%)</label>
-                            <input
-                                type="number"
-                                min="1"
-                                max="100"
-                                value={addForm.fitScore}
-                                onChange={(e) => setAddForm({ ...addForm, fitScore: e.target.value })}
-                                className="w-full px-3.5 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl focus:bg-white focus:border-primary outline-none"
-                            />
-                        </div>
-
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-neutral-700">Initial Sourcing / Screening Notes</label>
-                            <textarea
-                                rows={3}
-                                value={addForm.screeningNotes}
-                                onChange={(e) => setAddForm({ ...addForm, screeningNotes: e.target.value })}
-                                placeholder="Candidate availability, key match points, recruiter observations…"
-                                className="w-full px-3.5 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl focus:bg-white focus:border-primary outline-none"
-                            />
-                        </div>
-
-                        <div className="flex justify-end gap-2 pt-2 border-t border-neutral-100">
-                            <button
-                                type="button"
-                                onClick={() => setAddModalOpen(false)}
-                                className="px-4 py-2 border border-neutral-200 text-neutral-600 rounded-xl text-xs font-bold hover:bg-neutral-50"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="submit"
-                                disabled={addCandidateMutation.isPending}
-                                className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-xl text-xs font-bold shadow-md shadow-primary/20 disabled:opacity-50"
-                            >
-                                {addCandidateMutation.isPending ? "Adding…" : "Add to Pipeline"}
-                            </button>
-                        </div>
-                    </form>
-                </ModalShell>
-            )}
+            {/* Add Candidate — same flow as everywhere in the TA portal; a job is required here */}
+            {addModalOpen && <AddCandidateDialog jobChoice="required" defaultJobId={jobFilter !== "ALL" ? jobFilter : undefined} onClose={() => setAddModalOpen(false)} />}
 
             {/* Modal: Bulk Move */}
             {bulkMoveModalOpen && (
@@ -1192,7 +1072,7 @@ export default function TaPipelinePage() {
                                 className="w-full px-3.5 py-2.5 text-xs bg-neutral-50 border border-neutral-200 rounded-xl font-bold"
                             >
                                 {STAGES.map((s) => (
-                                    <option key={s} value={s}>{s.replace(/_/g, " ")}</option>
+                                    <option key={s} value={s}>{stageLabel(s)}</option>
                                 ))}
                             </select>
                         </div>

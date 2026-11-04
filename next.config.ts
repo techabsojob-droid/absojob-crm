@@ -11,6 +11,14 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Resume text extraction runs only on the server; load these from node_modules as-is
+  serverExternalPackages: ["unpdf", "mammoth", "word-extractor"],
+  // The India location dataset is read from disk by the server routes that use it
+  outputFileTracingIncludes: {
+    "/api/geo": ["./src/lib/geo/india-locations.json"],
+    "/api/admin/jobs": ["./src/lib/geo/india-locations.json"],
+    "/api/admin/jobs/[id]": ["./src/lib/geo/india-locations.json"],
+  },
   images: {
     remotePatterns: [
       {
