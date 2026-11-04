@@ -46,6 +46,15 @@ create trigger candidates_sync after insert or update or delete or truncate on c
 drop trigger if exists applications_sync on crm.applications;
 create trigger applications_sync after insert or update or delete or truncate on crm.applications
   for each statement execute function crm.bump_sync_version();
+drop trigger if exists call_activities_sync on crm.call_activities;
+create trigger call_activities_sync after insert or update or delete or truncate on crm.call_activities
+  for each statement execute function crm.bump_sync_version();
+drop trigger if exists external_calls_sync on crm.external_calls;
+create trigger external_calls_sync after insert or update or delete or truncate on crm.external_calls
+  for each statement execute function crm.bump_sync_version();
+drop trigger if exists custom_localities_sync on crm.custom_localities;
+create trigger custom_localities_sync after insert or update or delete or truncate on crm.custom_localities
+  for each statement execute function crm.bump_sync_version();
 drop trigger if exists interviews_sync on crm.interviews;
 create trigger interviews_sync after insert or update or delete or truncate on crm.interviews
   for each statement execute function crm.bump_sync_version();
@@ -202,6 +211,12 @@ create trigger budgets_sync after insert or update or delete or truncate on crm.
 drop trigger if exists tasks_sync on crm.tasks;
 create trigger tasks_sync after insert or update or delete or truncate on crm.tasks
   for each statement execute function crm.bump_sync_version();
+drop trigger if exists task_comments_sync on crm.task_comments;
+create trigger task_comments_sync after insert or update or delete or truncate on crm.task_comments
+  for each statement execute function crm.bump_sync_version();
+drop trigger if exists task_activity_sync on crm.task_activity;
+create trigger task_activity_sync after insert or update or delete or truncate on crm.task_activity
+  for each statement execute function crm.bump_sync_version();
 drop trigger if exists announcements_sync on crm.announcements;
 create trigger announcements_sync after insert or update or delete or truncate on crm.announcements
   for each statement execute function crm.bump_sync_version();
@@ -243,6 +258,9 @@ alter table crm.client_communications enable row level security;
 alter table crm.jobs enable row level security;
 alter table crm.candidates enable row level security;
 alter table crm.applications enable row level security;
+alter table crm.call_activities enable row level security;
+alter table crm.external_calls enable row level security;
+alter table crm.custom_localities enable row level security;
 alter table crm.interviews enable row level security;
 alter table crm.placements enable row level security;
 alter table crm.message_templates enable row level security;
@@ -295,6 +313,8 @@ alter table crm.bank_statement_lines enable row level security;
 alter table crm.manual_journals enable row level security;
 alter table crm.budgets enable row level security;
 alter table crm.tasks enable row level security;
+alter table crm.task_comments enable row level security;
+alter table crm.task_activity enable row level security;
 alter table crm.announcements enable row level security;
 alter table crm.notifications enable row level security;
 alter table crm.approval_requests enable row level security;

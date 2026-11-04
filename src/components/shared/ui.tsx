@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { ChevronRight } from "lucide-react";
+import { STAGE_LABELS, type ApplicationStage } from "@/lib/types";
 
 // ─── Page Header ─────────────────────────────────────────────
 export function PageHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: React.ReactNode }) {
@@ -109,6 +110,10 @@ const BADGE_STYLES: Record<string, string> = {
     JOINED: "bg-emerald-50 text-emerald-700 border-emerald-100",
     REJECTED: "bg-red-50 text-red-600 border-red-100",
     BACKED_OUT: "bg-orange-50 text-orange-700 border-orange-100",
+    WITHDRAWN: "bg-orange-50 text-orange-700 border-orange-100",
+    CONTACTED: "bg-blue-50 text-blue-700 border-blue-100",
+    INTERVIEW_COMPLETED: "bg-fuchsia-50 text-fuchsia-700 border-fuchsia-100",
+    SELECTED: "bg-lime-50 text-lime-700 border-lime-100",
     BLACKLISTED: "bg-red-100 text-red-800 border-red-200",
     // referrals
     SUBMITTED: "bg-blue-50 text-blue-700 border-blue-100",
@@ -155,11 +160,21 @@ const BADGE_STYLES: Record<string, string> = {
     HIRE: "bg-emerald-50 text-emerald-700 border-emerald-200",
     MAYBE: "bg-amber-50 text-amber-700 border-amber-200",
     NO_HIRE: "bg-red-50 text-red-700 border-red-200",
+    // Call activity
+    CONNECTED: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    NOT_ANSWERED: "bg-neutral-100 text-neutral-600 border-neutral-200",
+    BUSY: "bg-amber-50 text-amber-700 border-amber-200",
+    SWITCHED_OFF: "bg-neutral-100 text-neutral-600 border-neutral-200",
+    CALL_BACK: "bg-blue-50 text-blue-700 border-blue-200",
+    WRONG_NUMBER: "bg-red-50 text-red-700 border-red-200",
+    INTERESTED: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    NOT_INTERESTED: "bg-red-50 text-red-700 border-red-200",
+    LISTED: "bg-blue-50 text-blue-700 border-blue-200",
 };
 
 export function Badge({ value, label }: { value: string; label?: string }) {
     const style = BADGE_STYLES[value] ?? "bg-neutral-100 text-neutral-600 border-neutral-200";
-    const display = label ?? value.replaceAll("_", " ");
+    const display = label ?? STAGE_LABELS[value as ApplicationStage] ?? value.replaceAll("_", " ");
     return (
         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border whitespace-nowrap ${style}`}>
             {display}

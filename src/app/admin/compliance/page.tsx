@@ -41,6 +41,11 @@ export default function CompliancePage() {
         onError: () => toast.error("Update failed"),
     });
 
+    const { data: consent } = useQuery<{ candidates: number; consented: number; consentRate: number | null }>({
+        queryKey: ["admin-compliance-summary"],
+        queryFn: async () => (await fetch("/api/admin/compliance?summary=1")).json(),
+    });
+
     const criticalCount = items.filter((c) => c.severity === "CRITICAL" && c.status !== "RESOLVED").length;
     const warningCount = items.filter((c) => c.severity === "WARNING" && c.status !== "RESOLVED").length;
     const openCount = items.filter((c) => c.status === "OPEN").length;
@@ -57,7 +62,7 @@ export default function CompliancePage() {
                 <StatCard label="Critical Flags" value={criticalCount} icon={ShieldAlert} tone={criticalCount > 0 ? "red" : "emerald"} hint="immediate statutory breach risk" />
                 <StatCard label="Warning Flags" value={warningCount} icon={AlertTriangle} tone="amber" hint="document expiries (<15d)" />
                 <StatCard label="Open Actions" value={openCount} icon={Clock} tone="primary" hint="audit items pending review" />
-                <StatCard label="Consent Compliance" value="98.4%" icon={CheckCircle2} tone="emerald" hint="verified candidate consents" />
+                <StatCard label="Consent Compliance" value={consent?.consentRate != null ? `${consent.consentRate}%` : "—"} icon={CheckCircle2} tone={consent?.consentRate != null && consent.consentRate < 90 ? "amber" : "emerald"} hint={consent ? `${consent.consented} of ${consent.candidates} candidates consented` : "verified candidate consents"} />
             </div>
 
             {/* Filter Bar */}

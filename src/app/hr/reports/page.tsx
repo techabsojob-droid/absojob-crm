@@ -18,8 +18,7 @@ interface ReportDef {
     description: string;
     category: "Workforce" | "Payroll" | "Compliance" | "Operations";
     icon: any;
-    format: "CSV" | "PDF" | "XLSX";
-    lastGenerated: string;
+    format: "CSV";
 }
 
 function ReportsContent() {
@@ -57,7 +56,6 @@ function ReportsContent() {
             category: "Workforce",
             icon: Users,
             format: "CSV",
-            lastGenerated: "Today, 10:30 AM",
         },
         {
             id: "rpt-2",
@@ -65,8 +63,7 @@ function ReportsContent() {
             description: "Attendance records, check-in timestamps, working hours, late arrivals, and absence breakdowns.",
             category: "Workforce",
             icon: Calendar,
-            format: "XLSX",
-            lastGenerated: "Yesterday",
+            format: "CSV",
         },
         {
             id: "rpt-3",
@@ -75,7 +72,6 @@ function ReportsContent() {
             category: "Payroll",
             icon: DollarSign,
             format: "CSV",
-            lastGenerated: "Sep 01, 2026",
         },
         {
             id: "rpt-4",
@@ -83,8 +79,7 @@ function ReportsContent() {
             description: "Casual, Earned, Sick leave utilization trends, pending balances, and department-wise leave patterns.",
             category: "Workforce",
             icon: CalendarCheck,
-            format: "PDF",
-            lastGenerated: "3 days ago",
+            format: "CSV",
         },
         {
             id: "rpt-5",
@@ -92,8 +87,7 @@ function ReportsContent() {
             description: "Consolidated performance review ratings, goal completion metrics, and promotion recommendations.",
             category: "Operations",
             icon: Award,
-            format: "XLSX",
-            lastGenerated: "1 week ago",
+            format: "CSV",
         },
         {
             id: "rpt-6",
@@ -101,17 +95,27 @@ function ReportsContent() {
             description: "Exit management details, resignation reasons, notice period compliances, and clearance handover forms.",
             category: "Compliance",
             icon: UserMinus,
-            format: "PDF",
-            lastGenerated: "2 weeks ago",
+            format: "CSV",
         },
     ];
 
-    const handleGenerate = (id: string, title: string) => {
+    const handleGenerate = async (id: string, title: string) => {
         setGeneratingId(id);
-        setTimeout(() => {
+        try {
+            const res = await fetch(`/api/hr/reports/export?report=${id}`);
+            if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Export failed");
+            const blob = await res.blob();
+            const name = res.headers.get("Content-Disposition")?.match(/filename="([^"]+)"/)?.[1] ?? `${id}.csv`;
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url; a.download = name; a.click();
+            URL.revokeObjectURL(url);
+            toast.success(`Downloaded ${title}`);
+        } catch (e) {
+            toast.error((e as Error).message);
+        } finally {
             setGeneratingId(null);
-            toast.success(`Generated and downloaded ${title}`);
-        }, 1200);
+        }
     };
 
     const overview = analytics?.overview || {};
@@ -120,6 +124,8 @@ function ReportsContent() {
     const recruitmentFunnel = analytics?.recruitmentFunnel || [];
     const payrollByDept = analytics?.payrollByDept || [];
     const attritionReasons = analytics?.attritionReasons || [];
+    const workforce = analytics?.workforce || {};
+    const recruitment = analytics?.recruitment || {};
 
     return (
         <div className="space-y-6">
@@ -130,9 +136,9 @@ function ReportsContent() {
 
             {/* KPI Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <StatCard label="Total Headcount" value={overview.headcount || 52} icon={Users} tone="primary" hint="Active employees" />
-                <StatCard label="Avg Attendance Rate" value={overview.attendanceRate || "94%"} icon={CalendarCheck} tone="emerald" hint="Present & WFH" />
-                <StatCard label="Monthly Payroll Cost" value={inr(overview.monthlyPayroll || 4420000)} icon={DollarSign} tone="blue" hint="Current active cycle" />
+                <StatCard label="Total Headcount" value={overview.headcount ?? 0} icon={Users} tone="primary" hint="Active employees" />
+                <StatCard label="Avg Attendance Rate" value={overview.attendanceRate ?? "—"} icon={CalendarCheck} tone="emerald" hint="Present & WFH" />
+                <StatCard label="Monthly Payroll Cost" value={inr(overview.monthlyPayroll ?? 0)} icon={DollarSign} tone="blue" hint="Current active cycle" />
                 <StatCard label="Annual Attrition Rate" value={overview.attritionRate || "3.8%"} icon={UserMinus} tone="amber" hint="Industry baseline < 8%" />
             </div>
 
@@ -199,33 +205,25 @@ function ReportsContent() {
 
             {/* TAB: WORKFORCE (Section 32) */}
             {activeTab === "WORKFORCE" && (
-                <SectionCard title="Workforce Composition & Distribution">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="p-4 rounded-xl border border-neutral-200 bg-neutral-50/50 space-y-2">
-                            <span className="text-xs font-bold text-neutral-400 uppercase">Employment Type</span>
-                            <div className="space-y-1 text-xs">
-                                <div className="flex justify-between"><span>Full-time Regular:</span><strong className="text-neutral-900">46 (88%)</strong></div>
-                                <div className="flex justify-between"><span>Probationary:</span><strong className="text-neutral-900">4 (8%)</strong></div>
-                                <div className="flex justify-between"><span>Contractual / Retainer:</span><strong className="text-neutral-900">2 (4%)</strong></div>
+                <SectionCard title="Workforce Composition & Distribution" subtitle={`${overview.headcount ?? 0} active employees`}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                        {([
+                            ["Employment Type", workforce.employmentType ?? [], `${workforce.probation ?? 0} on probation`],
+                            ["Office Locations", workforce.locations ?? [], ""],
+                            ["Gender Diversity", workforce.gender ?? [], ""],
+                            ["Work Mode", workforce.workMode ?? [], ""],
+                        ] as [string, { name: string; count: number; percent: number }[], string][]).map(([label, rows, note]) => (
+                            <div key={label} className="p-4 rounded-xl border border-neutral-200 bg-neutral-50/50 space-y-2">
+                                <span className="text-xs font-bold text-neutral-400 uppercase">{label}</span>
+                                <div className="space-y-1 text-xs">
+                                    {rows.length === 0 && <p className="text-neutral-400">No data</p>}
+                                    {rows.map((r) => (
+                                        <div key={r.name} className="flex justify-between gap-2"><span className="capitalize truncate">{r.name}</span><strong className="text-neutral-900 whitespace-nowrap">{r.count} ({r.percent}%)</strong></div>
+                                    ))}
+                                </div>
+                                {note && <p className="text-[11px] text-neutral-500 pt-1">{note}</p>}
                             </div>
-                        </div>
-
-                        <div className="p-4 rounded-xl border border-neutral-200 bg-neutral-50/50 space-y-2">
-                            <span className="text-xs font-bold text-neutral-400 uppercase">Office Locations</span>
-                            <div className="space-y-1 text-xs">
-                                <div className="flex justify-between"><span>Mumbai - HQ:</span><strong className="text-neutral-900">32 Staff</strong></div>
-                                <div className="flex justify-between"><span>Bengaluru - Tech Hub:</span><strong className="text-neutral-900">14 Staff</strong></div>
-                                <div className="flex justify-between"><span>Pune - Branch:</span><strong className="text-neutral-900">6 Staff</strong></div>
-                            </div>
-                        </div>
-
-                        <div className="p-4 rounded-xl border border-neutral-200 bg-neutral-50/50 space-y-2">
-                            <span className="text-xs font-bold text-neutral-400 uppercase">Gender Diversity Ratio</span>
-                            <div className="space-y-1 text-xs">
-                                <div className="flex justify-between"><span>Female Workforce:</span><strong className="text-neutral-900">42%</strong></div>
-                                <div className="flex justify-between"><span>Male Workforce:</span><strong className="text-neutral-900">58%</strong></div>
-                            </div>
-                        </div>
+                        ))}
                     </div>
                 </SectionCard>
             )}
@@ -237,7 +235,7 @@ function ReportsContent() {
                         {attendanceTrend.map((t: any) => (
                             <div key={t.day} className="p-4 rounded-xl border border-neutral-200 bg-neutral-50/50 text-center space-y-2">
                                 <span className="text-xs font-extrabold text-neutral-500 uppercase">{t.day}</span>
-                                <div className="text-lg font-black text-emerald-600">{t.rate}%</div>
+                                <div className="text-lg font-black text-emerald-600">{t.rate != null ? `${t.rate}%` : "—"}</div>
                                 <div className="text-[11px] text-neutral-400 space-y-0.5">
                                     <p>Late: {t.late}</p>
                                     <p>WFH: {t.wfh}</p>
@@ -254,18 +252,18 @@ function ReportsContent() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="p-4 rounded-xl border border-neutral-200 bg-neutral-50 space-y-1">
                             <span className="text-xs font-bold text-neutral-400 uppercase">Average Time-to-Hire</span>
-                            <div className="text-xl font-black text-neutral-900">18.5 Days</div>
-                            <p className="text-[11px] text-emerald-600 font-semibold">4 days faster than industry average</p>
+                            <div className="text-xl font-black text-neutral-900">{recruitment.avgTimeToHireDays != null ? `${recruitment.avgTimeToHireDays} Days` : "—"}</div>
+                            <p className="text-[11px] text-neutral-500">From entering the pipeline to joining</p>
                         </div>
                         <div className="p-4 rounded-xl border border-neutral-200 bg-neutral-50 space-y-1">
                             <span className="text-xs font-bold text-neutral-400 uppercase">Offer Acceptance Ratio</span>
-                            <div className="text-xl font-black text-primary">87.5%</div>
-                            <p className="text-[11px] text-neutral-500">Based on last 16 released offers</p>
+                            <div className="text-xl font-black text-primary">{recruitment.offerAcceptancePct != null ? `${recruitment.offerAcceptancePct}%` : "—"}</div>
+                            <p className="text-[11px] text-neutral-500">Based on {recruitment.offersReleased ?? 0} released offer(s)</p>
                         </div>
                         <div className="p-4 rounded-xl border border-neutral-200 bg-neutral-50 space-y-1">
                             <span className="text-xs font-bold text-neutral-400 uppercase">Top Source Channel</span>
-                            <div className="text-xl font-black text-neutral-900">Employee Referrals (44%)</div>
-                            <p className="text-[11px] text-neutral-500">Followed by direct agency sourcing</p>
+                            <div className="text-xl font-black text-neutral-900 capitalize">{recruitment.topSource ? `${recruitment.topSource.source.replaceAll("_", " ").toLowerCase()} (${recruitment.topSource.pct}%)` : "—"}</div>
+                            <p className="text-[11px] text-neutral-500 capitalize">{recruitment.secondSource ? `Followed by ${recruitment.secondSource.source.replaceAll("_", " ").toLowerCase()} (${recruitment.secondSource.pct}%)` : "Single source so far"}</p>
                         </div>
                     </div>
                 </SectionCard>
@@ -353,7 +351,7 @@ function ReportsContent() {
                                     </p>
 
                                     <div className="pt-3 border-t border-neutral-100 flex items-center justify-between text-xs">
-                                        <span className="text-neutral-400">Last: {rpt.lastGenerated}</span>
+                                        <span className="text-neutral-400">Live data</span>
                                         <button
                                             onClick={() => handleGenerate(rpt.id, rpt.title)}
                                             disabled={isGenerating}

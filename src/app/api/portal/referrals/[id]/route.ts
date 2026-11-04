@@ -4,8 +4,8 @@ import { applications, candidates, clients, commissionLedger, interviews, jobs, 
 import { referralIncentiveFor } from "@/lib/mock/pipeline";
 
 const STAGE_LABEL: Record<string, string> = {
-    SOURCED: "Added to pipeline", SCREENING: "Screening", INTERVIEW_SCHEDULED: "Interview scheduled", TECH_ROUND: "Technical round", CLIENT_ROUND: "Client round", HR_ROUND: "HR round",
-    OFFER_SENT: "Offer released", OFFER_ACCEPTED: "Offer accepted", ONBOARDING: "Onboarding", JOINED: "Joined", REJECTED: "Not selected", BACKED_OUT: "Candidate backed out", ON_HOLD: "On hold", BLACKLISTED: "Closed",
+    SOURCED: "Added to pipeline", CONTACTED: "Contacted", SCREENING: "Screening", SHORTLISTED: "Shortlisted", INTERVIEW_COMPLETED: "Interviews completed", SELECTED: "Selected", INTERVIEW_SCHEDULED: "Interview scheduled", TECH_ROUND: "Technical round", CLIENT_ROUND: "Client round", HR_ROUND: "HR round",
+    OFFER_SENT: "Offer released", OFFER_ACCEPTED: "Offer accepted", ONBOARDING: "Onboarding", JOINED: "Joined", REJECTED: "Not selected", BACKED_OUT: "Candidate backed out", ON_HOLD: "On hold", BLACKLISTED: "Closed", NOT_INTERESTED: "Candidate not interested", WITHDRAWN: "Candidate withdrew",
 };
 
 // GET — one of my referrals with a partner-safe timeline (no interview feedback, CTC or internal notes)

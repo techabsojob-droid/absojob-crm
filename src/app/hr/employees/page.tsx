@@ -15,6 +15,7 @@ import { useSearchParams } from "next/navigation";
 const DEPARTMENTS = ["ALL", "Engineering", "Human Resources", "Talent Acquisition", "Operations", "Finance", "Sales", "Field", "Leadership"];
 
 import { Suspense } from "react";
+import { TempPasswordDialog, type IssuedLogin } from "@/components/shared/TempPasswordDialog";
 
 export default function HrEmployeesPageWrapper() {
     return <Suspense><HrEmployeesPage /></Suspense>;
@@ -70,6 +71,7 @@ function HrEmployeesPage() {
         enabled: !!selectedEmpId,
     });
 
+    const [issued, setIssued] = useState<IssuedLogin | null>(null);
     const addEmployeeMutation = useMutation({
         mutationFn: async (payload: typeof formData) => {
             const res = await fetch("/api/hr/employees", {
@@ -86,6 +88,7 @@ function HrEmployeesPage() {
             setAddModalOpen(false);
             setSelectedEmpId(newEmp.id);
             toast.success(`Employee ${newEmp.employeeId} registered.`);
+            if (newEmp.tempPassword) setIssued({ name: newEmp.name, email: newEmp.loginEmail ?? newEmp.email, password: newEmp.tempPassword });
         },
         onError: (err: any) => {
             toast.error(err.message || "Failed to add employee");
@@ -108,6 +111,7 @@ function HrEmployeesPage() {
 
     return (
         <div className="space-y-6 animate-fade-in">
+            <TempPasswordDialog login={issued} onClose={() => setIssued(null)} />
             <PageHeader
                 title="Employee Directory"
                 subtitle="Centralized personnel management, organizational hierarchy & 360° employee records"

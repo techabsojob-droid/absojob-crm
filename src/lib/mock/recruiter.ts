@@ -5,6 +5,7 @@
 import type { Candidate, MessageTemplate, User } from "@/lib/types";
 import { agentProfiles, applications, candidates, clients, commissionLedger, interviews, jobs, organizations, placements, recruiterTargets, referrals, users } from "./data";
 import { referralIncentiveFor } from "./pipeline";
+import { settingsFor } from "./fin/core";
 
 export const esc = (s: unknown) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
@@ -16,7 +17,7 @@ export function renderTemplate(text: string, vars: TemplateVars): string {
 
 /** Builds template variables for a candidate (optionally in the context of one application). */
 export function varsFor(me: User, cand?: Candidate | null, applicationId?: string | null, clientId?: string | null): TemplateVars {
-    const app = applicationId ? applications.find((a) => a.id === applicationId) : cand ? applications.find((a) => a.candidateId === cand.id && !["REJECTED", "BACKED_OUT", "JOINED"].includes(a.stage)) : undefined;
+    const app = applicationId ? applications.find((a) => a.id === applicationId) : cand ? applications.find((a) => a.candidateId === cand.id && !["REJECTED", "BACKED_OUT", "NOT_INTERESTED", "WITHDRAWN", "JOINED"].includes(a.stage)) : undefined;
     const job = app ? jobs.find((j) => j.id === app.jobId) : undefined;
     const client = clients.find((c) => c.id === (clientId ?? job?.clientId));
     const next = app ? interviews.filter((i) => i.applicationId === app.id && i.status === "SCHEDULED" && +new Date(i.scheduledAt) >= Date.now()).sort((a, b) => +new Date(a.scheduledAt) - +new Date(b.scheduledAt))[0] : undefined;
@@ -83,9 +84,108 @@ export function recruiterPerformance(user: User, month: string) {
     const ratios = {
         submissionToOffer: Math.round((offered / total) * 100),
         offerToJoin: offered ? Math.round((joined / offered) * 100) : 0,
-        activePipeline: myApps.filter((a) => !["JOINED", "REJECTED", "BACKED_OUT", "BLACKLISTED"].includes(a.stage)).length,
+        activePipeline: myApps.filter((a) => !["JOINED", "REJECTED", "BACKED_OUT", "NOT_INTERESTED", "WITHDRAWN", "BLACKLISTED"].includes(a.stage)).length,
     };
     return { month, actual, target, funnel, trend, incentives, ratios };
+}
+
+// ─── Revenue vs target, shortfall and incentive ──────────────
+
+/** Indian financial year (April–March) months from April up to and including `month`. */
+export function fyMonthsUpTo(month: string): string[] {
+    const [y, m] = month.split("-").map(Number);
+    const startYear = m >= 4 ? y : y - 1;
+    const out: string[] = [];
+    for (let d = new Date(startYear, 3, 1); ; d = new Date(d.getFullYear(), d.getMonth() + 1, 1)) {
+        const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        out.push(k);
+        if (k === month) break;
+    }
+    return out;
+}
+
+const fyLabel = (month: string) => {
+    const [y, m] = month.split("-").map(Number);
+    const start = m >= 4 ? y : y - 1;
+    return `FY ${start}-${String((start + 1) % 100).padStart(2, "0")}`;
+};
+
+/**
+ * Money view for one recruiter: revenue against the revenue target for the month and the
+ * financial year so far, the shortfall (and joinings needed to close it), and incentives.
+ * Incentives come from the commission ledger, booked when the placement invoice is collected.
+ */
+export function recruiterEarnings(user: User, month: string) {
+    const pct = settingsFor(user.orgId).recruiterIncentivePct ?? 0;
+    const targetOf = (m: string) => recruiterTargets.find((t) => t.orgId === user.orgId && t.userId === user.id && t.month === m) ?? null;
+
+    const monthRevenue = recruiterMonth(user, month).revenue;
+    const monthTarget = targetOf(month)?.revenue ?? null;
+
+    const fy = fyMonthsUpTo(month);
+    const fyRevenue = fy.reduce((sum, m) => sum + recruiterMonth(user, m).revenue, 0);
+    const fyTargets = fy.map(targetOf).filter((t): t is NonNullable<typeof t> => !!t && t.revenue > 0);
+    const fyTarget = fyTargets.length ? fyTargets.reduce((sum, t) => sum + t.revenue, 0) : null;
+
+    // Average fee per placement (this recruiter's last 12 months, else the org's) to say how many joinings close the gap
+    const since = new Date(Date.now() - 365 * 86400000).toISOString().slice(0, 10);
+    const avgOf = (list: typeof placements) => {
+        const xs = list.filter((p) => p.placementDate >= since && (p.revenueInr || 0) > 0);
+        return xs.length ? xs.reduce((sum, p) => sum + p.revenueInr, 0) / xs.length : null;
+    };
+    const avgFee = avgOf(placements.filter((p) => p.orgId === user.orgId && p.recruiterId === user.id)) ?? avgOf(placements.filter((p) => p.orgId === user.orgId));
+
+    const today = new Date().toISOString().slice(0, 10);
+    const thisMonth = today.slice(0, 7);
+    const lastDay = new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0).getDate();
+    const daysLeft = month === thisMonth ? lastDay - Number(today.slice(8, 10)) + 1 : month > thisMonth ? lastDay : 0;
+
+    const gap = (revenue: number, target: number | null) => target == null ? null : {
+        target,
+        shortfall: Math.max(0, target - revenue),
+        surplus: Math.max(0, revenue - target),
+        achievedPct: target > 0 ? Math.round((revenue / target) * 100) : null,
+        joiningsNeeded: target > revenue && avgFee ? Math.ceil((target - revenue) / avgFee) : 0,
+    };
+
+    // Incentives
+    const ledger = commissionLedger.filter((l) => l.orgId === user.orgId && l.userId === user.id && ["RECRUITER_INCENTIVE", "CLAWBACK"].includes(l.type) && l.status !== "CANCELLED");
+    const inc = ledger.filter((l) => l.type === "RECRUITER_INCENTIVE");
+    const monthEnd = `${month}-31T23:59:59`;
+    const sum = (xs: typeof ledger) => xs.reduce((s, l) => s + l.amountInr, 0);
+    const paid = inc.filter((l) => l.status === "PAID");
+    const tds = paid.reduce((s, l) => s + (l.tdsAmount ?? 0), 0);
+    const clawback = Math.abs(sum(ledger.filter((l) => l.type === "CLAWBACK")));
+    // Placements whose invoice hasn't been collected yet → incentive still to come
+    const booked = new Set(inc.map((l) => l.placementId).filter(Boolean));
+    const upcoming = placements.filter((p) => p.orgId === user.orgId && p.recruiterId === user.id && fy.includes(p.placementDate.slice(0, 7))
+        && !booked.has(p.id) && !["NO_SHOW", "CANCELLED"].includes(p.joiningStatus) && (p.revenueInr || 0) > 0);
+
+    return {
+        month,
+        fyLabel: fyLabel(month),
+        fyFrom: fy[0],
+        incentivePct: pct,
+        avgFeePerPlacement: avgFee == null ? null : Math.round(avgFee),
+        daysLeftInMonth: daysLeft,
+        thisMonth: { revenue: monthRevenue, ...(gap(monthRevenue, monthTarget) ?? { target: null, shortfall: null, surplus: null, achievedPct: null, joiningsNeeded: null }) },
+        yearToDate: {
+            revenue: fyRevenue, monthsWithTarget: fyTargets.length, months: fy.length,
+            ...(gap(fyRevenue, fyTarget) ?? { target: null, shortfall: null, surplus: null, achievedPct: null, joiningsNeeded: null }),
+        },
+        incentive: {
+            earnedThisMonth: sum(inc.filter((l) => l.createdAt.slice(0, 7) === month)),
+            earnedThisYear: sum(inc.filter((l) => l.createdAt.slice(0, 7) >= fy[0] && l.createdAt <= monthEnd)),
+            earnedAllTime: sum(inc),
+            pending: sum(inc.filter((l) => ["PENDING", "APPROVED"].includes(l.status))),
+            paidGross: sum(paid),
+            tds,
+            paidNet: sum(paid) - tds,
+            clawback,
+            expected: Math.round(upcoming.reduce((s, p) => s + p.revenueInr, 0) * (pct / 100)),
+            expectedPlacements: upcoming.length,
+        },
+    };
 }
 
 // ─── Partner (agent) stats ───────────────────────────────────

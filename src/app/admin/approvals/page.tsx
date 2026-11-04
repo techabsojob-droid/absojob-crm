@@ -46,6 +46,12 @@ export default function ApprovalsPage() {
 
     const pending = approvals.filter((a) => a.status === "PENDING");
     const approved = approvals.filter((a) => a.status === "APPROVED");
+    const salaryExceptions = approvals.filter((a) => a.type === "SALARY_EXCEPTION" && a.status === "PENDING").length;
+    const decided = approvals.filter((a) => a.reviewedAt);
+    const avgResponseHrs = decided.length
+        ? decided.reduce((s, a) => s + Math.max(0, new Date(a.reviewedAt!).getTime() - new Date(a.date).getTime()), 0) / decided.length / 3600000
+        : null;
+    const avgResponse = avgResponseHrs == null ? "—" : avgResponseHrs < 48 ? `${avgResponseHrs.toFixed(1)} hrs` : `${(avgResponseHrs / 24).toFixed(1)} days`;
 
     return (
         <div className="space-y-6">
@@ -58,8 +64,8 @@ export default function ApprovalsPage() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard label="Pending Action" value={pending.length} icon={Clock} tone={pending.length > 0 ? "amber" : "emerald"} hint="awaiting admin review" />
                 <StatCard label="Approved This Month" value={approved.length} icon={ShieldCheck} tone="emerald" hint="sanctioned requisitions" />
-                <StatCard label="Salary Exceptions" value="1" icon={AlertTriangle} tone="blue" hint="outside median band" />
-                <StatCard label="Avg Response Time" value="4.2 hrs" icon={Clock} tone="purple" hint="SLA adherence" />
+                <StatCard label="Salary Exceptions" value={salaryExceptions} icon={AlertTriangle} tone={salaryExceptions > 0 ? "amber" : "blue"} hint="pending, outside median band" />
+                <StatCard label="Avg Response Time" value={avgResponse} icon={Clock} tone="purple" hint={`across ${decided.length} decided request(s)`} />
             </div>
 
             {/* Filters */}

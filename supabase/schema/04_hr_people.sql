@@ -203,7 +203,7 @@ create table if not exists crm.exit_records (
   notice_period_days         numeric,
   last_working_day           date,
   reason                     text,
-  status                     text, -- PENDING_APPROVAL | COMPLETED | NOTICE_PERIOD | CLEARANCE | SETTLED | WITHDRAWN
+  status                     text, -- PENDING_APPROVAL | WITHDRAWN | COMPLETED | NOTICE_PERIOD | CLEARANCE | SETTLED
   exit_interview_notes       text,
   clearance_checklist        jsonb,
   fnf_settled                boolean,
@@ -223,10 +223,10 @@ create table if not exists crm.employee_requests (
   employee_id          text,
   employee_name        text,
   department           text,
-  type                 text, -- OTHER | EXPERIENCE_LETTER | SALARY_CERTIFICATE | ID_CARD | LEAVE | ATTENDANCE_CORRECTION | WFH | ADDRESS_CHANGE | BANK_CHANGE | NAME_CHANGE | IT_SUPPORT | GRIEVANCE
+  type                 text, -- OTHER | WFH | EXPERIENCE_LETTER | SALARY_CERTIFICATE | ID_CARD | LEAVE | ATTENDANCE_CORRECTION | ADDRESS_CHANGE | BANK_CHANGE | NAME_CHANGE | IT_SUPPORT | GRIEVANCE
   description          text,
   priority             text, -- LOW | MEDIUM | HIGH | URGENT
-  status               text, -- APPROVED | REJECTED | PENDING | WITHDRAWN | IN_REVIEW
+  status               text, -- APPROVED | REJECTED | WITHDRAWN | PENDING | IN_REVIEW
   payload              jsonb,
   attachment_file_id   text,
   confidential         boolean,

@@ -23,7 +23,7 @@ export const DOMAINS: DomainFile[] = [
         file: "02_recruitment.sql",
         title: "Recruitment — clients, jobs, candidates, pipeline",
         about: "The TA workspace: client accounts, requisitions, the candidate bank, applications moving through stages, interviews and placements.",
-        tables: ["clients", "clientLeads", "clientCommunications", "jobs", "candidates", "applications", "interviews", "placements", "messageTemplates", "recruiterTargets"],
+        tables: ["clients", "clientLeads", "clientCommunications", "jobs", "candidates", "applications", "callActivities", "externalCalls", "customLocalities", "interviews", "placements", "messageTemplates", "recruiterTargets"],
     },
     {
         file: "03_partners.sql",
@@ -58,8 +58,8 @@ export const DOMAINS: DomainFile[] = [
     {
         file: "08_workspace.sql",
         title: "Workspace — tasks, approvals, notifications, audit",
-        about: "Cross-role plumbing: tasks, announcements, in-app notifications, approval requests, audit trail, compliance, data quality, integrations, workflow rules, outgoing email and uploaded files.",
-        tables: ["tasks", "announcements", "notifications", "approvals", "auditLogs", "complianceItems", "dataQualityIssues", "integrationServices", "workflows", "emailOutbox", "storedFiles"],
+        about: "Cross-role plumbing: Jira-style tasks with comments and history, announcements, in-app notifications, approval requests, audit trail, compliance, data quality, integrations, workflow rules, outgoing email and uploaded files.",
+        tables: ["tasks", "taskComments", "taskActivity", "announcements", "notifications", "approvals", "auditLogs", "complianceItems", "dataQualityIssues", "integrationServices", "workflows", "emailOutbox", "storedFiles"],
     },
 ];
 
@@ -99,6 +99,8 @@ export const REFERENCES: Record<string, Record<string, string>> = {
     jobs: { clientId: "clients" },
     candidates: { referredByUserId: "users" },
     applications: { candidateId: "candidates", jobId: "jobs", recruiterId: "users" },
+    callActivities: { candidateId: "candidates", applicationId: "applications", jobId: "jobs", recruiterId: "users" },
+    externalCalls: { recruiterId: "users", jobId: "jobs", convertedCandidateId: "candidates" },
     interviews: { applicationId: "applications" },
     placements: { candidateId: "candidates", jobId: "jobs", clientId: "clients" },
     recruiterTargets: { recruiterId: "users" },
@@ -137,18 +139,25 @@ export const REFERENCES: Record<string, Record<string, string>> = {
     contractAssignments: { clientId: "clients", recruiterId: "users" },
     timesheets: { assignmentId: "contractAssignments" },
     tasks: { assignedToId: "users", createdById: "users" },
+    taskComments: { taskId: "tasks", authorId: "users" },
+    taskActivity: { taskId: "tasks", actorId: "users" },
     announcements: { createdById: "users" },
     notifications: { userId: "users" },
     storedFiles: { ownerUserId: "users" },
 };
 
 export const TABLE_COMMENTS: Record<string, string> = {
+    customLocalities: "Localities / areas recruiters typed in that are not in the India Post directory (e.g. \"Hinjewadi Phase 1\"), stored once per city + name + PIN and suggested afterwards. State / district / city ids refer to the built-in India location dataset.",
+    externalCalls: "Calls to people who are not in the candidate database yet (numbers from job portals, Excel sheets, references). One row per call with the person's details and the same feedback as a candidate call; linked to the candidate once they are added.",
+    callActivities: "One row per recruiter call with a candidate (status, interest, ratings, remarks, next action). Rows are appended, never overwritten, so the full call history is kept.",
     organizations: "One row per tenant (staffing agency).",
     users: "Every login: admins, HR, finance, TA, field agents, employees. password_hash is NULL for seeded demo users (they use the demo password).",
     organizationSettingsSeed: "Agency profile and preferences, one JSON document per organization.",
     employees: "HR record behind each staff login (agents excluded). employee_id is the human code, e.g. EMP-001.",
     attendance: "One row per user per day; check_in / check_out keep the exact string the app writes.",
-    tasks: "Tasks assigned between users; drives TA › Tasks, HR › Tasks and Portal › Tasks.",
+    tasks: "Jira-style tasks: key (ABS-12), type, status workflow, assignee, reporter (created_by_id), watchers, labels. Shown on Admin, HR, TA and Portal › Tasks.",
+    taskComments: "Comments on a task. mention_ids lists users @mentioned in the body.",
+    taskActivity: "Task history: creation, every field change (field / from_value / to_value) and comments.",
     notifications: "In-app bell notifications, one row per recipient.",
     auditLogs: "Append-only trail of who did what.",
 };

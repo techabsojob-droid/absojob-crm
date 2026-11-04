@@ -5,7 +5,7 @@ import type {
   Holiday, PolicyAcknowledgement, BenefitEnrollment, TaxDeclaration,
   Organization, User, Client, JobRequisition, Candidate, CandidateSource, Application,
   Interview, Referral, CommissionLedgerEntry, Payout, AttendanceRecord,
-  LeaveRequest, Task, Announcement, AuditLog, Notification,
+  LeaveRequest, Task, TaskComment, TaskActivity, Announcement, AuditLog, Notification,
   Employee, OnboardingRecord, PayrollRecord, PerformanceReview,
   AssetRecord, TrainingProgram, ExitRecord, DocumentRecord,
   PlacementRecord, ClientLead, ApprovalRequest, ComplianceItem, DataQualityIssue, IntegrationService,
@@ -14,8 +14,9 @@ import type {
   EmployeeBenefit, HrPolicyItem, WorkflowAutomationRule,
   Invoice, Expense, FinanceSettings, Receipt, RecurringInvoice, Vendor, VendorBill, ContractAssignment, Timesheet,
   FnfPayment, PayeeProfile, BankStatementLine, ManualJournal, Budget, EmailMessage, StoredFile,
-  AgentProfile, ReferralMessage, MessageTemplate, ClientCommunication, RecruiterTarget,
+  AgentProfile, ReferralMessage, MessageTemplate, ClientCommunication, RecruiterTarget, CallActivity, ExternalCallLog, CustomLocality,
 } from "@/lib/types";
+import { nextRequisitionCode } from "@/lib/fit";
 
 import { attachStore } from "@/lib/db/sync";
 
@@ -475,7 +476,7 @@ export const jobs: JobRequisition[] = persist("jobs", () => ([
     createdAt: daysAgo(15),
     updatedAt: daysAgo(2)
   },
-]));
+] satisfies JobRequisition[]).reduce<JobRequisition[]>((acc, j) => [...acc, { ...j, requisitionCode: nextRequisitionCode(acc, j.orgId, new Date(j.createdAt).getFullYear()) }], []));
 
 // ─── Candidates ───────────────────────────────────────────────
 
@@ -966,6 +967,21 @@ export const interviews: Interview[] = persist("interviews", () => ([
   mkInterview({ applicationId: "app-002", round: "TECH_1", mode: "VIDEO", scheduledAt: daysAhead(0, 14, 45), durationMins: 45, interviewerName: "Rahul Sharma", status: "SCHEDULED", outcome: "PENDING", score: null, feedback: null, meetingLink: "https://meet.google.com/conflict-test", createdBy: "usr-ta1" }),
 ]));
 
+// ─── Call activity (every recruiter call is its own row) ──────
+
+export const callActivities: CallActivity[] = persist("callActivities", () => ([
+  { id: "call-001", orgId: ORG_1, candidateId: applications[0].candidateId, applicationId: applications[0].id, jobId: applications[0].jobId, recruiterId: "usr-ta1", calledAt: daysAgo(6, 2), durationMins: 6, callType: "OUTGOING", callStatus: "CONNECTED", purpose: "INITIAL_SCREENING", candidateInterest: "INTERESTED", communicationRating: "GOOD", technicalRating: "MODERATE", screeningFeedback: "Good communication, hands-on with Node.js and PostgreSQL. Looking for a job change.", reasonForJobChange: "Better opportunity and salary hike", remarks: "Interested in the role. Resume shortlisted for technical round.", nextAction: "SCHEDULE_TECH_INTERVIEW", followUpDate: null, followUpTaskId: null, currentCtcLpa: null, expectedCtcLpa: null, noticePeriodDays: null, createdAt: daysAgo(6, 2) },
+  { id: "call-002", orgId: ORG_1, candidateId: applications[1].candidateId, applicationId: applications[1].id, jobId: applications[1].jobId, recruiterId: "usr-ta1", calledAt: daysAgo(3, 5), durationMins: null, callType: "OUTGOING", callStatus: "NOT_ANSWERED", purpose: "FOLLOW_UP", candidateInterest: null, communicationRating: null, technicalRating: null, screeningFeedback: null, reasonForJobChange: null, remarks: "No answer. Will try again in the evening.", nextAction: "CALL_BACK", followUpDate: null, followUpTaskId: null, currentCtcLpa: null, expectedCtcLpa: null, noticePeriodDays: null, createdAt: daysAgo(3, 5) },
+]));
+
+// ─── Outside-data calls (people not yet in the candidate database) ──
+
+export const externalCalls: ExternalCallLog[] = persist("externalCalls", () => ([] as ExternalCallLog[]));
+
+// ─── Localities recruiters added that the India Post directory doesn't have ──
+
+export const customLocalities: CustomLocality[] = persist("customLocalities", () => ([] as CustomLocality[]));
+
 // ─── Referrals (agent-submitted candidates) ───────────────────
 
 export const referrals: Referral[] = persist("referrals", () => ([
@@ -1010,27 +1026,31 @@ function seedAttendance(): AttendanceRecord[] {
   const records: AttendanceRecord[] = [];
   const activeUsers = users.filter((u) => u.orgId === ORG_1 && u.status === "ACTIVE");
   let seq = 1;
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  // Rolling four weeks so dashboards and trends always have history
+  const start = new Date(now.getTime() - 27 * 86400000);
+  const pad = (n: number) => String(n).padStart(2, "0");
 
-  for (let d = new Date(monthStart); d <= now; d.setDate(d.getDate() + 1)) {
+  for (let d = new Date(start); d <= now; d.setDate(d.getDate() + 1)) {
     const iso = d.toISOString().split("T")[0];
     const dow = d.getDay();
     // Mon–Fri working week; nobody punches on company holidays in the seed data
     if (dow === 0 || dow === 6 || HOLIDAY_SEED.some(([date, , type]) => date === iso && type !== "OPTIONAL")) continue;
 
     for (const u of activeUsers) {
-      const seedVal = (u.id.charCodeAt(u.id.length - 1) * 31 + d.getDate() * 17) % 10;
+      // Deterministic per person per day, roughly: 70% on time, 10% late, 8% WFH, 4% half day, 4% leave, 3% absent
+      const h = [...`${u.id}|${iso}`].reduce((acc, ch) => (acc * 31 + ch.charCodeAt(0)) % 1000003, 7) % 100;
       let status: AttendanceRecord["status"] = "PRESENT";
-      if (seedVal === 0 && u.role !== "SUPER_ADMIN") status = "ON_LEAVE";
-      else if (seedVal === 1) status = "ABSENT";
-      else if (seedVal === 2) status = "HALF_DAY";
-      else if (seedVal === 3 && u.role === "EMPLOYEE") status = "WFH";
+      let lateBy = 0;
+      if (h < 4 && u.role !== "SUPER_ADMIN") status = "ON_LEAVE";
+      else if (h < 7) status = "ABSENT";
+      else if (h < 11) status = "HALF_DAY";
+      else if (h < 19 && u.role !== "AGENT") status = "WFH";
+      else if (h < 29) { status = "LATE"; lateBy = 16 + (h % 9) * 5; }
 
       const isToday = iso === todayStr;
-      const checkIn = status === "ABSENT" || status === "ON_LEAVE"
-        ? null
-        : `${iso}T${seedVal % 2 === 0 ? "09" : "10"}:${String((seedVal * 7) % 60).padStart(2, "0")}:00`;
-
+      const inMins = status === "LATE" ? 9 * 60 + 30 + lateBy : 9 * 60 + 5 + (h % 25);
+      const checkIn = status === "ABSENT" || status === "ON_LEAVE" ? null : `${iso}T${pad(Math.floor(inMins / 60))}:${pad(inMins % 60)}:00`;
+      const outMins = status === "HALF_DAY" ? 14 * 60 + (h % 20) : 18 * 60 + 10 + (h % 40);
       records.push({
         id: `att-${seq++}`,
         orgId: ORG_1,
@@ -1038,7 +1058,9 @@ function seedAttendance(): AttendanceRecord[] {
         date: iso,
         status,
         checkIn,
-        checkOut: isToday ? null : checkIn ? `${iso}T18:${String((seedVal * 13) % 60).padStart(2, "0")}:00` : null,
+        checkOut: isToday || !checkIn ? null : `${iso}T${pad(Math.floor(outMins / 60))}:${pad(outMins % 60)}:00`,
+        mode: status === "WFH" ? "WFH" : "OFFICE",
+        ...(lateBy ? { lateByMinutes: lateBy } : {}),
       });
     }
   }
@@ -1066,12 +1088,39 @@ export const leaveRequests: LeaveRequest[] = persist("leaveRequests", () => ([
 // ─── Tasks ────────────────────────────────────────────────────
 
 export const tasks: Task[] = persist("tasks", () => ([
-  { id: "tsk-001", orgId: ORG_1, assignedToId: "usr-ta1", createdById: "usr-tam", title: "Collect documents from Karan Malhotra", description: "Offer released — need PAN, degree certs before joining.", dueDate: dateOnly(1), priority: "URGENT", linkedApplicationId: "app-003", completed: false, createdAt: daysAgo(2) },
-  { id: "tsk-002", orgId: ORG_1, assignedToId: "usr-ta1", createdById: "usr-tam", title: "Follow up: Amit Verma client round feedback", description: null, dueDate: dateOnly(0), priority: "HIGH", linkedApplicationId: "app-001", completed: false, createdAt: daysAgo(1) },
-  { id: "tsk-003", orgId: ORG_1, assignedToId: "usr-ta2", createdById: "usr-tam", title: "Source 5 more profiles for Risk Analyst", description: "FinEdge wants diverse banking backgrounds.", dueDate: dateOnly(2), priority: "HIGH", linkedApplicationId: null, completed: false, createdAt: daysAgo(3) },
-  { id: "tsk-004", orgId: ORG_1, assignedToId: "usr-ag1", createdById: "usr-tam", title: "Refer 3 candidates for ICU Nurse (MediCare)", description: "Urgent requisition pending approval — gather interest first.", dueDate: dateOnly(3), priority: "MEDIUM", linkedApplicationId: null, completed: false, createdAt: daysAgo(1) },
-  { id: "tsk-005", orgId: ORG_1, assignedToId: "usr-ta2", createdById: "usr-ta2", title: "Update candidate tracker sheet", description: null, dueDate: dateOnly(-1), priority: "LOW", linkedApplicationId: null, completed: true, createdAt: daysAgo(5) },
-  { id: "tsk-006", orgId: ORG_1, assignedToId: "usr-em1", createdById: "usr-sa", title: "Prepare monthly ops report draft", description: null, dueDate: dateOnly(4), priority: "MEDIUM", linkedApplicationId: null, completed: false, createdAt: daysAgo(2) },
+  { id: "tsk-001", orgId: ORG_1, key: "ABS-1", type: "DOCUMENTS", status: "IN_PROGRESS", assignedToId: "usr-ta1", createdById: "usr-tam", title: "Collect documents from Karan Malhotra", description: "Offer released — need PAN, degree certificates and last 3 payslips before joining.\nShare the checklist on WhatsApp and track receipt here.", labels: ["joining", "documents"], watcherIds: ["usr-hr1"], startDate: dateOnly(-1), dueDate: dateOnly(1), estimateHours: 2, priority: "URGENT", relatedType: "CANDIDATE", relatedId: "cand-003", linkedApplicationId: "app-003", completed: false, createdAt: daysAgo(2), updatedAt: daysAgo(0, -2) },
+  { id: "tsk-002", orgId: ORG_1, key: "ABS-2", type: "FOLLOW_UP", status: "TODO", assignedToId: "usr-ta1", createdById: "usr-tam", title: "Follow up: Amit Verma client round feedback", description: "TechNova promised feedback within 48 hours of the client round.", labels: ["client-feedback", "technova"], watcherIds: [], startDate: null, dueDate: dateOnly(0), estimateHours: 0.5, priority: "HIGH", relatedType: "CANDIDATE", relatedId: "cand-001", linkedApplicationId: "app-001", completed: false, createdAt: daysAgo(1), updatedAt: daysAgo(1) },
+  { id: "tsk-003", orgId: ORG_1, key: "ABS-3", type: "TASK", status: "IN_REVIEW", assignedToId: "usr-ta2", createdById: "usr-tam", title: "Source 5 more profiles for Risk Analyst", description: "FinEdge wants diverse banking backgrounds — at least 2 from cooperative banks.", labels: ["sourcing", "finedge"], watcherIds: ["usr-sa"], startDate: dateOnly(-3), dueDate: dateOnly(2), estimateHours: 6, priority: "HIGH", relatedType: "JOB", relatedId: "job-102", linkedApplicationId: null, completed: false, createdAt: daysAgo(3), updatedAt: daysAgo(0, -5) },
+  { id: "tsk-004", orgId: ORG_1, key: "ABS-4", type: "TASK", status: "BLOCKED", assignedToId: "usr-ag1", createdById: "usr-tam", title: "Refer 3 candidates for ICU Nurse (MediCare)", description: "Urgent requisition pending approval — gather interest first, don't share salary yet.", labels: ["sourcing", "healthcare"], watcherIds: [], startDate: dateOnly(-1), dueDate: dateOnly(3), estimateHours: 4, priority: "MEDIUM", relatedType: "JOB", relatedId: "job-105", linkedApplicationId: null, completed: false, createdAt: daysAgo(1), updatedAt: daysAgo(0, -8) },
+  { id: "tsk-005", orgId: ORG_1, key: "ABS-5", type: "TASK", status: "DONE", assignedToId: "usr-ta2", createdById: "usr-ta2", title: "Update candidate tracker sheet", description: null, labels: ["reporting"], watcherIds: [], startDate: null, dueDate: dateOnly(-1), estimateHours: 1, priority: "LOW", relatedType: null, relatedId: null, linkedApplicationId: null, completed: true, completedAt: daysAgo(1), createdAt: daysAgo(5), updatedAt: daysAgo(1) },
+  { id: "tsk-006", orgId: ORG_1, key: "ABS-6", type: "DOCUMENTS", status: "TODO", assignedToId: "usr-em1", createdById: "usr-sa", title: "Prepare monthly ops report draft", description: "Cover placements, open requisitions and collections for September. Use last month's deck as the template.", labels: ["reporting", "monthly"], watcherIds: ["usr-fin1"], startDate: dateOnly(1), dueDate: dateOnly(4), estimateHours: 3, priority: "MEDIUM", relatedType: null, relatedId: null, linkedApplicationId: null, completed: false, createdAt: daysAgo(2), updatedAt: daysAgo(2) },
+  { id: "tsk-007", orgId: ORG_1, key: "ABS-7", type: "MEETING", status: "TODO", assignedToId: "usr-tam", createdById: "usr-sa", title: "Quarterly business review with TechNova", description: "Agenda: Q3 hiring numbers, SLA misses, renewal of the 8.33% commercial.", labels: ["client", "technova"], watcherIds: ["usr-fin1"], startDate: null, dueDate: dateOnly(5), estimateHours: 1.5, priority: "HIGH", relatedType: "CLIENT", relatedId: "cl-1", linkedApplicationId: null, completed: false, createdAt: daysAgo(1), updatedAt: daysAgo(1) },
+  { id: "tsk-008", orgId: ORG_1, key: "ABS-8", type: "TASK", status: "IN_PROGRESS", assignedToId: "usr-hr1", createdById: "usr-sa", title: "Roll out new leave policy for 2027", description: "Align casual/sick split with the Shops & Establishments Act and publish on the portal.", labels: ["policy", "hr"], watcherIds: ["usr-em1"], startDate: dateOnly(-2), dueDate: dateOnly(7), estimateHours: 8, priority: "MEDIUM", relatedType: null, relatedId: null, linkedApplicationId: null, completed: false, createdAt: daysAgo(4), updatedAt: daysAgo(0, -3) },
+]));
+
+export const taskComments: TaskComment[] = persist("taskComments", () => ([
+  { id: "tcm-001", orgId: ORG_1, taskId: "tsk-001", authorId: "usr-tam", body: "Karan joins on the 15th, so we need everything by Friday latest.", mentionIds: [], createdAt: daysAgo(2, 1) },
+  { id: "tcm-002", orgId: ORG_1, taskId: "tsk-001", authorId: "usr-ta1", body: "PAN and degree received. Waiting on payslips — he says his current employer is slow to issue them.", mentionIds: [], createdAt: daysAgo(0, -2) },
+  { id: "tcm-003", orgId: ORG_1, taskId: "tsk-001", authorId: "usr-hr1", body: "@Rahul Sharma a bank statement showing salary credits works too if payslips are delayed.", mentionIds: ["usr-ta1"], createdAt: daysAgo(0, -1) },
+  { id: "tcm-004", orgId: ORG_1, taskId: "tsk-003", authorId: "usr-ta2", body: "Shared 5 profiles in the tracker — 2 from Saraswat Bank, 1 from Cosmos. Ready for your review.", mentionIds: [], createdAt: daysAgo(0, -5) },
+  { id: "tcm-005", orgId: ORG_1, taskId: "tsk-004", authorId: "usr-ag1", body: "Blocked until the requisition is approved — two nurses asked about salary and I couldn't confirm.", mentionIds: [], createdAt: daysAgo(0, -8) },
+  { id: "tcm-006", orgId: ORG_1, taskId: "tsk-008", authorId: "usr-hr1", body: "First draft done. @Aarav Mehta please review the carry-forward rule before I publish.", mentionIds: ["usr-sa"], createdAt: daysAgo(0, -3) },
+]));
+
+export const taskActivity: TaskActivity[] = persist("taskActivity", () => ([
+  { id: "tac-001", orgId: ORG_1, taskId: "tsk-001", actorId: "usr-tam", action: "CREATED", field: null, fromValue: null, toValue: null, createdAt: daysAgo(2) },
+  { id: "tac-002", orgId: ORG_1, taskId: "tsk-001", actorId: "usr-ta1", action: "UPDATED", field: "status", fromValue: "TODO", toValue: "IN_PROGRESS", createdAt: daysAgo(1) },
+  { id: "tac-003", orgId: ORG_1, taskId: "tsk-002", actorId: "usr-tam", action: "CREATED", field: null, fromValue: null, toValue: null, createdAt: daysAgo(1) },
+  { id: "tac-004", orgId: ORG_1, taskId: "tsk-003", actorId: "usr-tam", action: "CREATED", field: null, fromValue: null, toValue: null, createdAt: daysAgo(3) },
+  { id: "tac-005", orgId: ORG_1, taskId: "tsk-003", actorId: "usr-ta2", action: "UPDATED", field: "status", fromValue: "IN_PROGRESS", toValue: "IN_REVIEW", createdAt: daysAgo(0, -5) },
+  { id: "tac-006", orgId: ORG_1, taskId: "tsk-004", actorId: "usr-tam", action: "CREATED", field: null, fromValue: null, toValue: null, createdAt: daysAgo(1) },
+  { id: "tac-007", orgId: ORG_1, taskId: "tsk-004", actorId: "usr-ag1", action: "UPDATED", field: "status", fromValue: "TODO", toValue: "BLOCKED", createdAt: daysAgo(0, -8) },
+  { id: "tac-008", orgId: ORG_1, taskId: "tsk-005", actorId: "usr-ta2", action: "CREATED", field: null, fromValue: null, toValue: null, createdAt: daysAgo(5) },
+  { id: "tac-009", orgId: ORG_1, taskId: "tsk-005", actorId: "usr-ta2", action: "UPDATED", field: "status", fromValue: "TODO", toValue: "DONE", createdAt: daysAgo(1) },
+  { id: "tac-010", orgId: ORG_1, taskId: "tsk-006", actorId: "usr-sa", action: "CREATED", field: null, fromValue: null, toValue: null, createdAt: daysAgo(2) },
+  { id: "tac-011", orgId: ORG_1, taskId: "tsk-007", actorId: "usr-sa", action: "CREATED", field: null, fromValue: null, toValue: null, createdAt: daysAgo(1) },
+  { id: "tac-012", orgId: ORG_1, taskId: "tsk-008", actorId: "usr-sa", action: "CREATED", field: null, fromValue: null, toValue: null, createdAt: daysAgo(4) },
+  { id: "tac-013", orgId: ORG_1, taskId: "tsk-008", actorId: "usr-hr1", action: "UPDATED", field: "status", fromValue: "TODO", toValue: "IN_PROGRESS", createdAt: daysAgo(2) },
 ]));
 
 // ─── Announcements ────────────────────────────────────────────
@@ -1123,6 +1172,8 @@ export const nextIds = {
   candidate: () => nextId("cand-", candidates),
   application: () => nextId("app-", applications),
   interview: () => nextId("itr-", interviews),
+  call: () => nextId("call-", callActivities),
+  externalCall: () => nextId("xcall-", externalCalls),
   referral: () => nextId("ref-", referrals),
   ledger: () => nextId("led-", commissionLedger),
   payout: () => nextId("pay-", payouts),

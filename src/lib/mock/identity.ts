@@ -5,6 +5,7 @@
 
 import type { Employee, EmployeeStatus, User, UserRole, UserStatus } from "@/lib/types";
 import { employees, nextIds, users } from "./data";
+import { generateTempPassword, hashPassword } from "@/lib/password";
 
 export const ALL_ROLES: UserRole[] = ["SUPER_ADMIN", "HR_ADMIN", "FINANCE_ADMIN", "TA_MANAGER", "TA_RECRUITER", "AGENT", "EMPLOYEE"];
 
@@ -166,6 +167,21 @@ export function approversFor(userId: string): { hrIds: string[]; managerUserId: 
     const managerUserId = user.reportingTo
         ?? (emp?.reportingManagerId ? employees.find((e) => e.id === emp.reportingManagerId)?.userId ?? null : null);
     return { hrIds, managerUserId: managerUserId && managerUserId !== userId ? managerUserId : null };
+}
+
+/** Sets a fresh one-time password on a login and returns it (shown once to the admin). */
+export function issueTempPassword(user: User): string {
+    const temp = generateTempPassword();
+    user.passwordHash = hashPassword(temp);
+    user.passwordChangedAt = null;
+    return temp;
+}
+
+/** A user record safe to send to the browser (never includes the password hash). */
+export function publicUser<T extends Partial<User>>(u: T): Omit<T, "passwordHash"> {
+    const { passwordHash: _hash, ...rest } = u;
+    void _hash;
+    return rest;
 }
 
 // Bootstrap: make sure every existing staff login already has its HR record.

@@ -79,9 +79,19 @@ export type JobStatus =
   | "CLOSED"
   | "CANCELLED";
 
-export type EmploymentType = "FULL_TIME" | "PART_TIME" | "CONTRACT" | "REMOTE" | "HYBRID" | "TEMPORARY" | "INTERNSHIP" | "CONSULTANT";
+export type EmploymentType = "FULL_TIME" | "PART_TIME" | "CONTRACT" | "PERMANENT" | "INTERNSHIP" | "FREELANCE" | "REMOTE" | "HYBRID" | "TEMPORARY" | "CONSULTANT";
 export type JobPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
-export type WorkMode = "ONSITE" | "HYBRID" | "REMOTE" | "FIELD";
+export type WorkMode = "ONSITE" | "HYBRID" | "REMOTE" | "WFH" | "FIELD"; // ONSITE = Work From Office
+export type JobLevel = "INTERN" | "JUNIOR" | "MID" | "SENIOR" | "LEAD" | "MANAGER" | "DIRECTOR";
+export type VacancyType = "NEW_HIRING" | "REPLACEMENT";
+export type ShiftTiming = "DAY" | "NIGHT" | "ROTATIONAL" | "FLEXIBLE";
+export type JobCategory = "INFORMATION_TECHNOLOGY" | "SOFTWARE_DEVELOPMENT" | "FINANCE_ACCOUNTING" | "HUMAN_RESOURCES" | "SALES_MARKETING" | "OPERATIONS" | "CUSTOMER_SUPPORT" | "ENGINEERING" | "ADMINISTRATION" | "OTHER";
+export type RequisitionType = "NEW_POSITION" | "REPLACEMENT" | "BACKFILL" | "PROJECT_BASED";
+export type SalaryType = "ANNUAL_CTC" | "MONTHLY" | "HOURLY";
+export type HiringReason = "BUSINESS_EXPANSION" | "EMPLOYEE_REPLACEMENT" | "NEW_PROJECT" | "ADDITIONAL_HEADCOUNT" | "URGENT_REQUIREMENT" | "OTHER";
+export type BillingType = "PERCENTAGE" | "FIXED_FEE" | "HOURLY" | "MONTHLY_CONTRACT";
+export type ContractType = "PERMANENT_PLACEMENT" | "CONTRACT_STAFFING" | "TEMPORARY_STAFFING" | "RPO" | "OTHER";
+export interface OfficeAddress { building?: string | null; floor?: string | null; street?: string | null; landmark?: string | null }
 
 export interface JobOpeningItem {
   id: string;
@@ -164,6 +174,47 @@ export interface JobSlaConfig {
 
 export interface JobRequisition {
   id: string;
+  requisitionCode?: string; // e.g. "REQ-2026-0001", unique per org
+  clientRequisitionId?: string | null; // the client's own reference for this opening
+  jobCategory?: JobCategory;
+  requisitionType?: RequisitionType; // kept in step with vacancyType for older screens
+  salaryType?: SalaryType; // unit the salary was entered in; salaryMin/MaxLpa always hold the LPA equivalent
+  salaryAmountMin?: number | null; // as entered (LPA, ₹/month or ₹/hour)
+  salaryAmountMax?: number | null;
+  minimumQualification?: string | null;
+  preferredQualification?: string | null;
+  descriptionHtml?: string | null; // sanitised rich text; `description` keeps the plain-text version
+  responsibilitiesHtml?: string | null;
+  additionalRequirements?: string | null;
+  hiringReason?: HiringReason;
+  recruiterTeam?: string | null;
+  // Precise Indian location (ids from the built-in India location dataset)
+  locationStateCode?: string | null;
+  locationState?: string | null;
+  locationDistrictId?: string | null;
+  locationDistrict?: string | null;
+  locationCityId?: string | null;
+  locationLocality?: string | null;
+  locationPincode?: string | null;
+  officeAddress?: OfficeAddress | null;
+  remoteLocationPreference?: string | null;
+  relocationRequired?: boolean;
+  travelRequired?: boolean;
+  // Client contact & commercials for this requisition
+  clientContactName?: string | null;
+  clientContactEmail?: string | null;
+  clientContactPhone?: string | null;
+  billingType?: BillingType | null;
+  placementFeePct?: number | null;
+  contractType?: ContractType | null;
+  replacementGuaranteeDays?: number | null;
+  commercialNotes?: string | null;
+  // System fields
+  updatedById?: string | null;
+  submittedAt?: string | null;
+  approvedAt?: string | null;
+  rejectionReason?: string | null;
+  closedAt?: string | null;
   orgId: string;
   clientId: string;
   title: string;
@@ -173,6 +224,17 @@ export interface JobRequisition {
   city?: string;
   country?: string;
   employmentType: EmploymentType;
+  jobLevel?: JobLevel;
+  vacancyType?: VacancyType;
+  replacementFor?: string | null; // employee being replaced (REPLACEMENT only)
+  shiftTiming?: ShiftTiming;
+  joiningPreference?: string; // e.g. "Immediate", "Within 30 Days"
+  hiringManagerName?: string | null; // client-side person responsible for the hire
+  interviewRounds?: string[]; // e.g. ["Technical", "Managerial", "HR"]
+  internalNotes?: string | null; // TA manager only, never shown to recruiters
+  published?: boolean; // listed on the internal job listing (undefined = legacy, listed)
+  publishedAt?: string | null;
+  publishedById?: string | null;
   priority: JobPriority;
   priorityReason?: string;
   openings: number;
@@ -224,20 +286,26 @@ export interface JobRequisition {
 
 export type CandidateSource = "AGENT_REFERRAL" | "JOB_PORTAL" | "LINKEDIN" | "WALK_IN" | "DATABASE" | "CAMPUS" | "OTHER";
 export type ApplicationStage =
-  | "SOURCED"
+  | "SOURCED" // shown as "New Lead"
+  | "CONTACTED"
   | "SCREENING"
+  | "SHORTLISTED"
   | "INTERVIEW_SCHEDULED"
   | "TECH_ROUND"
   | "CLIENT_ROUND"
   | "HR_ROUND"
-  | "OFFER_SENT"
+  | "INTERVIEW_COMPLETED"
+  | "SELECTED"
+  | "OFFER_SENT" // shown as "Offer Released"
   | "OFFER_ACCEPTED"
   | "ONBOARDING"
   | "JOINED"
   | "ON_HOLD"
   | "REJECTED"
   | "BACKED_OUT"
-  | "BLACKLISTED";
+  | "BLACKLISTED"
+  | "NOT_INTERESTED"
+  | "WITHDRAWN";
 
 export interface WorkExperienceItem {
   id: string;
@@ -571,6 +639,131 @@ export interface Application {
   updatedAt: string;
 }
 
+// ─── Call activity (one row per recruiter call, never overwritten) ──
+
+export type CallStatus = "CONNECTED" | "NOT_ANSWERED" | "BUSY" | "SWITCHED_OFF" | "CALL_BACK" | "WRONG_NUMBER";
+export type CallPurpose = "INITIAL_SCREENING" | "FOLLOW_UP" | "INTERVIEW_SCHEDULING" | "INTERVIEW_FEEDBACK" | "SALARY_DISCUSSION" | "OFFER_DISCUSSION" | "DOCUMENT_COLLECTION" | "JOINING_CONFIRMATION" | "OTHER";
+export type CandidateInterest = "INTERESTED" | "NOT_INTERESTED" | "MAYBE" | "NOT_DISCUSSED";
+export type CallRating = "EXCELLENT" | "GOOD" | "MODERATE" | "POOR";
+export type CallRoleFit = "STRONG_FIT" | "GOOD_FIT" | "AVERAGE_FIT" | "NOT_FIT";
+export type CallYesNoMaybe = "YES" | "NO" | "MAYBE";
+export type CallNextAction = "SCHEDULE_TECH_INTERVIEW" | "SCHEDULE_HR_INTERVIEW" | "SHARE_WITH_CLIENT" | "CALL_BACK" | "SEND_JD" | "FOLLOW_UP" | "COLLECT_DOCUMENTS" | "REJECT" | "NO_ACTION";
+
+export interface CallActivity {
+  id: string;
+  orgId: string;
+  candidateId: string;
+  applicationId?: string | null; // the job this call was about, if any
+  jobId?: string | null;
+  recruiterId: string;
+  calledAt: string; // ISO datetime of the call
+  durationMins?: number | null;
+  callType: "INCOMING" | "OUTGOING";
+  callStatus: CallStatus;
+  purpose: CallPurpose;
+  candidateInterest?: CandidateInterest | null;
+  communicationRating?: CallRating | null;
+  technicalRating?: CallRating | null;
+  screeningFeedback?: string | null;
+  reasonForJobChange?: string | null;
+  callOutcome?: string | null; // one-line result of the call, e.g. "Shortlisted for L1"
+  // Structured screening feedback (connected calls only)
+  attitudeRating?: CallRating | null; // professionalism & attitude
+  overallRating?: CallRating | null;
+  roleFit?: CallRoleFit | null;
+  skillsAssessed?: string[]; // skills discussed / verified on the call
+  strengths?: string | null;
+  concerns?: string | null;
+  // Details the candidate confirmed on the call
+  offerInHand?: boolean | null;
+  offerInHandCtcLpa?: number | null;
+  willingToRelocate?: CallYesNoMaybe | null;
+  currentLocation?: string | null;
+  interviewAvailability?: string | null; // e.g. "Weekdays after 6 PM"
+  recordingUrl?: string | null; // link to the call recording, if the dialer keeps one
+  remarks: string;
+  nextAction?: CallNextAction | null;
+  followUpDate?: string | null; // YYYY-MM-DD
+  followUpTaskId?: string | null;
+  // What the candidate said on this call (also copied onto the candidate profile)
+  currentCtcLpa?: number | null;
+  expectedCtcLpa?: number | null;
+  noticePeriodDays?: number | null;
+  createdAt: string;
+}
+
+// ─── Outside-data calls (person not in the candidate database) ──
+// A recruiter calling numbers from a job portal, an Excel sheet or a reference keeps the
+// call log here, separate from candidate records, until the person is added to the database.
+
+export type ExternalLeadSource = "NAUKRI" | "LINKEDIN" | "INDEED" | "MONSTER" | "SHINE" | "APNA" | "EXCEL_SHEET" | "REFERENCE" | "WALK_IN" | "SOCIAL_MEDIA" | "OTHER_PORTAL" | "OTHER";
+
+export interface ExternalCallLog {
+  id: string;
+  orgId: string;
+  recruiterId: string;
+  // The person called, as known at the time of this call
+  personName: string;
+  phone: string;
+  email?: string | null;
+  source: ExternalLeadSource;
+  sourceDetail?: string | null; // sheet name, portal profile link, who referred
+  currentCompany?: string | null;
+  currentDesignation?: string | null;
+  totalExperienceYears?: number | null;
+  skills?: string[];
+  jobId?: string | null; // requisition the call was about, if any
+  // The call (same fields and rules as a database call)
+  calledAt: string;
+  durationMins?: number | null;
+  callType: "INCOMING" | "OUTGOING";
+  callStatus: CallStatus;
+  purpose: CallPurpose;
+  candidateInterest?: CandidateInterest | null;
+  communicationRating?: CallRating | null;
+  technicalRating?: CallRating | null;
+  attitudeRating?: CallRating | null;
+  overallRating?: CallRating | null;
+  roleFit?: CallRoleFit | null;
+  skillsAssessed?: string[];
+  strengths?: string | null;
+  concerns?: string | null;
+  screeningFeedback?: string | null;
+  reasonForJobChange?: string | null;
+  currentCtcLpa?: number | null;
+  expectedCtcLpa?: number | null;
+  noticePeriodDays?: number | null;
+  offerInHand?: boolean | null;
+  offerInHandCtcLpa?: number | null;
+  willingToRelocate?: CallYesNoMaybe | null;
+  currentLocation?: string | null;
+  interviewAvailability?: string | null;
+  recordingUrl?: string | null;
+  callOutcome?: string | null;
+  remarks: string;
+  nextAction?: CallNextAction | null;
+  followUpDate?: string | null;
+  followUpTaskId?: string | null;
+  // Set once the person is added to the candidate database
+  convertedCandidateId?: string | null;
+  convertedAt?: string | null;
+  createdAt: string;
+}
+
+// ─── Locations typed in by recruiters (not in the India Post directory) ──
+
+export interface CustomLocality {
+  id: string;
+  orgId: string;
+  stateCode: string;
+  districtId: string; // e.g. "MH:pune"
+  cityId: string; // e.g. "MH:pune:mulshi"
+  name: string; // e.g. "Hinjewadi Phase 1"
+  pincode: string;
+  createdById: string;
+  createdAt: string;
+}
+
 // ─── Interviews ───────────────────────────────────────────────
 
 export type InterviewRound = "SCREENING_CALL" | "TECH_1" | "TECH_2" | "CLIENT_ROUND" | "HR_ROUND" | "FINAL";
@@ -693,18 +886,55 @@ export interface LeaveRequest {
 
 // ─── Tasks, Announcements, Audit ─────────────────────────────
 
+export type TaskStatus = "TODO" | "IN_PROGRESS" | "IN_REVIEW" | "BLOCKED" | "DONE";
+export type TaskType = "TASK" | "FOLLOW_UP" | "CALL" | "MEETING" | "DOCUMENTS" | "INTERVIEW";
+export type TaskRelatedType = "CANDIDATE" | "JOB" | "CLIENT" | "EMPLOYEE";
+
 export interface Task {
   id: string;
   orgId: string;
+  key?: string; // human ticket key, e.g. "ABS-12"
+  type?: TaskType;
+  status?: TaskStatus; // absent on older rows → derived from `completed`
   assignedToId: string;
-  createdById: string;
+  createdById: string; // reporter
   title: string;
   description?: string | null;
+  labels?: string[];
+  watcherIds?: string[];
+  startDate?: string | null;
   dueDate?: string | null;
+  estimateHours?: number | null;
   priority: JobPriority;
+  relatedType?: TaskRelatedType | null;
+  relatedId?: string | null;
   linkedApplicationId?: string | null;
-  completed: boolean;
+  completed: boolean; // kept in step with status === "DONE" for older screens
   completedAt?: string | null;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface TaskComment {
+  id: string;
+  orgId: string;
+  taskId: string;
+  authorId: string;
+  body: string;
+  mentionIds: string[];
+  createdAt: string;
+  editedAt?: string | null;
+}
+
+export interface TaskActivity {
+  id: string;
+  orgId: string;
+  taskId: string;
+  actorId: string;
+  action: "CREATED" | "UPDATED" | "COMMENTED";
+  field?: string | null; // which field changed, for UPDATED
+  fromValue?: string | null;
+  toValue?: string | null;
   createdAt: string;
 }
 
@@ -1001,11 +1231,15 @@ export interface DocumentRecord {
 
 export const STAGE_ORDER: ApplicationStage[] = [
   "SOURCED",
+  "CONTACTED",
   "SCREENING",
+  "SHORTLISTED",
   "INTERVIEW_SCHEDULED",
   "TECH_ROUND",
   "CLIENT_ROUND",
   "HR_ROUND",
+  "INTERVIEW_COMPLETED",
+  "SELECTED",
   "OFFER_SENT",
   "OFFER_ACCEPTED",
   "ONBOARDING",
@@ -1014,11 +1248,15 @@ export const STAGE_ORDER: ApplicationStage[] = [
 
 export const ACTIVE_STAGES: ApplicationStage[] = [
   "SOURCED",
+  "CONTACTED",
   "SCREENING",
+  "SHORTLISTED",
   "INTERVIEW_SCHEDULED",
   "TECH_ROUND",
   "CLIENT_ROUND",
   "HR_ROUND",
+  "INTERVIEW_COMPLETED",
+  "SELECTED",
   "OFFER_SENT",
   "OFFER_ACCEPTED",
   "ONBOARDING",
@@ -1030,25 +1268,61 @@ export const ACTIVE_STAGES: ApplicationStage[] = [
 // never by a direct stage move, so an onboarding record always exists.
 
 export const INTERVIEW_STAGES: ApplicationStage[] = ["INTERVIEW_SCHEDULED", "TECH_ROUND", "CLIENT_ROUND", "HR_ROUND"];
-export const TERMINAL_STAGES: ApplicationStage[] = ["JOINED", "REJECTED", "BACKED_OUT", "BLACKLISTED"];
-const PRE_OFFER_STAGES: ApplicationStage[] = ["SOURCED", "SCREENING", ...INTERVIEW_STAGES];
+export const TERMINAL_STAGES: ApplicationStage[] = ["JOINED", "REJECTED", "BACKED_OUT", "BLACKLISTED", "NOT_INTERESTED", "WITHDRAWN"];
+/** Applications that left the pipeline without joining (can be reopened, except BLACKLISTED). */
+export const CLOSED_STAGES: ApplicationStage[] = ["REJECTED", "BACKED_OUT", "BLACKLISTED", "NOT_INTERESTED", "WITHDRAWN"];
+const EXITS: ApplicationStage[] = ["ON_HOLD", "REJECTED", "BACKED_OUT", "NOT_INTERESTED", "WITHDRAWN"];
+const PRE_OFFER_STAGES: ApplicationStage[] = ["SOURCED", "CONTACTED", "SCREENING", "SHORTLISTED", ...INTERVIEW_STAGES, "INTERVIEW_COMPLETED", "SELECTED"];
+const REOPEN: ApplicationStage[] = ["SOURCED", "CONTACTED", "SCREENING"];
 
 const STAGE_TRANSITIONS: Record<ApplicationStage, ApplicationStage[]> = {
-  SOURCED: ["SCREENING", ...INTERVIEW_STAGES, "ON_HOLD", "REJECTED", "BACKED_OUT"],
-  SCREENING: ["SOURCED", ...INTERVIEW_STAGES, "ON_HOLD", "REJECTED", "BACKED_OUT"],
-  INTERVIEW_SCHEDULED: ["SCREENING", "TECH_ROUND", "CLIENT_ROUND", "HR_ROUND", "OFFER_SENT", "ON_HOLD", "REJECTED", "BACKED_OUT"],
-  TECH_ROUND: ["INTERVIEW_SCHEDULED", "CLIENT_ROUND", "HR_ROUND", "OFFER_SENT", "ON_HOLD", "REJECTED", "BACKED_OUT"],
-  CLIENT_ROUND: ["TECH_ROUND", "HR_ROUND", "OFFER_SENT", "ON_HOLD", "REJECTED", "BACKED_OUT"],
-  HR_ROUND: ["CLIENT_ROUND", "OFFER_SENT", "ON_HOLD", "REJECTED", "BACKED_OUT"],
-  OFFER_SENT: ["OFFER_ACCEPTED", "HR_ROUND", "ON_HOLD", "REJECTED", "BACKED_OUT"],
-  OFFER_ACCEPTED: ["JOINED", "ON_HOLD", "BACKED_OUT"],
-  ONBOARDING: ["JOINED", "BACKED_OUT"],
-  ON_HOLD: [...PRE_OFFER_STAGES, "OFFER_SENT", "OFFER_ACCEPTED", "REJECTED", "BACKED_OUT"],
-  REJECTED: ["SOURCED", "SCREENING"],
-  BACKED_OUT: ["SOURCED", "SCREENING"],
+  SOURCED: ["CONTACTED", "SCREENING", "SHORTLISTED", ...INTERVIEW_STAGES, ...EXITS],
+  CONTACTED: ["SOURCED", "SCREENING", "SHORTLISTED", ...INTERVIEW_STAGES, ...EXITS],
+  SCREENING: ["SOURCED", "CONTACTED", "SHORTLISTED", ...INTERVIEW_STAGES, ...EXITS],
+  SHORTLISTED: ["SCREENING", ...INTERVIEW_STAGES, "SELECTED", ...EXITS],
+  INTERVIEW_SCHEDULED: ["SHORTLISTED", "SCREENING", "TECH_ROUND", "CLIENT_ROUND", "HR_ROUND", "INTERVIEW_COMPLETED", "SELECTED", "OFFER_SENT", ...EXITS],
+  TECH_ROUND: ["INTERVIEW_SCHEDULED", "CLIENT_ROUND", "HR_ROUND", "INTERVIEW_COMPLETED", "SELECTED", "OFFER_SENT", ...EXITS],
+  CLIENT_ROUND: ["TECH_ROUND", "HR_ROUND", "INTERVIEW_COMPLETED", "SELECTED", "OFFER_SENT", ...EXITS],
+  HR_ROUND: ["CLIENT_ROUND", "INTERVIEW_COMPLETED", "SELECTED", "OFFER_SENT", ...EXITS],
+  INTERVIEW_COMPLETED: [...INTERVIEW_STAGES, "SELECTED", "OFFER_SENT", ...EXITS],
+  SELECTED: ["INTERVIEW_COMPLETED", "OFFER_SENT", ...EXITS],
+  OFFER_SENT: ["OFFER_ACCEPTED", "SELECTED", "HR_ROUND", ...EXITS],
+  OFFER_ACCEPTED: ["JOINED", "ON_HOLD", "BACKED_OUT", "WITHDRAWN"],
+  ONBOARDING: ["JOINED", "BACKED_OUT", "WITHDRAWN"],
+  ON_HOLD: [...PRE_OFFER_STAGES, "OFFER_SENT", "OFFER_ACCEPTED", "REJECTED", "BACKED_OUT", "NOT_INTERESTED", "WITHDRAWN"],
+  REJECTED: REOPEN,
+  BACKED_OUT: REOPEN,
+  NOT_INTERESTED: REOPEN,
+  WITHDRAWN: REOPEN,
   JOINED: [],
   BLACKLISTED: [],
 };
+
+/** Client-facing names for pipeline stages (internal keys stay unchanged for existing data). */
+export const STAGE_LABELS: Record<ApplicationStage, string> = {
+  SOURCED: "New Lead",
+  CONTACTED: "Contacted",
+  SCREENING: "Screening",
+  SHORTLISTED: "Shortlisted",
+  INTERVIEW_SCHEDULED: "Interview Scheduled",
+  TECH_ROUND: "Technical Round",
+  CLIENT_ROUND: "Client Round",
+  HR_ROUND: "HR Round",
+  INTERVIEW_COMPLETED: "Interview Completed",
+  SELECTED: "Selected",
+  OFFER_SENT: "Offer Released",
+  OFFER_ACCEPTED: "Offer Accepted",
+  ONBOARDING: "Onboarding",
+  JOINED: "Joined",
+  ON_HOLD: "On Hold",
+  REJECTED: "Rejected",
+  BACKED_OUT: "Backed Out",
+  BLACKLISTED: "Blacklisted",
+  NOT_INTERESTED: "Not Interested",
+  WITHDRAWN: "Withdrawn",
+};
+
+export const stageLabel = (s: string) => STAGE_LABELS[s as ApplicationStage] ?? s.replace(/_/g, " ");
 
 export function allowedNextStages(from: ApplicationStage): ApplicationStage[] {
   return STAGE_TRANSITIONS[from] ?? [];

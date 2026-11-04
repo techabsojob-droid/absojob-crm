@@ -17,7 +17,7 @@ export async function GET(request: Request) {
         const activeJobsCount = clientJobs.filter((j) => ["APPROVED", "SOURCING", "INTERVIEWING", "OFFER_STAGE"].includes(j.status)).length;
         const totalOpenings = clientJobs.reduce((acc, j) => acc + (j.openings || 1), 0);
         const placementsCount = clientApps.filter((a) => a.stage === "JOINED").length;
-        const pipelineCount = clientApps.filter((a) => !["JOINED", "REJECTED", "BACKED_OUT"].includes(a.stage)).length;
+        const pipelineCount = clientApps.filter((a) => !["JOINED", "REJECTED", "BACKED_OUT", "NOT_INTERESTED", "WITHDRAWN"].includes(a.stage)).length;
 
         // Health check: Needs attention if active job with 0 candidates in pipeline, or status paused
         let healthState: "HEALTHY" | "NEEDS_ATTENTION" | "INACTIVE" = "HEALTHY";

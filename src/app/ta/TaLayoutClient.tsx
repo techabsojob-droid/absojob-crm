@@ -5,7 +5,7 @@ import Sidebar, { NavGroup } from "@/components/shared/Sidebar";
 import TopBar from "@/components/shared/TopBar";
 import {
     LayoutDashboard, Briefcase, GitBranch, Users, CalendarClock, CheckSquare,
-    BarChart3, UserPlus, ShieldCheck, Building2, CalendarCheck, Target, MessageSquareText, Handshake
+    BarChart3, UserPlus, ShieldCheck, Building2, CalendarCheck, Target, MessageSquareText, Handshake, PhoneCall
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
@@ -21,9 +21,10 @@ const TA_NAV_GROUPS: NavGroup[] = [
     {
         groupTitle: "RECRUITMENT",
         items: [
-            { label: "Requisitions", icon: Briefcase, href: "/ta/requisitions", badgeKey: "requisitions", badgeTone: "amber", tooltipHint: "Urgent requisitions needing attention" },
+            { label: "Job Listing", icon: Briefcase, href: "/ta/requisitions", badgeKey: "requisitions", badgeTone: "amber", tooltipHint: "Urgent requisitions needing attention" },
             { label: "Pipeline", icon: GitBranch, href: "/ta/pipeline", badgeKey: "pipeline", badgeTone: "neutral", tooltipHint: "Candidates requiring next action" },
             { label: "Candidates", icon: Users, href: "/ta/candidates", badgeKey: "candidates", badgeTone: "emerald", tooltipHint: "Total talent pool" },
+            { label: "Calls", icon: PhoneCall, href: "/ta/calls", tooltipHint: "Log calls with feedback and review call history" },
             { label: "Interviews", icon: CalendarClock, href: "/ta/interviews", badgeKey: "interviews", badgeTone: "blue", tooltipHint: "Interviews scheduled today" },
             { label: "Offers & Joinings", icon: CalendarCheck, href: "/ta/joinings", tooltipHint: "Offers out, joining dates and dropout risk" },
             { label: "Referrals", icon: UserPlus, href: "/ta/referrals", tooltipHint: "Agent & employee referrals to review" },

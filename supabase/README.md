@@ -15,7 +15,7 @@ same project belongs to the recruitment website and is never touched by these sc
 | `schema/05_hr_time.sql` | attendance, shifts, corrections, WFH, leave requests / balances / policies, holidays |
 | `schema/06_hr_pay_growth.sql` | payroll, performance reviews and cycles, goals, training, benefits, tax declarations, HR policies |
 | `schema/07_finance.sql` | finance settings, invoices, receipts, recurring billing, expenses, vendors and bills, contracts, timesheets, F&F, bank lines, journals, budgets |
-| `schema/08_workspace.sql` | tasks, announcements, notifications, approvals, audit log, compliance, data quality, integrations, workflow rules, email outbox, uploaded files |
+| `schema/08_workspace.sql` | Jira-style tasks + task comments + task history, announcements, notifications, approvals, audit log, compliance, data quality, integrations, workflow rules, email outbox, uploaded files |
 | `schema/09_relationships.sql` | foreign keys between the tables above, plus indexes |
 | `schema/10_sync_and_security.sql` | change tracking (`_sync_state` + triggers) and row-level security |
 | `seed/seed.sql` | the demo data for every table (wipes CRM rows first) |
@@ -27,14 +27,20 @@ Every table also has two internal columns:
 ## Commands (run inside `crm/`)
 
 ```bash
-npm run db:push      # create / update tables (safe to re-run)
+npm run db:push      # create tables, add new columns to existing ones (never drops; safe to re-run)
 npm run db:seed      # replace all CRM data with the demo data
 npm run db:reset     # drop the crm schema, recreate it, load demo data
 npm run db:verify    # check Supabase returns exactly the demo data
+npm run db:set-passwords  # give every active user without a password a strong one (add -- --all to rotate everyone)
 npm run db:generate  # rebuild the SQL files after changing src/lib/types.ts or the mock seed
 ```
 
 All of them use `DATABASE_URL` from `.env`.
+
+**Passwords:** the demo data has no passwords, so run `npm run db:set-passwords` after every
+`db:seed` / `db:reset`. The new passwords are written to `CREDENTIALS.local.md`, which is
+gitignored. Share them privately, then delete the file. New accounts created in the app get a
+one-time password shown to the admin, and Admin › Team › profile › **Reset password** issues a new one.
 
 ## How the app uses it
 

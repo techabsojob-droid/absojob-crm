@@ -14,6 +14,7 @@ import {
 import { toast } from "sonner";
 import { PageHeader, StatCard, Badge, SectionCard, ModalShell, EmptyState, inr } from "@/components/shared/ui";
 import { SkeletonPulse } from "@/components/shared/UIStates";
+import { RelatedTasks } from "@/components/tasks/TaskWidgets";
 
 export default function Job360Page({ params }: { params: Promise<{ id: string }> }) {
     const { id: jobId } = use(params);
@@ -921,6 +922,9 @@ export default function Job360Page({ params }: { params: Promise<{ id: string }>
 
             {/* TAB 10: TASKS (Part 44) */}
             {activeTab === "tasks" && (
+                <div className="mb-4"><RelatedTasks relatedType="JOB" relatedId={jobId} recordName={job.title} /></div>
+            )}
+            {activeTab === "tasks" && (
                 <div className="bg-white rounded-2xl border border-neutral-200/80 shadow-xs p-5 space-y-4">
                     <h3 className="font-bold text-neutral-900 text-sm">Action Items & Recruiter Follow-ups</h3>
                     {tasks.length === 0 ? (
@@ -1055,12 +1059,12 @@ export default function Job360Page({ params }: { params: Promise<{ id: string }>
                                 <p className="text-lg font-black text-neutral-900 mt-1">{job.daysOpen} Days</p>
                             </div>
                             <div className="p-3.5 bg-neutral-50 rounded-xl border border-neutral-200/60">
-                                <span className="text-[10px] font-bold text-neutral-400 uppercase">Time to Shortlist</span>
-                                <p className="text-lg font-black text-neutral-900 mt-1">4.2 Days</p>
+                                <span className="text-[10px] font-bold text-neutral-400 uppercase">Time to First Interview</span>
+                                <p className="text-lg font-black text-neutral-900 mt-1">{job.timeToFirstInterviewDays != null ? `${job.timeToFirstInterviewDays} Days` : "—"}</p>
                             </div>
                             <div className="p-3.5 bg-neutral-50 rounded-xl border border-neutral-200/60">
                                 <span className="text-[10px] font-bold text-neutral-400 uppercase">Time to Offer</span>
-                                <p className="text-lg font-black text-neutral-900 mt-1">18.5 Days</p>
+                                <p className="text-lg font-black text-neutral-900 mt-1">{job.timeToOfferDays != null ? `${job.timeToOfferDays} Days` : "—"}</p>
                             </div>
                             <div className="p-3.5 bg-neutral-50 rounded-xl border border-neutral-200/60">
                                 <span className="text-[10px] font-bold text-neutral-400 uppercase">Fulfillment %</span>

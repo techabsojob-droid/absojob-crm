@@ -90,6 +90,56 @@ alter table crm.applications add constraint applications_recruiter_id_fkey
   foreign key (recruiter_id) references crm.users (id)
   on delete set null deferrable initially deferred;
 
+alter table crm.call_activities drop constraint if exists call_activities_org_id_fkey;
+alter table crm.call_activities add constraint call_activities_org_id_fkey
+  foreign key (org_id) references crm.organizations (id)
+  on delete cascade deferrable initially deferred;
+
+alter table crm.call_activities drop constraint if exists call_activities_candidate_id_fkey;
+alter table crm.call_activities add constraint call_activities_candidate_id_fkey
+  foreign key (candidate_id) references crm.candidates (id)
+  on delete set null deferrable initially deferred;
+
+alter table crm.call_activities drop constraint if exists call_activities_application_id_fkey;
+alter table crm.call_activities add constraint call_activities_application_id_fkey
+  foreign key (application_id) references crm.applications (id)
+  on delete set null deferrable initially deferred;
+
+alter table crm.call_activities drop constraint if exists call_activities_job_id_fkey;
+alter table crm.call_activities add constraint call_activities_job_id_fkey
+  foreign key (job_id) references crm.jobs (id)
+  on delete set null deferrable initially deferred;
+
+alter table crm.call_activities drop constraint if exists call_activities_recruiter_id_fkey;
+alter table crm.call_activities add constraint call_activities_recruiter_id_fkey
+  foreign key (recruiter_id) references crm.users (id)
+  on delete set null deferrable initially deferred;
+
+alter table crm.external_calls drop constraint if exists external_calls_org_id_fkey;
+alter table crm.external_calls add constraint external_calls_org_id_fkey
+  foreign key (org_id) references crm.organizations (id)
+  on delete cascade deferrable initially deferred;
+
+alter table crm.external_calls drop constraint if exists external_calls_recruiter_id_fkey;
+alter table crm.external_calls add constraint external_calls_recruiter_id_fkey
+  foreign key (recruiter_id) references crm.users (id)
+  on delete set null deferrable initially deferred;
+
+alter table crm.external_calls drop constraint if exists external_calls_job_id_fkey;
+alter table crm.external_calls add constraint external_calls_job_id_fkey
+  foreign key (job_id) references crm.jobs (id)
+  on delete set null deferrable initially deferred;
+
+alter table crm.external_calls drop constraint if exists external_calls_converted_candidate_id_fkey;
+alter table crm.external_calls add constraint external_calls_converted_candidate_id_fkey
+  foreign key (converted_candidate_id) references crm.candidates (id)
+  on delete set null deferrable initially deferred;
+
+alter table crm.custom_localities drop constraint if exists custom_localities_org_id_fkey;
+alter table crm.custom_localities add constraint custom_localities_org_id_fkey
+  foreign key (org_id) references crm.organizations (id)
+  on delete cascade deferrable initially deferred;
+
 alter table crm.interviews drop constraint if exists interviews_org_id_fkey;
 alter table crm.interviews add constraint interviews_org_id_fkey
   foreign key (org_id) references crm.organizations (id)
@@ -530,6 +580,36 @@ alter table crm.tasks add constraint tasks_created_by_id_fkey
   foreign key (created_by_id) references crm.users (id)
   on delete set null deferrable initially deferred;
 
+alter table crm.task_comments drop constraint if exists task_comments_org_id_fkey;
+alter table crm.task_comments add constraint task_comments_org_id_fkey
+  foreign key (org_id) references crm.organizations (id)
+  on delete cascade deferrable initially deferred;
+
+alter table crm.task_comments drop constraint if exists task_comments_task_id_fkey;
+alter table crm.task_comments add constraint task_comments_task_id_fkey
+  foreign key (task_id) references crm.tasks (id)
+  on delete set null deferrable initially deferred;
+
+alter table crm.task_comments drop constraint if exists task_comments_author_id_fkey;
+alter table crm.task_comments add constraint task_comments_author_id_fkey
+  foreign key (author_id) references crm.users (id)
+  on delete set null deferrable initially deferred;
+
+alter table crm.task_activity drop constraint if exists task_activity_org_id_fkey;
+alter table crm.task_activity add constraint task_activity_org_id_fkey
+  foreign key (org_id) references crm.organizations (id)
+  on delete cascade deferrable initially deferred;
+
+alter table crm.task_activity drop constraint if exists task_activity_task_id_fkey;
+alter table crm.task_activity add constraint task_activity_task_id_fkey
+  foreign key (task_id) references crm.tasks (id)
+  on delete set null deferrable initially deferred;
+
+alter table crm.task_activity drop constraint if exists task_activity_actor_id_fkey;
+alter table crm.task_activity add constraint task_activity_actor_id_fkey
+  foreign key (actor_id) references crm.users (id)
+  on delete set null deferrable initially deferred;
+
 alter table crm.announcements drop constraint if exists announcements_org_id_fkey;
 alter table crm.announcements add constraint announcements_org_id_fkey
   foreign key (org_id) references crm.organizations (id)
@@ -612,6 +692,16 @@ create index if not exists applications_org_id_idx on crm.applications (org_id);
 create index if not exists applications_candidate_id_idx on crm.applications (candidate_id);
 create index if not exists applications_job_id_idx on crm.applications (job_id);
 create index if not exists applications_recruiter_id_idx on crm.applications (recruiter_id);
+create index if not exists call_activities_org_id_idx on crm.call_activities (org_id);
+create index if not exists call_activities_candidate_id_idx on crm.call_activities (candidate_id);
+create index if not exists call_activities_application_id_idx on crm.call_activities (application_id);
+create index if not exists call_activities_job_id_idx on crm.call_activities (job_id);
+create index if not exists call_activities_recruiter_id_idx on crm.call_activities (recruiter_id);
+create index if not exists external_calls_org_id_idx on crm.external_calls (org_id);
+create index if not exists external_calls_recruiter_id_idx on crm.external_calls (recruiter_id);
+create index if not exists external_calls_job_id_idx on crm.external_calls (job_id);
+create index if not exists external_calls_converted_candidate_id_idx on crm.external_calls (converted_candidate_id);
+create index if not exists custom_localities_org_id_idx on crm.custom_localities (org_id);
 create index if not exists interviews_org_id_idx on crm.interviews (org_id);
 create index if not exists interviews_application_id_idx on crm.interviews (application_id);
 create index if not exists placements_org_id_idx on crm.placements (org_id);
@@ -697,6 +787,12 @@ create index if not exists budgets_org_id_idx on crm.budgets (org_id);
 create index if not exists tasks_org_id_idx on crm.tasks (org_id);
 create index if not exists tasks_assigned_to_id_idx on crm.tasks (assigned_to_id);
 create index if not exists tasks_created_by_id_idx on crm.tasks (created_by_id);
+create index if not exists task_comments_org_id_idx on crm.task_comments (org_id);
+create index if not exists task_comments_task_id_idx on crm.task_comments (task_id);
+create index if not exists task_comments_author_id_idx on crm.task_comments (author_id);
+create index if not exists task_activity_org_id_idx on crm.task_activity (org_id);
+create index if not exists task_activity_task_id_idx on crm.task_activity (task_id);
+create index if not exists task_activity_actor_id_idx on crm.task_activity (actor_id);
 create index if not exists announcements_org_id_idx on crm.announcements (org_id);
 create index if not exists announcements_created_by_id_idx on crm.announcements (created_by_id);
 create index if not exists notifications_org_id_idx on crm.notifications (org_id);
@@ -721,6 +817,9 @@ create index if not exists client_communications_position_idx on crm.client_comm
 create index if not exists jobs_position_idx on crm.jobs (_position);
 create index if not exists candidates_position_idx on crm.candidates (_position);
 create index if not exists applications_position_idx on crm.applications (_position);
+create index if not exists call_activities_position_idx on crm.call_activities (_position);
+create index if not exists external_calls_position_idx on crm.external_calls (_position);
+create index if not exists custom_localities_position_idx on crm.custom_localities (_position);
 create index if not exists interviews_position_idx on crm.interviews (_position);
 create index if not exists placements_position_idx on crm.placements (_position);
 create index if not exists message_templates_position_idx on crm.message_templates (_position);
@@ -773,6 +872,8 @@ create index if not exists bank_statement_lines_position_idx on crm.bank_stateme
 create index if not exists manual_journals_position_idx on crm.manual_journals (_position);
 create index if not exists budgets_position_idx on crm.budgets (_position);
 create index if not exists tasks_position_idx on crm.tasks (_position);
+create index if not exists task_comments_position_idx on crm.task_comments (_position);
+create index if not exists task_activity_position_idx on crm.task_activity (_position);
 create index if not exists announcements_position_idx on crm.announcements (_position);
 create index if not exists notifications_position_idx on crm.notifications (_position);
 create index if not exists approval_requests_position_idx on crm.approval_requests (_position);

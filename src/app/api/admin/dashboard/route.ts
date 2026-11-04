@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
 import {
     users, clients, jobs, applications, candidates, commissionLedger,
-    interviews, referrals, tasks, auditLogs, notifications, ACTIVE_STAGES,
+    interviews, referrals, tasks, auditLogs, notifications, integrationServices, ACTIVE_STAGES,
 } from "@/lib/mock/data";
 
 export async function GET(request: Request) {
@@ -77,7 +77,13 @@ export async function GET(request: Request) {
             stage,
             count,
             conversion,
-            avgAgingDays: (Math.random() * 3 + 2).toFixed(1),
+            // Average days applications have sat in this stage (since their last update)
+            avgAgingDays: (() => {
+                const inStage = orgApps.filter((a) => a.stage === stage);
+                if (!inStage.length) return "0.0";
+                const days = inStage.reduce((s, a) => s + (Date.now() - new Date(a.updatedAt || a.createdAt).getTime()) / 86400000, 0);
+                return (days / inStage.length).toFixed(1);
+            })(),
         };
     });
 
@@ -261,6 +267,18 @@ export async function GET(request: Request) {
         })),
         dataQuality,
         recentAudit: auditLogs.filter((l) => l.orgId === me.orgId).slice(0, 10),
+        platformHealth: (() => {
+            const pool = candidates.filter((c) => c.orgId === me.orgId && !c.archived);
+            const consented = pool.filter((c) => c.compliance?.dataProcessingConsent).length;
+            const integ = integrationServices.filter((s) => s.orgId === me.orgId);
+            return {
+                consentPct: pool.length ? Math.round((consented / pool.length) * 100) : null,
+                consented, candidates: pool.length,
+                integrationsConnected: integ.filter((s) => s.status === "CONNECTED").length,
+                integrationsTotal: integ.length,
+                integrationsNeedingAttention: integ.filter((s) => s.status === "NEEDS_ATTENTION" || s.status === "ERROR").length,
+            };
+        })(),
         urgentJobs: activeJobs
             .filter((j) => j.priority === "URGENT" || j.priority === "HIGH")
             .slice(0, 5)

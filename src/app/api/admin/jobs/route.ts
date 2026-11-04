@@ -1,10 +1,18 @@
 import { NextResponse } from "next/server";
+import { createRequisition } from "@/lib/requisition-server";
 import { requireRole } from "@/lib/mock/server";
 import { clients, users, applications, nextIds } from "@/lib/mock/data";
 import { getJobsFromDb, createJobInDb, updateJobInDb, deleteJobFromDb, logAudit } from "@/lib/supabase/db";
 import { creditStatusOf } from "@/lib/mock/finance";
 import { createApproval, isRecruitmentManager, notifyJobAssignment, resolveApprovalsFor, validRecruiters } from "@/lib/mock/pipeline";
-import type { JobRequisition, JobStatus } from "@/lib/types";
+import { nextRequisitionCode } from "@/lib/fit";
+import type { JobRequisition, JobLevel, ShiftTiming } from "@/lib/types";
+
+const CLOSED_STATUSES = ["FULFILLED", "CLOSED", "CANCELLED"];
+const JOB_LEVELS: JobLevel[] = ["INTERN", "JUNIOR", "MID", "SENIOR", "LEAD", "MANAGER", "DIRECTOR"];
+const SHIFTS: ShiftTiming[] = ["DAY", "NIGHT", "ROTATIONAL", "FLEXIBLE"];
+const norm = (s: unknown) => String(s ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+const list = (v: unknown) => (Array.isArray(v) ? v : String(v ?? "").split(",")).map((s) => String(s).trim()).filter(Boolean);
 
 export async function GET(request: Request) {
     const auth = await requireRole("SUPER_ADMIN", "TA_MANAGER", "TA_RECRUITER");
@@ -21,11 +29,14 @@ export async function GET(request: Request) {
 
     const dbJobs = await getJobsFromDb(me.orgId);
     // Recruiters see requisitions assigned to them (or that they requested); managers see all
-    const scoped = isRecruitmentManager(me)
+    const scoped = (isRecruitmentManager(me)
         ? dbJobs
-        : dbJobs.filter((j) => j.primaryRecruiterId === me.id || (j.assignedTas || []).includes(me.id) || j.requestedById === me.id);
+        : dbJobs.filter((j) => j.primaryRecruiterId === me.id || (j.assignedTas || []).includes(me.id) || j.requestedById === me.id))
+        // A draft is private to its author until it is submitted
+        .filter((j) => j.status !== "DRAFT" || j.requestedById === me.id);
 
-    let list = scoped.map((j) => {
+    const manager = isRecruitmentManager(me);
+    let rows = scoped.map((j) => {
         const client = clients.find((c) => c.id === j.clientId);
         const reqUser = users.find((u) => u.id === j.requestedById);
         const appUser = users.find((u) => u.id === j.approvedById);
@@ -34,7 +45,7 @@ export async function GET(request: Request) {
         const daysOpen = Math.floor((Date.now() - new Date(j.createdAt).getTime()) / 86400000);
 
         const jobApps = applications.filter((a) => a.jobId === j.id);
-        const inPipeline = jobApps.filter((a) => !["JOINED", "REJECTED", "BACKED_OUT", "BLACKLISTED"].includes(a.stage)).length;
+        const inPipeline = jobApps.filter((a) => !["JOINED", "REJECTED", "BACKED_OUT", "NOT_INTERESTED", "WITHDRAWN", "BLACKLISTED"].includes(a.stage)).length;
         const joinedCount = jobApps.filter((a) => a.stage === "JOINED").length;
         const interviewCount = jobApps.filter((a) => ["INTERVIEW_SCHEDULED", "TECH_ROUND", "CLIENT_ROUND", "HR_ROUND"].includes(a.stage)).length;
         const offerCount = jobApps.filter((a) => ["OFFER_SENT", "OFFER_ACCEPTED", "ONBOARDING"].includes(a.stage)).length;
@@ -52,10 +63,14 @@ export async function GET(request: Request) {
             calculatedSlaStatus = "ON_TRACK";
         }
 
-        const remainingOpenings = Math.max(0, (j.openings || 1) - (j.filled || 0));
+        // Filled = candidates who actually joined (rejected / withdrawn never count)
+        const filledOpenings = Math.min(j.openings || 0, Math.max(j.filled || 0, joinedCount));
+        const remainingOpenings = Math.max(0, (j.openings || 1) - filledOpenings);
 
         return {
             ...j,
+            internalNotes: manager ? j.internalNotes ?? null : undefined,
+            listed: j.published !== false,
             clientName: client?.companyName ?? "—",
             clientIndustry: client?.industry ?? "",
             requestedByName: reqUser?.name ?? null,
@@ -63,6 +78,9 @@ export async function GET(request: Request) {
             primaryRecruiterName: primaryRec?.name ?? (j.assignedTas?.[0] ? users.find((u) => u.id === j.assignedTas[0])?.name : null),
             taManagerName: taMgr?.name ?? null,
             assignedTaDetails: (j.assignedTas || []).map((id) => ({ id, name: users.find((u) => u.id === id)?.name ?? id })),
+            filled: filledOpenings,
+            filledOpenings,
+            canEdit: !["CLOSED", "CANCELLED", "FULFILLED"].includes(j.status) && (manager || (j.requestedById === me.id && ["DRAFT", "PENDING_APPROVAL"].includes(j.status))),
             inPipeline,
             joinedCount,
             interviewCount,
@@ -76,30 +94,31 @@ export async function GET(request: Request) {
         };
     });
 
-    if (status && status !== "ALL") list = list.filter((j) => j.status === status);
-    if (priority && priority !== "ALL") list = list.filter((j) => j.priority === priority);
-    if (clientId && clientId !== "ALL") list = list.filter((j) => j.clientId === clientId);
+    if (status && status !== "ALL") rows = rows.filter((j) => j.status === status);
+    if (priority && priority !== "ALL") rows = rows.filter((j) => j.priority === priority);
+    if (clientId && clientId !== "ALL") rows = rows.filter((j) => j.clientId === clientId);
     if (recruiterId && recruiterId !== "ALL") {
-        list = list.filter((j) => j.assignedTas?.includes(recruiterId) || j.primaryRecruiterId === recruiterId);
+        rows = rows.filter((j) => j.assignedTas?.includes(recruiterId) || j.primaryRecruiterId === recruiterId);
     }
     if (slaRisk === "NEAR") {
-        list = list.filter((j) => j.calculatedSlaStatus === "AT_RISK");
+        rows = rows.filter((j) => j.calculatedSlaStatus === "AT_RISK");
     } else if (slaRisk === "OVER") {
-        list = list.filter((j) => j.calculatedSlaStatus === "OVERDUE");
+        rows = rows.filter((j) => j.calculatedSlaStatus === "OVERDUE");
     }
 
     if (q) {
-        list = list.filter((j) =>
+        rows = rows.filter((j) =>
             j.title.toLowerCase().includes(q) ||
             j.id.toLowerCase().includes(q) ||
             j.clientName.toLowerCase().includes(q) ||
             (j.department && j.department.toLowerCase().includes(q)) ||
             (j.location && j.location.toLowerCase().includes(q)) ||
+            (j.requisitionCode && j.requisitionCode.toLowerCase().includes(q)) ||
             (j.skills && j.skills.some((s) => s.toLowerCase().includes(q)))
         );
     }
 
-    return NextResponse.json(list);
+    return NextResponse.json(rows);
 }
 
 export async function POST(request: Request) {
@@ -108,6 +127,11 @@ export async function POST(request: Request) {
     const me = auth.user;
 
     const body = await request.json();
+    // The requisition wizard (draft / submit) has its own full validation and workflow
+    if (body.intent === "draft" || body.intent === "submit") {
+        if (me.role === "AGENT") return NextResponse.json({ error: "Partners raise requisitions through referrals" }, { status: 403 });
+        return createRequisition(me, body);
+    }
     if (!body.clientId || !body.title) {
         return NextResponse.json({ error: "clientId and title are required" }, { status: 400 });
     }
@@ -130,6 +154,27 @@ export async function POST(request: Request) {
     if (invalid.length) return NextResponse.json({ error: `Recruiter(s) not found: ${invalid.join(", ")}` }, { status: 400 });
     // Non-managers can only raise a request; status is always decided by approval
     if (!isElevated) delete body.status;
+    else if (body.status && !["APPROVED", "SOURCING", "ON_HOLD", "DRAFT"].includes(body.status)) {
+        return NextResponse.json({ error: "A new requisition can only start as Open, On Hold or Draft" }, { status: 400 });
+    }
+    const minExp = Number(body.experienceMinYears) || 0, maxExp = Number(body.experienceMaxYears) || 0;
+    const minCtc = Number(body.salaryMinLpa) || 0, maxCtc = Number(body.salaryMaxLpa) || 0;
+    if (maxExp && minExp > maxExp) return NextResponse.json({ error: "Min experience cannot be more than max experience" }, { status: 400 });
+    if (maxCtc && minCtc > maxCtc) return NextResponse.json({ error: "Min CTC cannot be more than max CTC" }, { status: 400 });
+    if (body.vacancyType === "REPLACEMENT" && !String(body.replacementFor ?? "").trim()) {
+        return NextResponse.json({ error: "Name the employee being replaced" }, { status: 400 });
+    }
+
+    // Same client + title + location still open → probably a duplicate requirement
+    const orgJobs = await getJobsFromDb(me.orgId);
+    const duplicate = orgJobs.find((j) =>
+        j.clientId === body.clientId && norm(j.title) === norm(body.title) && norm(j.location) === norm(body.location) && !CLOSED_STATUSES.includes(j.status));
+    if (duplicate && !body.allowDuplicate) {
+        return NextResponse.json({
+            error: `Possible duplicate: ${duplicate.requisitionCode ?? duplicate.id} "${duplicate.title}" for this client and location is still ${duplicate.status.replace(/_/g, " ").toLowerCase()}.`,
+            duplicate: { id: duplicate.id, requisitionCode: duplicate.requisitionCode ?? null, title: duplicate.title, status: duplicate.status, openings: duplicate.openings, filled: duplicate.filled },
+        }, { status: 409 });
+    }
     const initialOpenings = Array.from({ length: numOpenings }).map((_, i) => ({
         id: `opn-${Date.now()}-${i + 1}`,
         openingNumber: i + 1,
@@ -138,7 +183,8 @@ export async function POST(request: Request) {
     }));
 
     const job: JobRequisition = {
-        id: body.id || nextIds.job(),
+        id: nextIds.job(),
+        requisitionCode: nextRequisitionCode(orgJobs, me.orgId),
         orgId: me.orgId,
         clientId: body.clientId,
         title: body.title,
@@ -148,20 +194,32 @@ export async function POST(request: Request) {
         city: body.city ?? "",
         country: body.country ?? "India",
         employmentType: body.employmentType ?? "FULL_TIME",
+        jobLevel: JOB_LEVELS.includes(body.jobLevel) ? body.jobLevel : undefined,
+        vacancyType: body.vacancyType === "REPLACEMENT" ? "REPLACEMENT" : "NEW_HIRING",
+        replacementFor: body.vacancyType === "REPLACEMENT" ? String(body.replacementFor).trim() : null,
+        shiftTiming: SHIFTS.includes(body.shiftTiming) ? body.shiftTiming : "DAY",
+        joiningPreference: body.joiningPreference ?? "",
+        hiringManagerName: String(body.hiringManagerName ?? "").trim() || null,
+        interviewRounds: list(body.interviewRounds),
+        internalNotes: isElevated ? String(body.internalNotes ?? "").trim() || null : null,
+        // Team lead publishes it to the job listing once sourcing should open up
+        published: false,
+        publishedAt: null,
+        publishedById: null,
         priority: body.priority ?? "MEDIUM",
         priorityReason: body.priorityReason ?? "",
         openings: numOpenings,
         filled: 0,
-        salaryMinLpa: Number(body.salaryMinLpa) || 0,
-        salaryMaxLpa: Number(body.salaryMaxLpa) || 0,
+        salaryMinLpa: minCtc,
+        salaryMaxLpa: maxCtc,
         salaryCurrency: body.salaryCurrency ?? "INR",
         fixedSalaryLpa: body.fixedSalaryLpa ? Number(body.fixedSalaryLpa) : undefined,
         variableSalaryLpa: body.variableSalaryLpa ? Number(body.variableSalaryLpa) : undefined,
         bonusDetails: body.bonusDetails ?? "",
         benefits: body.benefits ?? "",
-        experienceMinYears: Number(body.experienceMinYears) || 0,
-        experienceMaxYears: Number(body.experienceMaxYears) || 0,
-        skills: Array.isArray(body.skills) ? body.skills : String(body.skills ?? "").split(",").map((s: string) => s.trim()).filter(Boolean),
+        experienceMinYears: minExp,
+        experienceMaxYears: maxExp,
+        skills: list(body.skills),
         preferredSkills: Array.isArray(body.preferredSkills) ? body.preferredSkills : String(body.preferredSkills ?? "").split(",").map((s: string) => s.trim()).filter(Boolean),
         education: body.education ?? "",
         certifications: Array.isArray(body.certifications) ? body.certifications : String(body.certifications ?? "").split(",").map((s: string) => s.trim()).filter(Boolean),
@@ -246,7 +304,7 @@ export async function POST(request: Request) {
         action: isElevated ? "JOB_CREATED" : "JOB_REQUESTED",
         entity: "JobRequisition",
         entityId: saved.id,
-        detail: `${saved.title} (${saved.openings} opening(s))`,
+        detail: `${saved.requisitionCode} ${saved.title} (${saved.openings} opening(s))${duplicate ? ` — created despite possible duplicate ${duplicate.requisitionCode ?? duplicate.id}` : ""}`,
     });
 
     return NextResponse.json(saved, { status: 201 });

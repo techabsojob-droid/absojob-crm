@@ -188,7 +188,7 @@ export async function PATCH(request: Request) {
             }
             // Hand over anything the leaver still owns
             const uid = emp?.userId;
-            const openApps = uid ? applications.filter((a) => a.recruiterId === uid && !["JOINED", "REJECTED", "BACKED_OUT", "BLACKLISTED"].includes(a.stage)).length : 0;
+            const openApps = uid ? applications.filter((a) => a.recruiterId === uid && !["JOINED", "REJECTED", "BACKED_OUT", "NOT_INTERESTED", "WITHDRAWN", "BLACKLISTED"].includes(a.stage)).length : 0;
             const openJobs = uid ? jobs.filter((j) => (j.primaryRecruiterId === uid || (j.assignedTas || []).includes(uid)) && !["CLOSED", "CANCELLED", "FULFILLED"].includes(j.status)).length : 0;
             const openTasks = uid ? tasks.filter((t) => t.assignedToId === uid && !t.completed).length : 0;
             if (openApps || openJobs || openTasks) {

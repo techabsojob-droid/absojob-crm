@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
 import { users, recruiterTargets } from "@/lib/mock/data";
 import { isRecruitmentManager } from "@/lib/mock/pipeline";
-import { recruiterMonth, recruiterPerformance } from "@/lib/mock/recruiter";
+import { recruiterEarnings, recruiterMonth, recruiterPerformance } from "@/lib/mock/recruiter";
 
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 
@@ -26,7 +26,8 @@ export async function GET(request: Request) {
             userId: u.id, name: u.name, role: u.role,
             actual: recruiterMonth(u, month),
             target: recruiterTargets.find((t) => t.orgId === me.orgId && t.userId === u.id && t.month === month) ?? null,
+            earnings: (({ thisMonth, yearToDate, incentive }) => ({ thisMonth, yearToDate, incentive }))(recruiterEarnings(u, month)),
         }))
         : null;
-    return NextResponse.json({ user: { id: subject.id, name: subject.name, role: subject.role }, ...perf, team, canSetTargets: manager });
+    return NextResponse.json({ user: { id: subject.id, name: subject.name, role: subject.role }, ...perf, earnings: recruiterEarnings(subject, month), team, canSetTargets: manager });
 }

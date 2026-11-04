@@ -1,5 +1,5 @@
 import { after } from "next/server";
-import { dbEnabled, ensureFresh, flush } from "./sync";
+import { dbEnabled, ensureFresh, flush, flushLatest } from "./sync";
 
 const TIMER_KEY = "__absojobDbFlushTimer__";
 
@@ -18,7 +18,7 @@ export async function syncRequest(): Promise<void> {
     // Safety net for changes made outside a request
     const g = globalThis as Record<string, unknown>;
     if (!g[TIMER_KEY]) {
-        const t = setInterval(() => { void flush(); }, 2000);
+        const t = setInterval(() => { void flushLatest(); }, 2000);
         (t as { unref?: () => void }).unref?.();
         g[TIMER_KEY] = t;
     }

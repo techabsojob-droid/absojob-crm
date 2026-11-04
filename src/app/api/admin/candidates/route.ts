@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
 import { candidates, applications, jobs, clients, users, addAudit, addNotification } from "@/lib/mock/data";
+import { nextCandidateCode } from "@/lib/fit";
+import type { EducationItem, WorkExperienceItem } from "@/lib/types";
 
 const ELEVATED_ROLES = ["SUPER_ADMIN", "TA_MANAGER"];
 
@@ -26,7 +28,7 @@ export async function GET(request: Request) {
 
     let list = candidates.filter((c) => c.orgId === me.orgId).map((c) => {
         const apps = applications.filter((a) => a.candidateId === c.id && a.orgId === me.orgId);
-        const activeApp = apps.find((a) => !["REJECTED", "BACKED_OUT"].includes(a.stage));
+        const activeApp = apps.find((a) => !["REJECTED", "BACKED_OUT", "NOT_INTERESTED", "WITHDRAWN"].includes(a.stage));
         const job = activeApp ? jobs.find((j) => j.id === activeApp.jobId) : undefined;
         const client = job ? clients.find((cl) => cl.id === job.clientId) : undefined;
         const assignedRecruiter = users.find((u) => u.id === (c.ownership?.assignedRecruiterId || activeApp?.recruiterId));
@@ -83,7 +85,7 @@ export async function GET(request: Request) {
         } else if (filterPreset === "followup_due") {
             list = list.filter((c) => c.nextFollowUp != null);
         } else if (filterPreset === "in_pipeline") {
-            list = list.filter((c) => c.currentStage && !["REJECTED", "BACKED_OUT"].includes(c.currentStage));
+            list = list.filter((c) => c.currentStage && !["REJECTED", "BACKED_OUT", "NOT_INTERESTED", "WITHDRAWN"].includes(c.currentStage));
         } else if (filterPreset === "blacklisted") {
             list = list.filter((c) => c.blacklisted);
         }
@@ -161,7 +163,7 @@ export async function PATCH(request: Request) {
                     };
                     // Ownership drives the pipeline: move the candidate's open applications too
                     applications
-                        .filter((a) => a.candidateId === c.id && a.orgId === me.orgId && !["JOINED", "REJECTED", "BACKED_OUT", "BLACKLISTED"].includes(a.stage))
+                        .filter((a) => a.candidateId === c.id && a.orgId === me.orgId && !["JOINED", "REJECTED", "BACKED_OUT", "NOT_INTERESTED", "WITHDRAWN", "BLACKLISTED"].includes(a.stage))
                         .forEach((a) => { a.recruiterId = assignee.id; a.updatedAt = new Date().toISOString(); });
                 }
             }
@@ -303,16 +305,47 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Valid name and email are required" }, { status: 400 });
     }
 
+    const phoneDigits = String(body.phone ?? "").replace(/\D/g, "");
+    if (phoneDigits && (phoneDigits.length < 10 || phoneDigits.length > 15)) {
+        return NextResponse.json({ error: "Enter a valid phone number (10 digits, optional country code)" }, { status: 400 });
+    }
     const exists = candidates.find(
         (c) => c.orgId === me.orgId && c.email.toLowerCase() === email.toLowerCase()
     );
     if (exists && !body.ignoreDuplicate) {
         return NextResponse.json({ error: "Candidate already exists in database with this email", candidateId: exists.id }, { status: 409 });
     }
+    const phone10 = phoneDigits.slice(-10);
+    const phoneMatch = phone10.length === 10
+        ? candidates.find((c) => c.orgId === me.orgId && (c.phone ?? "").replace(/\D/g, "").slice(-10) === phone10)
+        : undefined;
+    if (phoneMatch && !body.ignoreDuplicate) {
+        return NextResponse.json({ error: `A candidate with this phone number already exists (${phoneMatch.name})`, candidateId: phoneMatch.id }, { status: 409 });
+    }
+
+    // Optional details captured from a parsed resume (each validated; anything else is dropped)
+    const str = (v: unknown, max = 200) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null);
+    const url = (v: unknown) => { const u = str(v, 300); return u && /^https?:\/\/[^\s]+\.[^\s]+$/i.test(u) ? u : null; };
+    const strList = (v: unknown, n = 20) => (Array.isArray(v) ? v.map((x) => str(x, 140)).filter((x): x is string => !!x).slice(0, n) : []);
+    type Row = Record<string, unknown>;
+    const rows = (v: unknown, n: number): Row[] => (Array.isArray(v) ? v.slice(0, n).filter((x): x is Row => !!x && typeof x === "object") : []);
+    const education: EducationItem[] = rows(body.education, 8)
+        .map((e) => ({ degree: str(e.degree, 120), institution: str(e.institution, 160), year: str(String(e.year ?? ""), 4) }))
+        .filter((e): e is { degree: string; institution: string | null; year: string | null } => !!e.degree)
+        .map((e) => ({ id: `edu-${crypto.randomUUID().slice(0, 8)}`, degree: e.degree, fieldOfStudy: "", institution: e.institution ?? "", endYear: e.year ?? undefined }));
+    const highest = str(body.highestQualification, 60);
+    const highestIdx = highest ? education.findIndex((e) => e.degree.toLowerCase().startsWith(highest.toLowerCase().replace(/'s$/, ""))) : -1;
+    if (highestIdx >= 0) education[highestIdx].isHighestQualification = true;
+    const workExperience: WorkExperienceItem[] = rows(body.workExperience, 15)
+        .map((w) => ({ company: str(w.company, 160), designation: str(w.designation, 120), startDate: str(w.startDate, 20), endDate: str(w.endDate, 20), current: !!w.current }))
+        .filter((w) => w.company || w.designation)
+        .map((w) => ({ id: `wexp-${crypto.randomUUID().slice(0, 8)}`, company: w.company ?? "", designation: w.designation ?? "", startDate: w.startDate ?? "", endDate: w.current ? null : w.endDate, currentlyWorking: w.current }));
+    const previousCompany = str(body.previousCompany) ?? workExperience.find((w) => !w.currentlyWorking)?.company ?? null;
+    const numOrNull = (v: unknown) => (v === "" || v == null || !Number.isFinite(Number(v)) || Number(v) < 0 ? null : Number(v));
 
     const candidate = {
         id: nextIds.candidate(),
-        candidateCode: `CAN-${Math.floor(1000 + Math.random() * 9000)}`,
+        candidateCode: nextCandidateCode(candidates, me.orgId),
         orgId: me.orgId,
         status: "NEW" as const,
         tags: ["New Lead", ...(body.immediateJoiner ? ["Immediate Joiner"] : [])],
@@ -322,18 +355,28 @@ export async function POST(request: Request) {
         whatsappNumber: body.whatsappNumber ?? body.phone ?? "",
         currentCompany: body.currentCompany ?? null,
         currentDesignation: body.currentDesignation ?? null,
-        previousCompany: body.previousCompany ?? null,
         totalExperienceYears: Number(body.totalExperienceYears) || 0,
         relevantExperienceYears: Number(body.relevantExperienceYears) || Number(body.totalExperienceYears) || 0,
         currentCtcLpa: Number(body.currentCtcLpa) || 0,
         expectedCtcLpa: Number(body.expectedCtcLpa) || 0,
-        noticePeriodDays: Number(body.noticePeriodDays) || 30,
+        // 0 = immediate joiner; only fall back to 30 days when nothing was given
+        noticePeriodDays: numOrNull(body.noticePeriodDays) ?? 30,
         location: body.location ?? "",
+        ...(String(body.preferredLocation ?? "").trim() ? {
+            preferences: { preferredWorkMode: "ANY" as const, preferredLocations: String(body.preferredLocation).split(",").map((x) => x.trim()).filter(Boolean), willingToRelocate: true, visaSponsorshipRequired: false },
+        } : {}),
         headline: body.headline ?? `${body.currentDesignation || "Professional"} at ${body.currentCompany || "Company"}`,
         bio: body.bio ?? null,
         skills: Array.isArray(body.skills) ? body.skills : String(body.skills ?? "").split(",").map((s: string) => s.trim()).filter(Boolean),
         primarySkills: Array.isArray(body.skills) ? body.skills.slice(0, 3) : String(body.skills ?? "").split(",").map((s: string) => s.trim()).filter(Boolean).slice(0, 3),
         resumeUrl: body.resumeUrl ?? null,
+        linkedinUrl: url(body.linkedinUrl),
+        githubUrl: url(body.githubUrl),
+        portfolioUrl: url(body.portfolioUrl),
+        ...(strList(body.certifications).length ? { certifications: strList(body.certifications) } : {}),
+        ...(education.length ? { education } : {}),
+        ...(workExperience.length ? { workExperience } : {}),
+        ...(previousCompany ? { previousCompany } : {}),
         rating: Number(body.rating) || 3,
         source: (body.source || "DATABASE") as any,
         referredByUserId: body.referredByUserId || null,

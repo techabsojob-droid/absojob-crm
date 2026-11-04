@@ -1,1193 +1,312 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-    Briefcase, MapPin, IndianRupee, Users, Flame, Search, Filter,
-    Download, Plus, SlidersHorizontal, ArrowUpDown, ChevronRight,
-    CheckCircle2, Clock, AlertTriangle, ShieldAlert, GitBranch,
-    Calendar, Building2, UserCheck, Eye, MoreHorizontal, X, ArrowRight,
-    Check, Sparkles, RefreshCw
-} from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { PageHeader, StatCard, Badge, SectionCard, EmptyState, ModalShell } from "@/components/shared/ui";
-import { SkeletonPulse } from "@/components/shared/UIStates";
+import {
+    AlertTriangle, Briefcase, ChevronLeft, ChevronRight, Clock, Copy, Download, Eye, Flame, MoreHorizontal, Pause, Pencil, Play,
+    Plus, Search, ShieldCheck, Users, UserCog, XCircle, Archive, SlidersHorizontal,
+} from "lucide-react";
+import { Badge, StatCard } from "@/components/shared/ui";
+import { ActionDialog, StatusPill, type ActionKind } from "@/components/ta/requisition/RequisitionActions";
+import { useAuth } from "@/lib/auth";
+import { api } from "@/lib/api";
+import { requisitionLabel } from "@/lib/fit";
+import {
+    EMPLOYMENT_TYPES, OPEN_JOB_STATUSES, PRIORITIES, REQUISITION_STATUS_FILTERS, matchesStatusFilter, optLabel, requisitionStatusLabel,
+} from "@/lib/requisition-options";
 
+interface Row {
+    id: string; requisitionCode?: string; title: string; clientId: string; clientName: string; department: string; location: string; city?: string;
+    locationState?: string | null; locationStateCode?: string | null; locationCityId?: string | null; locationLocality?: string | null;
+    openings: number; filled: number; remainingOpenings: number; experienceMinYears: number; experienceMaxYears: number; salaryMinLpa: number; salaryMaxLpa: number;
+    priority: string; employmentType: string; primaryRecruiterId?: string | null; primaryRecruiterName?: string | null; assignedTas: string[];
+    targetCloseDate?: string | null; status: string; statusReason?: string; createdAt: string; requestedById: string | null; requestedByName?: string | null;
+    inPipeline: number; totalCandidates: number; canEdit: boolean; daysRemaining: number; workMode?: string;
+}
+
+const PAGE_SIZE = 25;
+const sel = "h-9 px-2.5 rounded-xl border border-neutral-200 bg-white text-xs font-semibold text-neutral-700 outline-none hover:border-neutral-300 focus:border-primary";
+const isOpen = (s: string) => (OPEN_JOB_STATUSES as readonly string[]).includes(s);
+const isClosed = (s: string) => ["CLOSED", "CANCELLED", "FULFILLED"].includes(s);
+const fmtDate = (d?: string | null) => (d ? new Date(d.length === 10 ? `${d}T00:00:00` : d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—");
 export default function TaRequisitionsPage() {
     const router = useRouter();
     const qc = useQueryClient();
+    const { user } = useAuth();
+    const isManager = user?.role === "SUPER_ADMIN" || user?.role === "TA_MANAGER";
 
-    // Search & Filter state
-    const [searchQuery, setSearchQuery] = useState("");
-    const [statusFilter, setStatusFilter] = useState("ACTIVE");
-    const [priorityFilter, setPriorityFilter] = useState("ALL");
-    const [clientFilter, setClientFilter] = useState("ALL");
-    const [viewMode, setViewMode] = useState<"table" | "cards">("table");
-    const [sortField, setSortField] = useState<string>("createdAt");
-    const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+    // Filters
+    const [q, setQ] = useState("");
+    const [status, setStatus] = useState("ACTIVE");
+    const [clientId, setClientId] = useState("");
+    const [department, setDepartment] = useState("");
+    const [stateCode, setStateCode] = useState("");
+    const [city, setCity] = useState("");
+    const [priority, setPriority] = useState("");
+    const [employmentType, setEmploymentType] = useState("");
+    const [recruiterId, setRecruiterId] = useState("");
+    const [createdFrom, setCreatedFrom] = useState("");
+    const [createdTo, setCreatedTo] = useState("");
+    const [closeFrom, setCloseFrom] = useState("");
+    const [closeTo, setCloseTo] = useState("");
+    const [moreFilters, setMoreFilters] = useState(false);
+    const [sort, setSort] = useState<{ key: keyof Row; dir: 1 | -1 }>({ key: "createdAt", dir: -1 });
+    const [page, setPage] = useState(1);
+    const [menuFor, setMenuFor] = useState<string | null>(null);
+    const [action, setAction] = useState<{ kind: ActionKind; job: Row } | null>(null);
 
-    // Selection & Bulk Actions
-    const [selectedIds, setSelectedIds] = useState<string[]>([]);
-    const [bulkActionOpen, setBulkActionOpen] = useState(false);
+    const { data, isLoading, isError, error } = useQuery<Row[]>({ queryKey: ["ta-jobs"], queryFn: () => api("/api/admin/jobs"), refetchInterval: 30000 });
+    const all = useMemo(() => (Array.isArray(data) ? data : []), [data]);
 
-    // Drawers & Modals
-    const [previewJob, setPreviewJob] = useState<any>(null);
-    const [createModalOpen, setCreateModalOpen] = useState(false);
-    const [statusChangeModalOpen, setStatusChangeModalOpen] = useState(false);
-    const [targetStatus, setTargetStatus] = useState("SOURCING");
+    // Filter option lists come from the requisitions themselves
+    const facet = <T,>(f: (j: Row) => T | null | undefined, label: (j: Row) => string) => {
+        const m = new Map<string, string>();
+        for (const j of all) { const v = f(j); if (v != null && v !== "") m.set(String(v), label(j)); }
+        return [...m.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+    };
+    const clients = facet((j) => j.clientId, (j) => j.clientName);
+    const departments = facet((j) => j.department, (j) => j.department);
+    const states = facet((j) => j.locationStateCode, (j) => j.locationState ?? "");
+    const cities = facet((j) => (!stateCode || j.locationStateCode === stateCode ? j.city : null), (j) => j.city ?? "");
+    const recruiters = facet((j) => j.primaryRecruiterId, (j) => j.primaryRecruiterName ?? "");
 
-    // Create form state
-    const [formData, setFormData] = useState({
-        title: "",
-        clientId: "",
-        department: "Engineering",
-        location: "Bangalore",
-        openings: "2",
-        priority: "HIGH",
-        salaryMinLpa: "15",
-        salaryMaxLpa: "28",
-        experienceMinYears: "4",
-        experienceMaxYears: "8",
-        skills: "React, Node.js, TypeScript, PostgreSQL",
-        slaDays: "30",
-        description: "",
-    });
-
-    // Fetch Requisitions
-    const { data: jobs, isLoading, refetch } = useQuery({
-        queryKey: ["ta-jobs"],
-        queryFn: async () => {
-            const res = await fetch("/api/admin/jobs");
-            if (!res.ok) throw new Error("Failed to fetch requisitions");
-            return res.json();
-        },
-        refetchInterval: 30000,
-    });
-
-    // Fetch Clients for dropdown
-    const { data: clients } = useQuery({
-        queryKey: ["admin-clients-dropdown"],
-        queryFn: async () => {
-            const res = await fetch("/api/admin/clients");
-            if (!res.ok) return [];
-            return res.json();
-        },
-    });
-
-    // Create Requisition Mutation
-    const createMutation = useMutation({
-        mutationFn: async (payload: any) => {
-            const res = await fetch("/api/admin/jobs", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
-            });
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.error || "Failed to create requisition");
-            }
-            return res.json();
-        },
-        onSuccess: () => {
-            toast.success("New requisition created successfully!");
-            setCreateModalOpen(false);
-            setFormData({
-                title: "",
-                clientId: "",
-                department: "Engineering",
-                location: "Bangalore",
-                openings: "2",
-                priority: "HIGH",
-                salaryMinLpa: "15",
-                salaryMaxLpa: "28",
-                experienceMinYears: "4",
-                experienceMaxYears: "8",
-                skills: "React, Node.js, TypeScript, PostgreSQL",
-                slaDays: "30",
-                description: "",
-            });
-            qc.invalidateQueries({ queryKey: ["ta-jobs"] });
-            qc.invalidateQueries({ queryKey: ["ta-dashboard"] });
-        },
-        onError: (err: any) => toast.error(err.message),
-    });
-
-    // Bulk status update mutation
-    const bulkStatusMutation = useMutation({
-        mutationFn: async ({ ids, status }: { ids: string[]; status: string }) => {
-            const promises = ids.map((id) =>
-                fetch(`/api/admin/jobs/${id}`, {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ status }),
-                })
-            );
-            await Promise.all(promises);
-        },
-        onSuccess: () => {
-            toast.success(`Updated ${selectedIds.length} requisitions to ${targetStatus}`);
-            setSelectedIds([]);
-            setStatusChangeModalOpen(false);
-            qc.invalidateQueries({ queryKey: ["ta-jobs"] });
-            qc.invalidateQueries({ queryKey: ["ta-dashboard"] });
-        },
-        onError: () => toast.error("Failed to update requisitions"),
-    });
-
-    const allJobs = Array.isArray(jobs) ? jobs : [];
-    const clientList = Array.isArray(clients) ? clients : [];
-
-    // Filtered & Sorted Jobs
-    const filteredJobs = useMemo(() => {
-        let list = [...allJobs];
-
-        // Status Filter
-        if (statusFilter === "ACTIVE") {
-            list = list.filter((j) => ["APPROVED", "SOURCING", "INTERVIEWING", "OFFER_STAGE"].includes(j.status));
-        } else if (statusFilter === "URGENT_ONLY") {
-            list = list.filter((j) => (j.priority === "URGENT" || j.priority === "CRITICAL") && !["FULFILLED", "CLOSED", "CANCELLED"].includes(j.status));
-        } else if (statusFilter === "SLA_AT_RISK") {
-            list = list.filter((j) => j.calculatedSlaStatus === "AT_RISK" || j.calculatedSlaStatus === "OVERDUE" || (j.daysRemaining != null && j.daysRemaining <= 5));
-        } else if (statusFilter !== "ALL") {
-            list = list.filter((j) => j.status === statusFilter);
-        }
-
-        // Priority Filter
-        if (priorityFilter !== "ALL") {
-            list = list.filter((j) => j.priority === priorityFilter);
-        }
-
-        // Client Filter
-        if (clientFilter !== "ALL") {
-            list = list.filter((j) => j.clientId === clientFilter);
-        }
-
-        // Search Query
-        if (searchQuery.trim()) {
-            const q = searchQuery.toLowerCase().trim();
-            list = list.filter(
-                (j) =>
-                    j.title?.toLowerCase().includes(q) ||
-                    j.clientName?.toLowerCase().includes(q) ||
-                    j.id?.toLowerCase().includes(q) ||
-                    j.department?.toLowerCase().includes(q) ||
-                    (j.skills && j.skills.some((s: string) => s.toLowerCase().includes(q)))
-            );
-        }
-
-        // Sorting
-        list.sort((a, b) => {
-            let valA = a[sortField];
-            let valB = b[sortField];
-            if (sortField === "openings") {
-                valA = Number(valA || 0);
-                valB = Number(valB || 0);
-            }
-            if (valA < valB) return sortOrder === "asc" ? -1 : 1;
-            if (valA > valB) return sortOrder === "asc" ? 1 : -1;
-            return 0;
+    const filtered = useMemo(() => {
+        const t = q.trim().toLowerCase();
+        const list = all.filter((j) =>
+            (status === "ALL" || (status === "ACTIVE" ? !isClosed(j.status) : matchesStatusFilter(j.status, status)))
+            && (!t || j.title.toLowerCase().includes(t) || (j.requisitionCode ?? j.id).toLowerCase().includes(t))
+            && (!clientId || j.clientId === clientId)
+            && (!department || j.department === department)
+            && (!stateCode || j.locationStateCode === stateCode)
+            && (!city || j.city === city)
+            && (!priority || j.priority === priority)
+            && (!employmentType || j.employmentType === employmentType)
+            && (!recruiterId || j.primaryRecruiterId === recruiterId || j.assignedTas?.includes(recruiterId))
+            && (!createdFrom || j.createdAt.slice(0, 10) >= createdFrom) && (!createdTo || j.createdAt.slice(0, 10) <= createdTo)
+            && (!closeFrom || (j.targetCloseDate ?? "") >= closeFrom) && (!closeTo || (!!j.targetCloseDate && j.targetCloseDate <= closeTo)));
+        return list.sort((a, b) => {
+            const x = a[sort.key] ?? "", y = b[sort.key] ?? "";
+            return (typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y))) * sort.dir;
         });
+    }, [all, q, status, clientId, department, stateCode, city, priority, employmentType, recruiterId, createdFrom, createdTo, closeFrom, closeTo, sort]);
 
-        return list;
-    }, [allJobs, statusFilter, priorityFilter, clientFilter, searchQuery, sortField, sortOrder]);
+    const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    const current = Math.min(page, pages);
+    const rows = filtered.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
+    const filtersOn = !!(q || status !== "ACTIVE" || clientId || department || stateCode || city || priority || employmentType || recruiterId || createdFrom || createdTo || closeFrom || closeTo);
+    const resetFilters = () => { setQ(""); setStatus("ACTIVE"); setClientId(""); setDepartment(""); setStateCode(""); setCity(""); setPriority(""); setEmploymentType(""); setRecruiterId(""); setCreatedFrom(""); setCreatedTo(""); setCloseFrom(""); setCloseTo(""); setPage(1); };
 
-    // KPI Metrics
     const metrics = useMemo(() => {
-        const active = allJobs.filter((j) => ["APPROVED", "SOURCING", "INTERVIEWING", "OFFER_STAGE"].includes(j.status));
-        const urgent = allJobs.filter((j) => (j.priority === "URGENT" || j.priority === "CRITICAL") && !["FULFILLED", "CLOSED", "CANCELLED"].includes(j.status));
-        const aging = allJobs.filter((j) => j.daysOpen >= 14 && !["FULFILLED", "CLOSED"].includes(j.status));
-        const slaRisk = allJobs.filter((j) => (j.calculatedSlaStatus === "AT_RISK" || j.calculatedSlaStatus === "OVERDUE" || (j.daysRemaining != null && j.daysRemaining <= 5)) && !["FULFILLED", "CLOSED"].includes(j.status));
-        const fulfilledMtd = allJobs.filter((j) => j.status === "FULFILLED");
-        const totalOpenings = active.reduce((acc, curr) => acc + (curr.openings || 1), 0);
-        const totalFilled = active.reduce((acc, curr) => acc + (curr.filled || 0), 0);
-
+        const open = all.filter((j) => isOpen(j.status));
         return {
-            activeCount: active.length,
-            urgentCount: urgent.length,
-            agingCount: aging.length,
-            slaRiskCount: slaRisk.length,
-            fulfilledCount: fulfilledMtd.length,
-            totalOpenings,
-            totalFilled,
+            open: open.length,
+            openings: open.reduce((s, j) => s + (j.openings || 0), 0),
+            filled: open.reduce((s, j) => s + (j.filled || 0), 0),
+            critical: all.filter((j) => j.priority === "URGENT" && !isClosed(j.status)).length,
+            pending: all.filter((j) => j.status === "PENDING_APPROVAL").length,
+            drafts: all.filter((j) => j.status === "DRAFT").length,
+            overdue: open.filter((j) => j.targetCloseDate && j.targetCloseDate < new Date().toISOString().slice(0, 10)).length,
         };
-    }, [allJobs]);
+    }, [all]);
 
-    // Handle Checkbox Selection
-    const toggleSelectAll = () => {
-        if (selectedIds.length === filteredJobs.length) {
-            setSelectedIds([]);
-        } else {
-            setSelectedIds(filteredJobs.map((j) => j.id));
-        }
+    const exportCsv = () => {
+        if (!filtered.length) return toast.error("No requisitions to export");
+        const head = ["Requisition ID", "Job Title", "Client", "Department", "Location", "State", "Openings", "Filled", "Experience", "Salary (LPA)", "Priority", "Employment Type", "Assigned Recruiter", "Target Closure", "Status", "Created"];
+        const cell = (v: unknown) => { const s = String(v ?? ""); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+        const lines = filtered.map((j) => [requisitionLabel(j), j.title, j.clientName, j.department, j.location, j.locationState ?? "", j.openings, j.filled, `${j.experienceMinYears}-${j.experienceMaxYears} yrs`,
+            `${j.salaryMinLpa}-${j.salaryMaxLpa}`, optLabel(PRIORITIES, j.priority), optLabel(EMPLOYMENT_TYPES, j.employmentType), j.primaryRecruiterName ?? "", j.targetCloseDate ?? "", requisitionStatusLabel(j.status), j.createdAt.slice(0, 10)].map(cell).join(","));
+        const blob = new Blob([`﻿${[head.join(","), ...lines].join("\r\n")}`], { type: "text/csv;charset=utf-8" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `job-listing-${new Date().toISOString().slice(0, 10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(a.href);
     };
 
-    const toggleSelectRow = (id: string) => {
-        setSelectedIds((prev) =>
-            prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
-        );
-    };
-
-    // Export CSV
-    const exportCsv = (subset?: any[]) => {
-        const dataToExport = subset || (selectedIds.length > 0 ? allJobs.filter((j) => selectedIds.includes(j.id)) : filteredJobs);
-        if (dataToExport.length === 0) {
-            toast.error("No data to export");
-            return;
-        }
-
-        const headers = ["Requisition ID", "Title", "Client", "Department", "Location", "Priority", "Openings", "Filled", "In Pipeline", "SLA Status", "Days Open", "Status"];
-        const rows = dataToExport.map((j) => [
-            j.id,
-            `"${j.title?.replace(/"/g, '""')}"`,
-            `"${j.clientName?.replace(/"/g, '""')}"`,
-            j.department || "Engineering",
-            j.location || "Remote",
-            j.priority,
-            j.openings || 1,
-            j.filled || 0,
-            j.inPipeline || 0,
-            j.calculatedSlaStatus || "ON_TRACK",
-            j.daysOpen || 0,
-            j.status,
-        ]);
-
-        const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `AbsoJob_Requisitions_${new Date().toISOString().split("T")[0]}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        toast.success(`Exported ${dataToExport.length} requisitions to CSV.`);
-    };
-
-    // Form submit for create
-    const handleCreateSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!formData.title || !formData.clientId) {
-            toast.error("Please fill required fields (Job Title and Client)");
-            return;
-        }
-
-        const payload = {
-            title: formData.title,
-            clientId: formData.clientId,
-            department: formData.department,
-            location: formData.location,
-            openings: parseInt(formData.openings) || 1,
-            priority: formData.priority,
-            salaryMinLpa: parseFloat(formData.salaryMinLpa) || 10,
-            salaryMaxLpa: parseFloat(formData.salaryMaxLpa) || 20,
-            experienceMinYears: parseInt(formData.experienceMinYears) || 2,
-            experienceMaxYears: parseInt(formData.experienceMaxYears) || 6,
-            skills: formData.skills.split(",").map((s) => s.trim()).filter(Boolean),
-            slaDays: parseInt(formData.slaDays) || 30,
-            description: formData.description || `Hiring for ${formData.title} in ${formData.department} department.`,
-        };
-
-        createMutation.mutate(payload);
-    };
-
+    const sortBy = (key: keyof Row) => setSort((s) => ({ key, dir: s.key === key ? (s.dir === 1 ? -1 : 1) : 1 }));
+    const th = { sort, onSort: sortBy };
     return (
-        <div className="space-y-6 pb-16 max-w-[1600px] mx-auto animate-fade-in">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-1">
+        <div className="space-y-5 pb-16 max-w-[1600px] mx-auto">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
-                            Demand Center
-                        </span>
-                        <span className="text-xs text-neutral-400 font-bold">Hiring Requisitions</span>
+                    <h1 className="text-2xl font-bold text-neutral-900">Job Listing</h1>
+                    <p className="text-sm text-neutral-500 mt-0.5">Client requisitions — openings, ownership, approval and hiring progress.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                    <button type="button" onClick={exportCsv} className="h-10 px-3.5 rounded-xl border border-neutral-200 bg-white text-sm font-semibold text-neutral-700 hover:bg-neutral-50 flex items-center gap-1.5"><Download size={15} /> Export</button>
+                    <Link href="/ta/requisitions/new" className="h-10 px-4 rounded-xl bg-primary text-white text-sm font-semibold shadow-sm shadow-primary/20 hover:bg-primary-dark flex items-center gap-1.5"><Plus size={15} /> New Requisition</Link>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+                <StatCard label="Open requisitions" value={metrics.open} icon={Briefcase} hint={`${metrics.openings} openings`} />
+                <StatCard label="Filled / openings" value={`${metrics.filled}/${metrics.openings}`} icon={Users} tone="blue" hint={`${Math.round((metrics.filled / Math.max(1, metrics.openings)) * 100)}% filled`} />
+                <StatCard label="Critical" value={metrics.critical} icon={Flame} tone="red" hint="Active, critical priority" />
+                <StatCard label="Pending approval" value={metrics.pending} icon={ShieldCheck} tone="amber" hint={isManager ? "Awaiting your decision" : "Awaiting team lead"} />
+                <StatCard label="Past target date" value={metrics.overdue} icon={AlertTriangle} tone="purple" hint="Open, target closure passed" />
+                <StatCard label="My drafts" value={metrics.drafts} icon={Clock} tone="neutral" hint="Not yet submitted" />
+            </div>
+
+            {/* Filters */}
+            <div className="bg-white p-3 rounded-2xl border border-neutral-200/80 space-y-3">
+                <div className="flex flex-wrap items-center gap-2">
+                    <div className="relative flex-1 min-w-[220px]">
+                        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+                        <input value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} placeholder="Search job title or requisition ID" className={`${sel} w-full pl-9 font-medium`} />
                     </div>
-                    <h1 className="text-2xl font-black text-neutral-900 mt-0.5">Requisitions</h1>
-                    <p className="text-xs text-neutral-500 font-medium">
-                        Manage client hiring requirements, SLA health, ownership and candidate demand.
-                    </p>
+                    <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className={sel} aria-label="Status">
+                        <option value="ACTIVE">Active (not closed)</option>
+                        {REQUISITION_STATUS_FILTERS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+                        <option value="ALL">All statuses</option>
+                    </select>
+                    <select value={clientId} onChange={(e) => { setClientId(e.target.value); setPage(1); }} className={`${sel} max-w-[180px]`} aria-label="Client">
+                        <option value="">All clients</option>{clients.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                    </select>
+                    <select value={priority} onChange={(e) => { setPriority(e.target.value); setPage(1); }} className={sel} aria-label="Priority">
+                        <option value="">All priorities</option>{PRIORITIES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+                    </select>
+                    <select value={recruiterId} onChange={(e) => { setRecruiterId(e.target.value); setPage(1); }} className={`${sel} max-w-[170px]`} aria-label="Recruiter">
+                        <option value="">All recruiters</option>{recruiters.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                    </select>
+                    <button type="button" onClick={() => setMoreFilters((v) => !v)} className={`${sel} flex items-center gap-1.5 ${moreFilters ? "border-primary text-primary" : ""}`}><SlidersHorizontal size={13} /> More filters</button>
+                    {filtersOn && <button type="button" onClick={resetFilters} className="text-xs font-semibold text-red-600 hover:underline px-1">Reset</button>}
                 </div>
-
-                <div className="flex items-center gap-2.5 flex-wrap">
-                    <button
-                        onClick={() => exportCsv()}
-                        className="px-3.5 py-2 bg-white hover:bg-neutral-50 border border-neutral-200 text-neutral-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-2xs"
-                    >
-                        <Download size={14} /> Export
-                    </button>
-                    <button
-                        onClick={() => setCreateModalOpen(true)}
-                        className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-primary/20 transition-all hover:scale-[1.02]"
-                    >
-                        <Plus size={15} /> + New Requisition
-                    </button>
-                </div>
+                {moreFilters && (
+                    <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-2 pt-2 border-t border-neutral-100">
+                        <select value={department} onChange={(e) => { setDepartment(e.target.value); setPage(1); }} className={sel} aria-label="Department"><option value="">All departments</option>{departments.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
+                        <select value={stateCode} onChange={(e) => { setStateCode(e.target.value); setCity(""); setPage(1); }} className={sel} aria-label="State"><option value="">All states</option>{states.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
+                        <select value={city} onChange={(e) => { setCity(e.target.value); setPage(1); }} className={sel} aria-label="City"><option value="">All cities</option>{cities.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
+                        <select value={employmentType} onChange={(e) => { setEmploymentType(e.target.value); setPage(1); }} className={sel} aria-label="Employment type"><option value="">All employment types</option>{EMPLOYMENT_TYPES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
+                        <label className="flex flex-col text-[10px] font-bold uppercase tracking-wide text-neutral-400">Created from<input type="date" value={createdFrom} onChange={(e) => { setCreatedFrom(e.target.value); setPage(1); }} className={sel} /></label>
+                        <label className="flex flex-col text-[10px] font-bold uppercase tracking-wide text-neutral-400">Created to<input type="date" value={createdTo} min={createdFrom} onChange={(e) => { setCreatedTo(e.target.value); setPage(1); }} className={sel} /></label>
+                        <label className="flex flex-col text-[10px] font-bold uppercase tracking-wide text-neutral-400">Closure from<input type="date" value={closeFrom} onChange={(e) => { setCloseFrom(e.target.value); setPage(1); }} className={sel} /></label>
+                        <label className="flex flex-col text-[10px] font-bold uppercase tracking-wide text-neutral-400">Closure to<input type="date" value={closeTo} min={closeFrom} onChange={(e) => { setCloseTo(e.target.value); setPage(1); }} className={sel} /></label>
+                    </div>
+                )}
             </div>
 
-            {/* KPI Strip */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                <StatCard
-                    label="Open Requisitions"
-                    value={metrics.activeCount}
-                    icon={Briefcase}
-                    tone="primary"
-                    hint={`${metrics.totalOpenings} openings target`}
-                />
-                <StatCard
-                    label="Urgent & Critical"
-                    value={metrics.urgentCount}
-                    icon={Flame}
-                    tone="red"
-                    hint="Requires immediate sourcing"
-                />
-                <StatCard
-                    label="Aging (>14d)"
-                    value={metrics.agingCount}
-                    icon={Clock}
-                    tone="amber"
-                    hint="Review candidate flow"
-                />
-                <StatCard
-                    label="SLA At Risk"
-                    value={metrics.slaRiskCount}
-                    icon={AlertTriangle}
-                    tone="purple"
-                    hint="Delivery benchmark risk"
-                />
-                <StatCard
-                    label="Fulfilled (MTD)"
-                    value={metrics.fulfilledCount}
-                    icon={CheckCircle2}
-                    tone="emerald"
-                    hint="Closed positions"
-                />
-                <StatCard
-                    label="Filled / Target"
-                    value={`${metrics.totalFilled}/${metrics.totalOpenings}`}
-                    icon={Users}
-                    tone="blue"
-                    hint={`${Math.round((metrics.totalFilled / Math.max(metrics.totalOpenings, 1)) * 100)}% progress`}
-                />
-            </div>
-
-            {/* Filter Bar & Search */}
-            <div className="bg-white p-4 rounded-2xl border border-neutral-200/80 shadow-xs space-y-3">
-                <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
-                    {/* Search */}
-                    <div className="relative flex-1 max-w-md">
-                        <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
-                        <input
-                            type="text"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Search title, client, ID, skill, department…"
-                            className="w-full pl-9 pr-8 py-2 bg-neutral-50/80 border border-neutral-200 rounded-xl text-xs font-medium focus:bg-white focus:border-primary outline-none transition-all placeholder:text-neutral-400"
-                        />
-                        {searchQuery && (
-                            <button
-                                onClick={() => setSearchQuery("")}
-                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 p-0.5"
-                            >
-                                <X size={13} />
-                            </button>
+            {/* Table */}
+            <div className="bg-white rounded-2xl border border-neutral-200/80 overflow-hidden">
+                {isError ? <p className="p-10 text-center text-sm text-red-600">{(error as Error).message}</p>
+                    : isLoading ? <div className="p-4 space-y-2">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-12 rounded-xl bg-neutral-100 animate-pulse" />)}</div>
+                        : !filtered.length ? (
+                            <div className="p-14 text-center space-y-3">
+                                <Briefcase size={28} className="mx-auto text-neutral-300" />
+                                <p className="text-sm text-neutral-500">{filtersOn ? "No requisitions match these filters." : "No requisitions yet."}</p>
+                                {filtersOn ? <button type="button" onClick={resetFilters} className="text-sm font-semibold text-primary">Reset filters</button>
+                                    : <Link href="/ta/requisitions/new" className="inline-flex h-9 px-4 items-center rounded-xl bg-primary text-white text-sm font-semibold">Create requisition</Link>}
+                            </div>
+                        ) : (
+                            <>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left text-xs min-w-[1400px]">
+                                        <thead>
+                                            <tr className="bg-neutral-50/80 border-b border-neutral-200/70 text-neutral-400 uppercase tracking-wider text-[10px]">
+                                                <Th {...th} k="requisitionCode">Req ID</Th><Th {...th} k="title">Job Title</Th><Th {...th} k="clientName">Client</Th><Th {...th} k="department">Department</Th><Th {...th} k="location">Location</Th>
+                                                <Th {...th} k="openings">Openings</Th><Th {...th} k="experienceMinYears">Experience</Th><Th {...th} k="salaryMinLpa">Salary (LPA)</Th><Th {...th} k="priority">Priority</Th>
+                                                <Th {...th} k="primaryRecruiterName">Recruiter</Th><Th {...th} k="targetCloseDate">Target Closure</Th><Th {...th} k="status">Status</Th><Th {...th} k="createdAt">Created</Th><Th {...th} className="text-right">Actions</Th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-neutral-100">
+                                            {rows.map((j) => {
+                                                const pct = Math.min(100, Math.round(((j.filled || 0) / Math.max(1, j.openings || 1)) * 100));
+                                                const late = isOpen(j.status) && j.targetCloseDate && j.targetCloseDate < new Date().toISOString().slice(0, 10);
+                                                return (
+                                                    <tr key={j.id} className="hover:bg-neutral-50/60 align-top">
+                                                        <td className="py-3 px-3 font-mono text-[11px] font-bold text-neutral-500 whitespace-nowrap">{requisitionLabel(j)}</td>
+                                                        <td className="py-3 px-3 min-w-[200px]">
+                                                            <Link href={`/ta/requisitions/${j.id}`} className="font-bold text-[13px] text-neutral-900 hover:text-primary line-clamp-1">{j.title}</Link>
+                                                            <p className="text-[11px] text-neutral-400">{optLabel(EMPLOYMENT_TYPES, j.employmentType)} · {j.totalCandidates} candidate(s)</p>
+                                                        </td>
+                                                        <td className="py-3 px-3 font-semibold text-neutral-800 max-w-[150px] truncate">{j.clientName}</td>
+                                                        <td className="py-3 px-3 text-neutral-600 max-w-[130px] truncate">{j.department}</td>
+                                                        <td className="py-3 px-3 text-neutral-600 max-w-[170px]"><span className="line-clamp-1">{j.location || "—"}</span>{j.locationState && <span className="block text-[11px] text-neutral-400">{j.locationState}</span>}</td>
+                                                        <td className="py-3 px-3 min-w-[110px]">
+                                                            <p className="font-bold text-neutral-800">{j.filled}/{j.openings} <span className="font-medium text-neutral-400">filled</span></p>
+                                                            <div className="h-1.5 bg-neutral-100 rounded-full mt-1 overflow-hidden"><div className={`h-full rounded-full ${pct >= 100 ? "bg-emerald-500" : "bg-primary"}`} style={{ width: `${pct}%` }} /></div>
+                                                        </td>
+                                                        <td className="py-3 px-3 whitespace-nowrap text-neutral-600">{j.experienceMinYears}–{j.experienceMaxYears} yrs</td>
+                                                        <td className="py-3 px-3 whitespace-nowrap text-neutral-600">₹{j.salaryMinLpa}–{j.salaryMaxLpa}</td>
+                                                        <td className="py-3 px-3"><Badge value={j.priority} label={optLabel(PRIORITIES, j.priority)} /></td>
+                                                        <td className="py-3 px-3 whitespace-nowrap text-neutral-700">{j.primaryRecruiterName ?? <span className="text-neutral-400">Unassigned</span>}</td>
+                                                        <td className={`py-3 px-3 whitespace-nowrap ${late ? "text-red-600 font-semibold" : "text-neutral-600"}`}>{fmtDate(j.targetCloseDate)}</td>
+                                                        <td className="py-3 px-3"><StatusPill status={j.status} /></td>
+                                                        <td className="py-3 px-3 whitespace-nowrap text-neutral-500">{fmtDate(j.createdAt)}</td>
+                                                        <td className="py-3 px-3 text-right">
+                                                            <RowMenu job={j} open={menuFor === j.id} onToggle={() => setMenuFor(menuFor === j.id ? null : j.id)} onClose={() => setMenuFor(null)} isManager={isManager}
+                                                                onAction={(kind) => { setMenuFor(null); setAction({ kind, job: j }); }}
+                                                                onNavigate={(href) => { setMenuFor(null); router.push(href); }} />
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div className="flex items-center justify-between px-4 py-3 border-t border-neutral-100 text-xs text-neutral-500">
+                                    <span>{(current - 1) * PAGE_SIZE + 1}–{Math.min(current * PAGE_SIZE, filtered.length)} of {filtered.length}</span>
+                                    <div className="flex items-center gap-1">
+                                        <button type="button" disabled={current <= 1} onClick={() => setPage(current - 1)} className="p-1.5 rounded-lg border border-neutral-200 disabled:opacity-40" aria-label="Previous page"><ChevronLeft size={14} /></button>
+                                        <span className="px-2 font-semibold text-neutral-700">Page {current} of {pages}</span>
+                                        <button type="button" disabled={current >= pages} onClick={() => setPage(current + 1)} className="p-1.5 rounded-lg border border-neutral-200 disabled:opacity-40" aria-label="Next page"><ChevronRight size={14} /></button>
+                                    </div>
+                                </div>
+                            </>
                         )}
-                    </div>
-
-                    {/* Filter Dropdowns */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                        {/* Priority */}
-                        <select
-                            value={priorityFilter}
-                            onChange={(e) => setPriorityFilter(e.target.value)}
-                            aria-label="Filter by priority"
-                            className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold text-neutral-700 outline-none hover:bg-neutral-100 cursor-pointer"
-                        >
-                            <option value="ALL">All Priorities</option>
-                            <option value="CRITICAL">Critical</option>
-                            <option value="URGENT">Urgent</option>
-                            <option value="HIGH">High</option>
-                            <option value="MEDIUM">Medium</option>
-                            <option value="LOW">Low</option>
-                        </select>
-
-                        {/* Client Filter */}
-                        <select
-                            value={clientFilter}
-                            onChange={(e) => setClientFilter(e.target.value)}
-                            aria-label="Filter by client"
-                            className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold text-neutral-700 outline-none hover:bg-neutral-100 cursor-pointer max-w-[180px] truncate"
-                        >
-                            <option value="ALL">All Clients</option>
-                            {clientList.map((c: any) => (
-                                <option key={c.id} value={c.id}>{c.companyName}</option>
-                            ))}
-                        </select>
-
-                        {/* View Switcher */}
-                        <div className="flex items-center bg-neutral-100 p-0.5 rounded-xl border border-neutral-200/60">
-                            <button
-                                onClick={() => setViewMode("table")}
-                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${viewMode === "table" ? "bg-white text-neutral-900 shadow-2xs" : "text-neutral-500 hover:text-neutral-800"}`}
-                            >
-                                Table
-                            </button>
-                            <button
-                                onClick={() => setViewMode("cards")}
-                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${viewMode === "cards" ? "bg-white text-neutral-900 shadow-2xs" : "text-neutral-500 hover:text-neutral-800"}`}
-                            >
-                                Cards
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Saved Views / Presets */}
-                <div className="flex items-center gap-1.5 flex-wrap pt-1 border-t border-neutral-100">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 mr-1 flex items-center gap-1">
-                        <SlidersHorizontal size={11} /> Views:
-                    </span>
-                    {[
-                        { id: "ACTIVE", label: "Active Requisitions" },
-                        { id: "URGENT_ONLY", label: "Urgent Only" },
-                        { id: "SLA_AT_RISK", label: "SLA At Risk" },
-                        { id: "SOURCING", label: "In Sourcing" },
-                        { id: "INTERVIEWING", label: "Interviewing" },
-                        { id: "OFFER_STAGE", label: "Offer Stage" },
-                        { id: "FULFILLED", label: "Fulfilled" },
-                        { id: "ALL", label: "All Records" },
-                    ].map((preset) => (
-                        <button
-                            key={preset.id}
-                            onClick={() => setStatusFilter(preset.id)}
-                            className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${statusFilter === preset.id
-                                ? "bg-primary text-white shadow-xs"
-                                : "bg-neutral-50 hover:bg-neutral-100 border border-neutral-200/80 text-neutral-600"
-                                }`}
-                        >
-                            {preset.label}
-                        </button>
-                    ))}
-                    {(statusFilter !== "ACTIVE" || priorityFilter !== "ALL" || clientFilter !== "ALL" || searchQuery) && (
-                        <button
-                            onClick={() => {
-                                setStatusFilter("ACTIVE");
-                                setPriorityFilter("ALL");
-                                setClientFilter("ALL");
-                                setSearchQuery("");
-                            }}
-                            className="px-2.5 py-1 text-xs text-red-600 hover:underline font-bold ml-auto"
-                        >
-                            Reset Filters
-                        </button>
-                    )}
-                </div>
             </div>
 
-            {/* Bulk Actions Banner (Visible when rows selected) */}
-            {selectedIds.length > 0 && (
-                <div className="bg-primary/95 text-white px-4 py-3 rounded-2xl flex items-center justify-between gap-4 shadow-lg animate-fade-in">
-                    <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center font-black text-xs">
-                            {selectedIds.length}
-                        </span>
-                        <span className="text-xs font-bold">
-                            {selectedIds.length} requisition{selectedIds.length > 1 ? "s" : ""} selected
-                        </span>
-                    </div>
+            {action && <ActionDialog kind={action.kind} job={action.job} onClose={() => setAction(null)} onDone={() => { setAction(null); qc.invalidateQueries({ queryKey: ["ta-jobs"] }); qc.invalidateQueries({ queryKey: ["job-360", action.job.id] }); }} />}
+        </div>
+    );
+}
 
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={() => setStatusChangeModalOpen(true)}
-                            className="px-3 py-1.5 bg-white text-primary hover:bg-neutral-50 rounded-xl text-xs font-bold transition-colors"
-                        >
-                            Change Status
+// ─── Row actions ──────────────────────────────────────────────
+function RowMenu({ job, open, onToggle, onClose, onAction, onNavigate, isManager }: {
+    job: Row; open: boolean; onToggle: () => void; onClose: () => void; onAction: (k: ActionKind) => void; onNavigate: (href: string) => void; isManager: boolean;
+}) {
+    const ref = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (!open) return;
+        const h = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) onClose(); };
+        document.addEventListener("mousedown", h);
+        return () => document.removeEventListener("mousedown", h);
+    }, [open, onClose]);
+    const closed = isClosed(job.status);
+    const items: { label: string; icon: typeof Eye; run: () => void; show: boolean; danger?: boolean }[] = [
+        { label: "View details", icon: Eye, run: () => onNavigate(`/ta/requisitions/${job.id}`), show: true },
+        { label: "Edit", icon: Pencil, run: () => onNavigate(`/ta/requisitions/${job.id}/edit`), show: job.canEdit },
+        { label: "Duplicate requisition", icon: Copy, run: () => onNavigate(`/ta/requisitions/new?from=${job.id}`), show: true },
+        { label: "Assign recruiter", icon: UserCog, run: () => onAction("assign"), show: isManager && !closed && job.status !== "DRAFT" },
+        { label: "Change status", icon: SlidersHorizontal, run: () => onAction("status"), show: isManager && !closed && job.status !== "DRAFT" && job.status !== "PENDING_APPROVAL" },
+        { label: "Review approval", icon: ShieldCheck, run: () => onNavigate("/ta/approvals"), show: isManager && job.status === "PENDING_APPROVAL" },
+        { label: "Put on hold", icon: Pause, run: () => onAction("hold"), show: isManager && isOpen(job.status) },
+        { label: "Resume sourcing", icon: Play, run: () => onAction("resume"), show: isManager && job.status === "ON_HOLD" },
+        { label: "Close requisition", icon: Archive, run: () => onAction("close"), show: isManager && !closed && job.status !== "DRAFT" },
+        { label: "Cancel requisition", icon: XCircle, run: () => onAction("cancel"), show: isManager && !closed, danger: true },
+    ];
+    return (
+        <div ref={ref} className="relative inline-block text-left">
+            <button type="button" onClick={onToggle} aria-haspopup="menu" aria-expanded={open} aria-label={`Actions for ${job.title}`} className="p-1.5 rounded-lg text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100"><MoreHorizontal size={16} /></button>
+            {open && (
+                <div role="menu" className="absolute right-0 z-30 mt-1 w-52 rounded-xl border border-neutral-200 bg-white shadow-lg py-1">
+                    {items.filter((i) => i.show).map((i) => (
+                        <button key={i.label} type="button" role="menuitem" onClick={i.run} className={`w-full px-3 py-2 text-left text-xs font-semibold flex items-center gap-2 hover:bg-neutral-50 ${i.danger ? "text-red-600" : "text-neutral-700"}`}>
+                            <i.icon size={14} /> {i.label}
                         </button>
-                        <button
-                            onClick={() => exportCsv(allJobs.filter((j) => selectedIds.includes(j.id)))}
-                            className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition-colors"
-                        >
-                            Export Selected
-                        </button>
-                        <button
-                            onClick={() => setSelectedIds([])}
-                            className="p-1.5 hover:bg-white/10 rounded-lg text-white/80 hover:text-white"
-                            title="Clear selection"
-                        >
-                            <X size={15} />
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {/* Main Content: Table or Cards */}
-            {isLoading ? (
-                <div className="space-y-3">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                        <div key={i} className="h-20 bg-white rounded-2xl animate-pulse border border-neutral-100" />
                     ))}
                 </div>
-            ) : filteredJobs.length === 0 ? (
-                <SectionCard>
-                    <EmptyState
-                        icon={Briefcase}
-                        message="No requisitions match the current criteria."
-                        action={
-                            <button
-                                onClick={() => setCreateModalOpen(true)}
-                                className="mt-2 px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold"
-                            >
-                                Create Requisition
-                            </button>
-                        }
-                    />
-                </SectionCard>
-            ) : viewMode === "table" ? (
-                <div className="bg-white rounded-2xl border border-neutral-200/80 shadow-xs overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-xs min-w-[1100px]">
-                            <thead>
-                                <tr className="bg-neutral-50/80 border-b border-neutral-200/70 text-neutral-400 font-bold uppercase tracking-wider text-[10px]">
-                                    <th className="py-3 px-4 w-10 text-center">
-                                        <input
-                                            type="checkbox"
-                                            aria-label="Select all requisitions"
-                                            checked={selectedIds.length === filteredJobs.length && filteredJobs.length > 0}
-                                            onChange={toggleSelectAll}
-                                            className="rounded accent-primary cursor-pointer"
-                                        />
-                                    </th>
-                                    <th className="py-3 px-3">Requisition</th>
-                                    <th className="py-3 px-3">Client</th>
-                                    <th className="py-3 px-3">Priority</th>
-                                    <th className="py-3 px-3">Openings & Progress</th>
-                                    <th className="py-3 px-3 text-center">In Pipeline</th>
-                                    <th className="py-3 px-3">Owner / TA</th>
-                                    <th className="py-3 px-3">SLA Status</th>
-                                    <th className="py-3 px-3">Age</th>
-                                    <th className="py-3 px-3">Status</th>
-                                    <th className="py-3 px-4 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-neutral-100">
-                                {filteredJobs.map((j: any) => {
-                                    const isSelected = selectedIds.includes(j.id);
-                                    const progress = Math.min(100, Math.round(((j.filled || 0) / Math.max(j.openings || 1, 1)) * 100));
-                                    const slaDaysLeft = j.daysRemaining != null ? j.daysRemaining : 15;
-                                    const isBreached = slaDaysLeft < 0;
-                                    const isAtRisk = slaDaysLeft >= 0 && slaDaysLeft <= 5;
-
-                                    return (
-                                        <tr
-                                            key={j.id}
-                                            className={`hover:bg-neutral-50/60 transition-colors ${isSelected ? "bg-primary/5" : ""}`}
-                                        >
-                                            <td className="py-3.5 px-4 text-center">
-                                                <input
-                                                    type="checkbox"
-                                                    aria-label={`Select requisition ${j.title}`}
-                                                    checked={isSelected}
-                                                    onChange={() => toggleSelectRow(j.id)}
-                                                    className="rounded accent-primary cursor-pointer"
-                                                />
-                                            </td>
-
-                                            {/* Requisition Title & ID */}
-                                            <td className="py-3.5 px-3 min-w-[220px]">
-                                                <div className="space-y-0.5">
-                                                    <div className="flex items-center gap-1.5">
-                                                        <span className="font-mono text-[10px] text-neutral-400 font-bold">
-                                                            {j.id.startsWith("job-") ? `REQ-${j.id.slice(4)}` : j.id}
-                                                        </span>
-                                                    </div>
-                                                    <Link
-                                                        href={`/ta/requisitions/${j.id}`}
-                                                        className="font-bold text-neutral-900 hover:text-primary transition-colors text-[13px] block leading-snug line-clamp-1"
-                                                    >
-                                                        {j.title}
-                                                    </Link>
-                                                    <div className="flex items-center gap-2 text-[10px] text-neutral-400">
-                                                        <span>{j.department || "Engineering"}</span>
-                                                        <span>•</span>
-                                                        <span className="flex items-center gap-0.5">
-                                                            <MapPin size={10} /> {j.location || "Bangalore"}
-                                                        </span>
-                                                        <span>•</span>
-                                                        <span>₹{j.salaryMinLpa}–{j.salaryMaxLpa}L</span>
-                                                    </div>
-                                                </div>
-                                            </td>
-
-                                            {/* Client */}
-                                            <td className="py-3.5 px-3">
-                                                <div className="font-bold text-neutral-800 text-xs flex items-center gap-1.5">
-                                                    <Building2 size={13} className="text-primary/70 shrink-0" />
-                                                    <span className="truncate max-w-[140px]">{j.clientName || "—"}</span>
-                                                </div>
-                                                <span className="text-[10px] text-neutral-400 block truncate max-w-[140px]">
-                                                    {j.clientIndustry || "Technology"}
-                                                </span>
-                                            </td>
-
-                                            {/* Priority */}
-                                            <td className="py-3.5 px-3">
-                                                <Badge value={j.priority} />
-                                            </td>
-
-                                            {/* Openings & Progress */}
-                                            <td className="py-3.5 px-3 min-w-[140px]">
-                                                <div className="space-y-1">
-                                                    <div className="flex items-center justify-between text-[11px]">
-                                                        <span className="font-bold text-neutral-700">
-                                                            {j.filled || 0} / {j.openings || 1} filled
-                                                        </span>
-                                                        <span className="text-[10px] text-neutral-400 font-semibold">
-                                                            {progress}%
-                                                        </span>
-                                                    </div>
-                                                    <div className="h-1.5 bg-neutral-100 rounded-full overflow-hidden w-full">
-                                                        <div
-                                                            className={`h-full rounded-full transition-all ${progress >= 100
-                                                                ? "bg-emerald-500"
-                                                                : progress > 0
-                                                                    ? "bg-primary"
-                                                                    : "bg-neutral-200"
-                                                                }`}
-                                                            style={{ width: `${progress}%` }}
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </td>
-
-                                            {/* Pipeline Count */}
-                                            <td className="py-3.5 px-3 text-center">
-                                                <Link
-                                                    href={`/ta/pipeline?jobId=${j.id}`}
-                                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 font-black text-xs transition-colors"
-                                                    title="View candidate pipeline"
-                                                >
-                                                    <Users size={12} />
-                                                    <span>{j.inPipeline || 0}</span>
-                                                </Link>
-                                            </td>
-
-                                            {/* Owner */}
-                                            <td className="py-3.5 px-3">
-                                                <div className="flex items-center gap-1.5">
-                                                    <div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-[9px]">
-                                                        {(j.primaryRecruiterName || j.requestedByName || "U").charAt(0)}
-                                                    </div>
-                                                    <span className="font-semibold text-neutral-700 truncate max-w-[110px]">
-                                                        {j.primaryRecruiterName || j.requestedByName || "Unassigned"}
-                                                    </span>
-                                                </div>
-                                            </td>
-
-                                            {/* SLA Status */}
-                                            <td className="py-3.5 px-3">
-                                                {isBreached ? (
-                                                    <span className="inline-flex items-center gap-1 text-[10px] font-black text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-md">
-                                                        <ShieldAlert size={10} /> Overdue ({Math.abs(slaDaysLeft)}d)
-                                                    </span>
-                                                ) : isAtRisk ? (
-                                                    <span className="inline-flex items-center gap-1 text-[10px] font-black text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
-                                                        <AlertTriangle size={10} /> {slaDaysLeft}d left
-                                                    </span>
-                                                ) : (
-                                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
-                                                        <CheckCircle2 size={10} /> {slaDaysLeft}d SLA
-                                                    </span>
-                                                )}
-                                            </td>
-
-                                            {/* Age */}
-                                            <td className="py-3.5 px-3">
-                                                <span className="text-neutral-500 font-medium">
-                                                    {j.daysOpen || 0}d
-                                                </span>
-                                            </td>
-
-                                            {/* Status */}
-                                            <td className="py-3.5 px-3">
-                                                <Badge value={j.status} />
-                                            </td>
-
-                                            {/* Actions */}
-                                            <td className="py-3.5 px-4 text-right">
-                                                <div className="flex items-center justify-end gap-1.5">
-                                                    <button
-                                                        onClick={() => setPreviewJob(j)}
-                                                        className="p-1.5 hover:bg-neutral-100 rounded-lg text-neutral-400 hover:text-neutral-800 transition-colors"
-                                                        title="Quick preview"
-                                                    >
-                                                        <Eye size={14} />
-                                                    </button>
-                                                    <Link
-                                                        href={`/ta/requisitions/${j.id}`}
-                                                        className="px-2.5 py-1 bg-primary/10 hover:bg-primary hover:text-white text-primary rounded-lg text-[11px] font-bold transition-all"
-                                                    >
-                                                        Detail
-                                                    </Link>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            ) : (
-                /* Card Grid View */
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {filteredJobs.map((j: any) => {
-                        const progress = Math.min(100, Math.round(((j.filled || 0) / Math.max(j.openings || 1, 1)) * 100));
-                        const slaDaysLeft = j.daysRemaining != null ? j.daysRemaining : 15;
-                        const isBreached = slaDaysLeft < 0;
-                        const isAtRisk = slaDaysLeft >= 0 && slaDaysLeft <= 5;
-
-                        return (
-                            <div
-                                key={j.id}
-                                className="bg-white p-5 rounded-2xl border border-neutral-200/80 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-4"
-                            >
-                                <div className="space-y-2">
-                                    <div className="flex items-start justify-between gap-2">
-                                        <div>
-                                            <span className="text-[10px] font-mono font-bold text-neutral-400 block">
-                                                {j.id.startsWith("job-") ? `REQ-${j.id.slice(4)}` : j.id}
-                                            </span>
-                                            <Link
-                                                href={`/ta/requisitions/${j.id}`}
-                                                className="font-bold text-neutral-900 hover:text-primary transition-colors text-base line-clamp-1"
-                                            >
-                                                {j.title}
-                                            </Link>
-                                            <p className="text-xs font-bold text-primary flex items-center gap-1 mt-0.5">
-                                                <Building2 size={12} /> {j.clientName}
-                                            </p>
-                                        </div>
-                                        <Badge value={j.priority} />
-                                    </div>
-
-                                    <div className="flex items-center gap-3 text-xs text-neutral-500 flex-wrap">
-                                        <span className="flex items-center gap-1">
-                                            <MapPin size={12} /> {j.location}
-                                        </span>
-                                        <span className="flex items-center gap-1">
-                                            <IndianRupee size={12} /> {j.salaryMinLpa}–{j.salaryMaxLpa} LPA
-                                        </span>
-                                        <span className="flex items-center gap-1">
-                                            <Clock size={12} /> {j.daysOpen}d open
-                                        </span>
-                                    </div>
-
-                                    {/* Skills */}
-                                    {j.skills && j.skills.length > 0 && (
-                                        <div className="flex gap-1.5 flex-wrap pt-1">
-                                            {j.skills.slice(0, 4).map((s: string) => (
-                                                <span
-                                                    key={s}
-                                                    className="px-2 py-0.5 bg-neutral-100 text-neutral-600 rounded-md text-[10px] font-semibold"
-                                                >
-                                                    {s}
-                                                </span>
-                                            ))}
-                                            {j.skills.length > 4 && (
-                                                <span className="px-1.5 py-0.5 bg-neutral-50 text-neutral-400 rounded-md text-[10px]">
-                                                    +{j.skills.length - 4}
-                                                </span>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="space-y-3 pt-2 border-t border-neutral-100">
-                                    {/* Fill Progress Bar */}
-                                    <div className="space-y-1">
-                                        <div className="flex items-center justify-between text-xs">
-                                            <span className="text-neutral-500 font-semibold">Filled:</span>
-                                            <span className="font-extrabold text-neutral-900">
-                                                {j.filled || 0} / {j.openings || 1} ({progress}%)
-                                            </span>
-                                        </div>
-                                        <div className="h-1.5 bg-neutral-100 rounded-full overflow-hidden">
-                                            <div
-                                                className="h-full bg-gradient-to-r from-primary to-emerald-600 rounded-full transition-all"
-                                                style={{ width: `${progress}%` }}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Bottom strip */}
-                                    <div className="flex items-center justify-between text-xs pt-1">
-                                        <div className="flex items-center gap-1.5">
-                                            <Badge value={j.status} />
-                                            {isBreached ? (
-                                                <span className="text-[10px] font-black text-red-600 bg-red-50 px-1.5 py-0.5 rounded">
-                                                    Breached
-                                                </span>
-                                            ) : isAtRisk ? (
-                                                <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
-                                                    {slaDaysLeft}d SLA
-                                                </span>
-                                            ) : null}
-                                        </div>
-
-                                        <div className="flex items-center gap-2">
-                                            <Link
-                                                href={`/ta/pipeline?jobId=${j.id}`}
-                                                className="px-2.5 py-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors"
-                                            >
-                                                <Users size={12} /> {j.inPipeline || 0}
-                                            </Link>
-                                            <Link
-                                                href={`/ta/requisitions/${j.id}`}
-                                                className="px-3 py-1 bg-primary text-white hover:bg-primary-dark rounded-lg text-xs font-bold transition-colors"
-                                            >
-                                                View
-                                            </Link>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
-
-            {/* Quick Preview Drawer */}
-            {previewJob && (
-                <div className="fixed inset-0 z-50 overflow-hidden bg-black/40 backdrop-blur-xs flex justify-end animate-fade-in">
-                    <div className="w-full max-w-md bg-white h-full shadow-2xl p-6 overflow-y-auto space-y-6 flex flex-col justify-between">
-                        <div className="space-y-5">
-                            {/* Drawer Header */}
-                            <div className="flex items-start justify-between gap-3 pb-3 border-b border-neutral-100">
-                                <div>
-                                    <span className="text-[10px] font-mono font-bold text-neutral-400">
-                                        {previewJob.id.startsWith("job-") ? `REQ-${previewJob.id.slice(4)}` : previewJob.id}
-                                    </span>
-                                    <h2 className="text-lg font-black text-neutral-900">{previewJob.title}</h2>
-                                    <p className="text-xs font-bold text-primary flex items-center gap-1 mt-0.5">
-                                        <Building2 size={13} /> {previewJob.clientName}
-                                    </p>
-                                </div>
-                                <button
-                                    onClick={() => setPreviewJob(null)}
-                                    className="p-1 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100"
-                                >
-                                    <X size={18} />
-                                </button>
-                            </div>
-
-                            {/* Status and Priority */}
-                            <div className="flex items-center gap-2 flex-wrap">
-                                <Badge value={previewJob.priority} />
-                                <Badge value={previewJob.status} />
-                                <span className="text-xs text-neutral-400 font-semibold">
-                                    Created {new Date(previewJob.createdAt).toLocaleDateString("en-IN")}
-                                </span>
-                            </div>
-
-                            {/* Key Stats Grid */}
-                            <div className="grid grid-cols-2 gap-3 text-xs">
-                                <div className="p-3 bg-neutral-50 rounded-xl border border-neutral-100">
-                                    <p className="text-[10px] uppercase font-bold text-neutral-400">Openings</p>
-                                    <p className="text-base font-extrabold text-neutral-900 mt-0.5">
-                                        {previewJob.filled || 0} / {previewJob.openings || 1}
-                                    </p>
-                                </div>
-                                <div className="p-3 bg-neutral-50 rounded-xl border border-neutral-100">
-                                    <p className="text-[10px] uppercase font-bold text-neutral-400">In Pipeline</p>
-                                    <p className="text-base font-extrabold text-blue-600 mt-0.5">
-                                        {previewJob.inPipeline || 0} candidates
-                                    </p>
-                                </div>
-                                <div className="p-3 bg-neutral-50 rounded-xl border border-neutral-100">
-                                    <p className="text-[10px] uppercase font-bold text-neutral-400">CTC Budget</p>
-                                    <p className="text-base font-extrabold text-neutral-900 mt-0.5">
-                                        ₹{previewJob.salaryMinLpa}–{previewJob.salaryMaxLpa} LPA
-                                    </p>
-                                </div>
-                                <div className="p-3 bg-neutral-50 rounded-xl border border-neutral-100">
-                                    <p className="text-[10px] uppercase font-bold text-neutral-400">Days Open</p>
-                                    <p className="text-base font-extrabold text-neutral-900 mt-0.5">
-                                        {previewJob.daysOpen || 0} days
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* SLA Target & Health */}
-                            <div className="p-3.5 bg-neutral-50 rounded-xl border border-neutral-100 space-y-2">
-                                <div className="flex items-center justify-between text-xs">
-                                    <span className="font-bold text-neutral-700">SLA Health</span>
-                                    <span className="text-[11px] font-black text-primary">
-                                        Target: {previewJob.slaDays || 30} Days
-                                    </span>
-                                </div>
-                                <p className="text-[11px] text-neutral-500">
-                                    {previewJob.daysRemaining != null && previewJob.daysRemaining < 0
-                                        ? `Breached by ${Math.abs(previewJob.daysRemaining)} days. Needs immediate sourcing attention.`
-                                        : `${previewJob.daysRemaining || 15} days remaining to fulfill position.`}
-                                </p>
-                            </div>
-
-                            {/* Required Skills */}
-                            {previewJob.skills && previewJob.skills.length > 0 && (
-                                <div className="space-y-1.5">
-                                    <p className="text-xs font-bold text-neutral-700">Required Skills</p>
-                                    <div className="flex flex-wrap gap-1.5">
-                                        {previewJob.skills.map((s: string) => (
-                                            <span
-                                                key={s}
-                                                className="px-2.5 py-1 bg-primary/10 text-primary font-bold rounded-lg text-xs"
-                                            >
-                                                {s}
-                                            </span>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Location & Experience */}
-                            <div className="space-y-1 text-xs text-neutral-600">
-                                <p><strong>Location:</strong> {previewJob.location || "Remote"}</p>
-                                <p><strong>Experience:</strong> {previewJob.experienceMinYears}–{previewJob.experienceMaxYears} years</p>
-                                <p><strong>Owner:</strong> {previewJob.primaryRecruiterName || previewJob.requestedByName || "Unassigned"}</p>
-                            </div>
-                        </div>
-
-                        {/* Drawer Actions */}
-                        <div className="pt-4 border-t border-neutral-100 space-y-2">
-                            <Link
-                                href={`/ta/pipeline?jobId=${previewJob.id}`}
-                                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-xs"
-                            >
-                                <GitBranch size={14} /> Open Candidate Pipeline
-                            </Link>
-                            <Link
-                                href={`/ta/requisitions/${previewJob.id}`}
-                                className="w-full py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-xs"
-                            >
-                                <ArrowRight size={14} /> View Full 360° Requisition
-                            </Link>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Modal: Create Requisition */}
-            {createModalOpen && (
-                <ModalShell
-                    title="Create New Requisition"
-                    onClose={() => setCreateModalOpen(false)}
-                >
-                    <form onSubmit={handleCreateSubmit} className="space-y-4">
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-neutral-700">Job Title *</label>
-                            <input
-                                type="text"
-                                required
-                                value={formData.title}
-                                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                placeholder="e.g. Senior Backend Engineer"
-                                className="w-full px-3.5 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl focus:bg-white focus:border-primary outline-none"
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-neutral-700">Client *</label>
-                                <select
-                                    required
-                                    value={formData.clientId}
-                                    onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
-                                    className="w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl focus:bg-white focus:border-primary outline-none"
-                                >
-                                    <option value="">Select Client</option>
-                                    {clientList.map((c: any) => (
-                                        <option key={c.id} value={c.id}>{c.companyName}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-neutral-700">Department</label>
-                                <input
-                                    type="text"
-                                    value={formData.department}
-                                    onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                                    className="w-full px-3.5 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl focus:bg-white focus:border-primary outline-none"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-3">
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-neutral-700">Openings</label>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    value={formData.openings}
-                                    onChange={(e) => setFormData({ ...formData, openings: e.target.value })}
-                                    className="w-full px-3.5 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl focus:bg-white focus:border-primary outline-none"
-                                />
-                            </div>
-
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-neutral-700">Priority</label>
-                                <select
-                                    value={formData.priority}
-                                    onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                                    className="w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl focus:bg-white focus:border-primary outline-none"
-                                >
-                                    <option value="CRITICAL">Critical</option>
-                                    <option value="URGENT">Urgent</option>
-                                    <option value="HIGH">High</option>
-                                    <option value="MEDIUM">Medium</option>
-                                    <option value="LOW">Low</option>
-                                </select>
-                            </div>
-
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-neutral-700">SLA Target (Days)</label>
-                                <input
-                                    type="number"
-                                    value={formData.slaDays}
-                                    onChange={(e) => setFormData({ ...formData, slaDays: e.target.value })}
-                                    className="w-full px-3.5 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl focus:bg-white focus:border-primary outline-none"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-neutral-700">CTC Budget (LPA)</label>
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="number"
-                                        placeholder="Min"
-                                        value={formData.salaryMinLpa}
-                                        onChange={(e) => setFormData({ ...formData, salaryMinLpa: e.target.value })}
-                                        className="w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl focus:bg-white focus:border-primary outline-none"
-                                    />
-                                    <span className="text-xs text-neutral-400">to</span>
-                                    <input
-                                        type="number"
-                                        placeholder="Max"
-                                        value={formData.salaryMaxLpa}
-                                        onChange={(e) => setFormData({ ...formData, salaryMaxLpa: e.target.value })}
-                                        className="w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl focus:bg-white focus:border-primary outline-none"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-neutral-700">Experience (Years)</label>
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="number"
-                                        placeholder="Min"
-                                        value={formData.experienceMinYears}
-                                        onChange={(e) => setFormData({ ...formData, experienceMinYears: e.target.value })}
-                                        className="w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl focus:bg-white focus:border-primary outline-none"
-                                    />
-                                    <span className="text-xs text-neutral-400">to</span>
-                                    <input
-                                        type="number"
-                                        placeholder="Max"
-                                        value={formData.experienceMaxYears}
-                                        onChange={(e) => setFormData({ ...formData, experienceMaxYears: e.target.value })}
-                                        className="w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl focus:bg-white focus:border-primary outline-none"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-neutral-700">Mandatory Skills (Comma separated)</label>
-                            <input
-                                type="text"
-                                value={formData.skills}
-                                onChange={(e) => setFormData({ ...formData, skills: e.target.value })}
-                                placeholder="React, Node.js, AWS, PostgreSQL"
-                                className="w-full px-3.5 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl focus:bg-white focus:border-primary outline-none"
-                            />
-                        </div>
-
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-neutral-700">Job Description Summary</label>
-                            <textarea
-                                rows={3}
-                                value={formData.description}
-                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                placeholder="Role responsibilities, client background, must-haves…"
-                                className="w-full px-3.5 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl focus:bg-white focus:border-primary outline-none"
-                            />
-                        </div>
-
-                        <div className="flex justify-end gap-2 pt-2 border-t border-neutral-100">
-                            <button
-                                type="button"
-                                onClick={() => setCreateModalOpen(false)}
-                                className="px-4 py-2 border border-neutral-200 text-neutral-600 rounded-xl text-xs font-bold hover:bg-neutral-50"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="submit"
-                                disabled={createMutation.isPending}
-                                className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-xl text-xs font-bold shadow-md shadow-primary/20 disabled:opacity-50"
-                            >
-                                {createMutation.isPending ? "Creating…" : "Create Requisition"}
-                            </button>
-                        </div>
-                    </form>
-                </ModalShell>
-            )}
-
-            {/* Modal: Bulk Status Change */}
-            {statusChangeModalOpen && (
-                <ModalShell
-                    title="Change Status for Selected Requisitions"
-                    onClose={() => setStatusChangeModalOpen(false)}
-                >
-                    <div className="space-y-4">
-                        <div className="space-y-1.5">
-                            <label className="text-xs font-bold text-neutral-700">Target Status</label>
-                            <select
-                                value={targetStatus}
-                                onChange={(e) => setTargetStatus(e.target.value)}
-                                className="w-full px-3.5 py-2.5 text-xs bg-neutral-50 border border-neutral-200 rounded-xl focus:bg-white focus:border-primary outline-none font-bold"
-                            >
-                                <option value="SOURCING">SOURCING</option>
-                                <option value="INTERVIEWING">INTERVIEWING</option>
-                                <option value="OFFER_STAGE">OFFER_STAGE</option>
-                                <option value="FULFILLED">FULFILLED</option>
-                                <option value="ON_HOLD">ON_HOLD</option>
-                                <option value="CANCELLED">CANCELLED</option>
-                            </select>
-                        </div>
-
-                        <div className="flex justify-end gap-2 pt-2 border-t border-neutral-100">
-                            <button
-                                type="button"
-                                onClick={() => setStatusChangeModalOpen(false)}
-                                className="px-4 py-2 border border-neutral-200 text-neutral-600 rounded-xl text-xs font-bold hover:bg-neutral-50"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="button"
-                                disabled={bulkStatusMutation.isPending}
-                                onClick={() => bulkStatusMutation.mutate({ ids: selectedIds, status: targetStatus })}
-                                className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-xl text-xs font-bold shadow-md shadow-primary/20 disabled:opacity-50"
-                            >
-                                {bulkStatusMutation.isPending ? "Updating…" : "Apply Status"}
-                            </button>
-                        </div>
-                    </div>
-                </ModalShell>
             )}
         </div>
+    );
+}
+
+function Th({ k, children, className = "", sort, onSort }: { k?: keyof Row; children: React.ReactNode; className?: string; sort: { key: keyof Row; dir: 1 | -1 }; onSort: (k: keyof Row) => void }) {
+    return (
+        <th className={`py-2.5 px-3 font-bold whitespace-nowrap ${className}`}>
+            {k ? <button type="button" onClick={() => onSort(k)} className="inline-flex items-center gap-1 hover:text-neutral-700">{children}{sort.key === k && <span>{sort.dir === 1 ? "↑" : "↓"}</span>}</button> : children}
+        </th>
     );
 }

@@ -10,7 +10,7 @@
 
 import type { PoolClient } from "pg";
 import { pool } from "./pool";
-import { DB_SCHEMA, TABLES, type ColumnDef, type TableDef } from "./registry.generated";
+import { DB_SCHEMA, REGISTRY_GENERATED_AT, TABLES, type ColumnDef, type TableDef } from "./registry.generated";
 
 type Row = Record<string, unknown>;
 type Obj = Record<string, unknown>;
@@ -29,6 +29,8 @@ interface SyncState {
     checking: Promise<void> | null;
     flushing: Promise<void>;
     flushQueued: boolean;
+    registryAt: string | null; // newest column map loaded in this process
+    latestFlush: (() => Promise<void>) | null;
 }
 
 const KEY = "__absojobDbSync__";
@@ -41,12 +43,31 @@ const S: SyncState = ((globalThis as Record<string, unknown>)[KEY] ??= {
     checking: null,
     flushing: Promise.resolve(),
     flushQueued: false,
+    registryAt: null,
+    latestFlush: null,
 }) as SyncState;
 
 // How long a process trusts its copy before asking Supabase what changed
 const FRESHNESS_MS = Number(process.env.DATABASE_FRESHNESS_MS ?? 1000);
 
 export const dbEnabled = () => (process.env.CRM_DATA_SOURCE ?? "supabase") !== "mock";
+
+/**
+ * Hot reload can leave an older copy of this module (with an older column map)
+ * running beside a newer one in the same dev server. Only the newest may read or
+ * write; when a newer one appears it reloads everything from Supabase.
+ */
+function isCurrent(): boolean {
+    if (S.registryAt === null || REGISTRY_GENERATED_AT > S.registryAt) {
+        if (S.registryAt !== null) console.log("[db] column map changed — reloading from Supabase");
+        S.registryAt = REGISTRY_GENERATED_AT;
+        S.hydrated = null;
+        S.snapshot = new Map();
+        S.versions = new Map();
+        S.latestFlush = flush;
+    }
+    return S.registryAt === REGISTRY_GENERATED_AT;
+}
 
 export function attachStore(store: Record<string, unknown>) {
     S.store ??= store;
@@ -166,7 +187,7 @@ async function hydrate() {
 
 /** Make sure this process has Supabase's current data. Safe to call often. */
 export async function ensureFresh(): Promise<void> {
-    if (!dbEnabled() || !S.store) return;
+    if (!dbEnabled() || !S.store || !isCurrent()) return;
     if (!S.hydrated) {
         S.hydrated = hydrate().catch((e) => { S.hydrated = null; throw e; });
         S.lastCheck = Date.now();
@@ -289,7 +310,7 @@ async function writeDiff(client: PoolClient, d: TableDiff) {
 }
 
 async function flushNow() {
-    if (!dbEnabled() || !S.store || !S.hydrated) return;
+    if (!dbEnabled() || !S.store || !S.hydrated || !isCurrent()) return;
     await S.hydrated;
     const diffs = TABLES.map(diffTable).filter((d): d is TableDiff => d !== null);
     if (!diffs.length) return;
@@ -345,7 +366,7 @@ async function flushRowByRow(diffs: TableDiff[]) {
 
 /** Write all pending changes to Supabase. Calls are serialised and coalesced. */
 export function flush(): Promise<void> {
-    if (!dbEnabled()) return Promise.resolve();
+    if (!dbEnabled() || !isCurrent()) return Promise.resolve();
     if (S.flushQueued) return S.flushing;
     S.flushQueued = true;
     S.flushing = S.flushing.then(() => {
@@ -353,4 +374,9 @@ export function flush(): Promise<void> {
         return flushNow();
     }).catch((e) => console.error("[db] flush error:", e instanceof Error ? e.message : e));
     return S.flushing;
+}
+
+/** Flush through the newest loaded copy of this module (used by the background timer). */
+export function flushLatest(): Promise<void> {
+    return (S.latestFlush ?? flush)();
 }

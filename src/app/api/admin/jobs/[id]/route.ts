@@ -11,9 +11,14 @@ import {
     placements as mockPlacements,
     commissionLedger,
     tasks as mockTasks,
-    auditLogs
+    auditLogs,
+    callActivities,
+    storedFiles,
 } from "@/lib/mock/data";
-import type { JobRequisition, JobStatus } from "@/lib/types";
+import { fileUrl } from "@/lib/mock/finance";
+import type { JobLevel, JobRequisition, ShiftTiming } from "@/lib/types";
+import { pipelineMetrics } from "@/lib/metrics";
+import { approvalHistory, updateRequisition } from "@/lib/requisition-server";
 
 export async function GET(
     request: Request,
@@ -47,6 +52,7 @@ export async function GET(
         const candidate = mockCandidates.find((c) => c.id === a.candidateId);
         const recruiter = users.find((u) => u.id === a.recruiterId);
         const appInterviews = mockInterviews.filter((i) => i.applicationId === a.id);
+        const appCalls = callActivities.filter((c) => c.applicationId === a.id).sort((x, y) => +new Date(y.calledAt) - +new Date(x.calledAt));
         const daysInStage = Math.floor((Date.now() - new Date(a.updatedAt || a.createdAt).getTime()) / 86400000);
 
         return {
@@ -59,6 +65,13 @@ export async function GET(
             candidateNoticeDays: candidate?.noticePeriodDays ?? 30,
             candidateCurrentCompany: candidate?.currentCompany ?? "",
             candidateSource: candidate?.source ?? "DATABASE",
+            candidateLocation: candidate?.location ?? candidate?.currentCity ?? "",
+            candidateCurrentCtc: candidate?.currentCtcLpa ?? 0,
+            candidateExpectedCtc: candidate?.expectedCtcLpa ?? 0,
+            candidateSkills: candidate?.skills ?? [],
+            candidateResumeUrl: candidate?.resumeUrl ?? candidate?.documents?.find((d) => d.type === "RESUME")?.fileUrl ?? null,
+            callsCount: appCalls.length,
+            lastCall: appCalls[0] ? { calledAt: appCalls[0].calledAt, callStatus: appCalls[0].callStatus, candidateInterest: appCalls[0].candidateInterest ?? null, nextAction: appCalls[0].nextAction ?? null, followUpDate: appCalls[0].followUpDate ?? null } : null,
             recruiterName: recruiter?.name ?? "Unassigned",
             interviewsCount: appInterviews.length,
             daysInStage,
@@ -77,8 +90,33 @@ export async function GET(
         BACKED_OUT: populatedApps.filter((a) => a.stage === "BACKED_OUT").length,
     };
 
+    // Requisition pipeline summary (current stage of every linked candidate)
+    const at = (...st: string[]) => populatedApps.filter((a) => st.includes(a.stage)).length;
+    const appIdSet = new Set(jobApps.map((a) => a.id));
+    const submittedToClient = new Set(mockCandidates.flatMap((c) => (c.clientSubmissions ?? []).filter((s) => (s.applicationId && appIdSet.has(s.applicationId)) || s.jobId === jobId).map((s) => s.applicationId ?? `${c.id}:${s.jobId}`))).size;
+    const joinedCount = at("JOINED");
+    const requisitionStats = {
+        totalCandidates: populatedApps.length,
+        sourced: at("SOURCED", "CONTACTED"),
+        screening: at("SCREENING"),
+        submittedToClient,
+        shortlisted: at("SHORTLISTED"),
+        shortlistedOrBeyond: at("SHORTLISTED", "INTERVIEW_SCHEDULED", "TECH_ROUND", "CLIENT_ROUND", "HR_ROUND", "INTERVIEW_COMPLETED", "SELECTED", "OFFER_SENT", "OFFER_ACCEPTED", "ONBOARDING", "JOINED"),
+        interviewScheduled: at("INTERVIEW_SCHEDULED", "TECH_ROUND", "CLIENT_ROUND", "HR_ROUND"),
+        interviewCompleted: at("INTERVIEW_COMPLETED"),
+        selected: at("SELECTED"),
+        offered: at("OFFER_SENT", "OFFER_ACCEPTED", "ONBOARDING"),
+        joined: joinedCount,
+        rejected: at("REJECTED"),
+        onHold: at("ON_HOLD"),
+        withdrawn: at("BACKED_OUT", "WITHDRAWN", "NOT_INTERESTED"),
+    };
+    // Filled = candidates who actually joined (rejected / withdrawn never count)
+    const filledOpenings = Math.min(job.openings || 0, Math.max(job.filled || 0, joinedCount));
+
     // Interviews for this job
     const jobAppIds = new Set(jobApps.map((a) => a.id));
+    const jobMetrics = pipelineMetrics(jobApps, mockInterviews, mockCandidates);
     const populatedInterviews = mockInterviews
         .filter((i) => jobAppIds.has(i.applicationId))
         .map((i) => {
@@ -206,25 +244,42 @@ export async function GET(
         (a) => a.entityId === jobId || jobAppIds.has(a.entityId)
     );
 
+    const manager = isRecruitmentManager(me);
+    const canEdit = !["CLOSED", "CANCELLED", "FULFILLED"].includes(job.status) && (manager || (job.requestedById === me.id && ["DRAFT", "PENDING_APPROVAL"].includes(job.status)));
     return NextResponse.json({
+        canManage: manager,
+        canEdit,
+        requisitionStats,
+        approvalHistory: approvalHistory(me.orgId, job.id),
+        createdByName: reqUser?.name ?? null,
+        updatedByName: users.find((u) => u.id === job.updatedById)?.name ?? null,
         job: {
             ...job,
+            internalNotes: manager ? job.internalNotes ?? null : undefined,
+            listed: job.published !== false,
             clientName: client?.companyName ?? "—",
             clientIndustry: client?.industry ?? "Technology",
-            clientContactPerson: client?.contactPerson ?? "Hiring Lead",
-            clientContactEmail: client?.contactEmail ?? "",
-            clientContactPhone: client?.contactPhone ?? "",
+            // The requisition's own client contact wins over the client's default contact
+            clientContactPerson: job.clientContactName || client?.contactPerson || "Hiring Lead",
+            clientContactEmail: job.clientContactEmail || client?.contactEmail || "",
+            clientContactPhone: job.clientContactPhone || client?.contactPhone || "",
             clientLocation: client?.address ?? "",
             requestedByName: reqUser?.name ?? null,
             approvedByName: appUser?.name ?? null,
             primaryRecruiterName: primaryRec?.name ?? "Unassigned",
+            publishedByName: users.find((u) => u.id === job.publishedById)?.name ?? null,
             taManagerName: taMgr?.name ?? null,
             accountManagerName: acctMgr?.name ?? null,
             daysOpen,
+            timeToFirstInterviewDays: jobMetrics.avgDaysToFirstInterview,
+            timeToOfferDays: jobMetrics.avgDaysToOffer,
             slaDays: effectiveSlaDays,
             daysRemaining,
             calculatedSlaStatus,
-            remainingOpenings,
+            filled: filledOpenings,
+            filledOpenings,
+            remainingOpenings: Math.max(0, (job.openings || 0) - filledOpenings),
+            secondaryRecruiters: (job.assignedTas ?? []).filter((id) => id !== job.primaryRecruiterId).map((id) => ({ id, name: users.find((u) => u.id === id)?.name ?? id })),
         },
         pipelineCounts,
         candidates: populatedApps,
@@ -239,17 +294,31 @@ export async function GET(
     });
 }
 
+// Fields a team lead may edit directly; everything else (filled, history, org) is server-owned
+const EDITABLE: (keyof JobRequisition)[] = [
+    "title", "department", "location", "workMode", "city", "employmentType", "jobLevel", "vacancyType", "replacementFor", "shiftTiming",
+    "joiningPreference", "hiringManagerName", "interviewRounds", "internalNotes", "priority", "priorityReason", "openings",
+    "salaryMinLpa", "salaryMaxLpa", "experienceMinYears", "experienceMaxYears", "skills", "preferredSkills", "education",
+    "noticePeriodPreference", "description", "responsibilities", "targetCloseDate", "targetJoiningDate", "slaDays",
+    "primaryRecruiterId", "assignedTas", "taManagerId", "accountManagerId", "status", "tags",
+];
+const OPEN_STATUSES = ["APPROVED", "SOURCING", "SCREENING", "CLIENT_REVIEW", "INTERVIEWING", "OFFER_STAGE", "JOINING"];
+const JOB_LEVELS: JobLevel[] = ["INTERN", "JUNIOR", "MID", "SENIOR", "LEAD", "MANAGER", "DIRECTOR"];
+const SHIFTS: ShiftTiming[] = ["DAY", "NIGHT", "ROTATIONAL", "FLEXIBLE"];
+const toList = (v: unknown) => (Array.isArray(v) ? v : String(v ?? "").split(",")).map((s) => String(s).trim()).filter(Boolean);
+
 export async function PATCH(
     request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
-    const auth = await requireRole("SUPER_ADMIN", "TA_MANAGER", "TA_RECRUITER");
+    // Assigning recruiters, holding, publishing and editing the specification are team-lead (TA Manager) decisions
+    const auth = await requireRole("SUPER_ADMIN", "TA_MANAGER");
     if ("error" in auth) return auth.error;
     const me = auth.user;
     const { id: jobId } = await params;
 
     const body = await request.json();
-    const { action, ...updates } = body;
+    const { action } = body;
 
     const dbJobs = await getJobsFromDb(me.orgId);
     const existing = dbJobs.find((j) => j.id === jobId);
@@ -257,48 +326,83 @@ export async function PATCH(
         return NextResponse.json({ error: "Job requisition not found" }, { status: 404 });
     }
 
-    const isElevated = me.role === "SUPER_ADMIN" || me.role === "TA_MANAGER";
-    if (!isElevated) {
-        // Recruiters may only edit jobs assigned to them, and never change status / approval / assignment
-        const assigned = existing.primaryRecruiterId === me.id || (existing.assignedTas || []).includes(me.id);
-        if (!assigned) {
-            return NextResponse.json({ error: "You can only edit requisitions assigned to you" }, { status: 403 });
-        }
-        const restricted = ["status", "approvedById", "primaryRecruiterId", "assignedTas", "taManagerId", "accountManagerId", "assignmentHistory"];
-        if (action || restricted.some((k) => updates[k] !== undefined)) {
-            return NextResponse.json(
-                { error: "Only Super Admin or TA Manager can approve, hold, close, cancel or reassign requisitions" },
-                { status: 403 }
-            );
-        }
+    const updates: Record<string, any> = {};
+    for (const k of EDITABLE) if (body[k] !== undefined) updates[k] = body[k];
+    for (const k of ["skills", "preferredSkills", "interviewRounds", "tags"]) if (updates[k] !== undefined) updates[k] = toList(updates[k]);
+    if (updates.jobLevel !== undefined && !JOB_LEVELS.includes(updates.jobLevel)) delete updates.jobLevel;
+    if (updates.shiftTiming !== undefined && !SHIFTS.includes(updates.shiftTiming)) delete updates.shiftTiming;
+    if (updates.vacancyType !== undefined && updates.vacancyType !== "REPLACEMENT") { updates.vacancyType = "NEW_HIRING"; updates.replacementFor = null; }
+    if (updates.openings !== undefined) {
+        const n = Math.floor(Number(updates.openings));
+        if (!(n >= 1)) return NextResponse.json({ error: "Openings must be at least 1" }, { status: 400 });
+        if (n < (existing.filled || 0)) return NextResponse.json({ error: `${existing.filled} position(s) are already filled — openings cannot go below that` }, { status: 400 });
+        updates.openings = n;
     }
-    // Clients cannot write computed/history fields directly
-    delete updates.requirementVersions;
-    delete updates.assignmentHistory;
-    delete updates.filled;
+    const minExp = Number(updates.experienceMinYears ?? existing.experienceMinYears), maxExp = Number(updates.experienceMaxYears ?? existing.experienceMaxYears);
+    if (maxExp && minExp > maxExp) return NextResponse.json({ error: "Min experience cannot be more than max experience" }, { status: 400 });
+    const minCtc = Number(updates.salaryMinLpa ?? existing.salaryMinLpa), maxCtc = Number(updates.salaryMaxLpa ?? existing.salaryMaxLpa);
+    if (maxCtc && minCtc > maxCtc) return NextResponse.json({ error: "Min CTC cannot be more than max CTC" }, { status: 400 });
 
     if (action === "approve") {
+        if (existing.status !== "PENDING_APPROVAL" && existing.status !== "DRAFT") return NextResponse.json({ error: "Only a pending requisition can be approved" }, { status: 422 });
+        if (existing.requestedById === me.id && me.role !== "SUPER_ADMIN") return NextResponse.json({ error: "You cannot approve your own requisition" }, { status: 403 });
         updates.status = "APPROVED";
         updates.approvedById = me.id;
+        updates.approvedAt = new Date().toISOString();
     } else if (action === "hold") {
+        const reason = String(body.reason ?? "").trim();
+        if (!reason) return NextResponse.json({ error: "A reason is required to put a requisition on hold" }, { status: 400 });
+        if (["FULFILLED", "CLOSED", "CANCELLED"].includes(existing.status)) return NextResponse.json({ error: `Requisition is already ${existing.status.toLowerCase()}` }, { status: 422 });
         updates.status = "ON_HOLD";
-        updates.statusReason = body.reason || "Temporarily on hold by request";
+        updates.statusReason = reason;
         updates.holdResumeDate = body.resumeDate || null;
+    } else if (action === "resume") {
+        if (existing.status !== "ON_HOLD") return NextResponse.json({ error: "Requisition is not on hold" }, { status: 422 });
+        updates.status = "SOURCING";
+        updates.statusReason = String(body.reason ?? "").trim() || "Sourcing resumed";
+        updates.holdResumeDate = null;
     } else if (action === "close") {
         updates.status = "CLOSED";
-        updates.closureReason = body.closureReason || "Positions filled or mandate completed";
+        updates.closureReason = String(body.closureReason ?? "").trim() || "Positions filled or mandate completed";
+        updates.closedAt = new Date().toISOString();
     } else if (action === "cancel") {
         updates.status = "CANCELLED";
-        updates.cancelReason = body.cancelReason || "Cancelled by client";
+        updates.cancelReason = String(body.cancelReason ?? "").trim() || "Cancelled by client";
+        updates.closedAt = new Date().toISOString();
+    } else if (action === "publish") {
+        if (!OPEN_STATUSES.includes(existing.status)) {
+            return NextResponse.json({ error: `Only open requisitions can be listed (this one is ${existing.status.replace(/_/g, " ").toLowerCase()})` }, { status: 422 });
+        }
+        updates.published = true;
+        updates.publishedAt = new Date().toISOString();
+        updates.publishedById = me.id;
+    } else if (action === "unpublish") {
+        updates.published = false;
+    } else if (action === "addDocument") {
+        // File already uploaded through /api/files; attach it to the requisition
+        const f = storedFiles.find((x) => x.id === body.fileId && x.orgId === me.orgId);
+        if (!f) return NextResponse.json({ error: "Uploaded file not found" }, { status: 404 });
+        const DOC_TYPES = ["JD", "CLIENT_REQUIREMENT", "RATE_CARD", "SOW", "CONTRACT", "INTERVIEW_GUIDE", "OTHER"] as const;
+        const type = (DOC_TYPES as readonly string[]).includes(body.documentType) ? body.documentType : "OTHER";
+        const sameName = (existing.documents ?? []).filter((d) => d.name === f.name);
+        updates.documents = [...(existing.documents ?? []), {
+            id: `jdoc-${crypto.randomUUID().slice(0, 8)}`, name: f.name, type, fileUrl: fileUrl(f.id), fileSizeKb: Math.ceil(f.size / 1024),
+            version: sameName.length + 1, uploadedById: me.id, uploadedByName: me.name, uploadedAt: new Date().toISOString(), status: "ACTIVE",
+        }];
+    } else if (action === "archiveDocument") {
+        if (!(existing.documents ?? []).some((d) => d.id === body.documentId)) return NextResponse.json({ error: "Document not found" }, { status: 404 });
+        updates.documents = (existing.documents ?? []).map((d) => (d.id === body.documentId ? { ...d, status: "ARCHIVED" } : d));
+    } else if (action) {
+        return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 });
     }
+    // A requisition that stops being open comes off the job listing
+    if (updates.status && !OPEN_STATUSES.includes(updates.status)) updates.published = false;
 
     // If requirements or openings were modified, record a version
-    if (
-        (updates.openings && updates.openings !== existing.openings) ||
-        (updates.salaryMinLpa && updates.salaryMinLpa !== existing.salaryMinLpa) ||
-        (updates.salaryMaxLpa && updates.salaryMaxLpa !== existing.salaryMaxLpa) ||
-        (updates.skills && JSON.stringify(updates.skills) !== JSON.stringify(existing.skills))
-    ) {
+    const changedSpec = (["openings", "salaryMinLpa", "salaryMaxLpa", "experienceMinYears", "experienceMaxYears", "location", "workMode"] as const)
+        .some((k) => updates[k] !== undefined && String(updates[k]) !== String(existing[k] ?? ""))
+        || (updates.skills && JSON.stringify(updates.skills) !== JSON.stringify(existing.skills));
+    if (changedSpec) {
         const nextVersion = (existing.requirementVersions?.length || 1) + 1;
         const newVersionRecord = {
             version: nextVersion,
@@ -316,11 +420,25 @@ export async function PATCH(
             changeSummary: body.changeSummary || `Requisition updated to version ${nextVersion}`
         };
         updates.requirementVersions = [...(existing.requirementVersions || []), newVersionRecord];
+        // Keep the per-seat list in step with a changed headcount
+        if (updates.openings !== undefined && updates.openings !== existing.openings) {
+            const seats = [...(existing.openingsList || [])];
+            const open = seats.filter((o) => o.status !== "CANCELLED");
+            for (let i = open.length; i < updates.openings; i++) {
+                seats.push({ id: `opn-${Date.now()}-${i + 1}`, openingNumber: seats.length + 1, status: "OPEN", notes: `Added in version ${nextVersion}` });
+            }
+            let surplus = open.length - updates.openings;
+            for (let i = seats.length - 1; i >= 0 && surplus > 0; i--) {
+                if (seats[i].status === "OPEN") { seats[i] = { ...seats[i], status: "CANCELLED", notes: `Removed in version ${nextVersion}` }; surplus--; }
+            }
+            updates.openingsList = seats;
+        }
     }
 
     // Recruiter assignment change
     if (updates.primaryRecruiterId && updates.primaryRecruiterId !== existing.primaryRecruiterId) {
         const recUser = users.find((u) => u.id === updates.primaryRecruiterId);
+        const now = new Date().toISOString();
         const asgRecord = {
             id: `asg-${Date.now()}`,
             recruiterId: updates.primaryRecruiterId,
@@ -328,10 +446,13 @@ export async function PATCH(
             role: "PRIMARY_RECRUITER" as const,
             assignedById: me.id,
             assignedByName: me.name,
-            assignedAt: new Date().toISOString(),
+            assignedAt: now,
             active: true
         };
-        updates.assignmentHistory = [...(existing.assignmentHistory || []), asgRecord];
+        updates.assignmentHistory = [
+            ...(existing.assignmentHistory || []).map((h) => h.role === "PRIMARY_RECRUITER" && h.active ? { ...h, active: false, unassignedAt: now, unassignedReason: `Replaced by ${asgRecord.recruiterName}` } : h),
+            asgRecord,
+        ];
         if (!updates.assignedTas) {
             updates.assignedTas = Array.from(new Set([...(existing.assignedTas || []), updates.primaryRecruiterId]));
         }
@@ -352,15 +473,30 @@ export async function PATCH(
         notifyJobAssignment(after, prevTeam, me);
     }
 
+    const auditAction: Record<string, string> = { approve: "JOB_APPROVED", close: "JOB_CLOSED", hold: "JOB_ON_HOLD", resume: "JOB_RESUMED", publish: "JOB_PUBLISHED", unpublish: "JOB_UNPUBLISHED" };
     await logAudit({
         orgId: me.orgId,
         actorUserId: me.id,
         actorRole: me.role,
-        action: action === "approve" ? "JOB_APPROVED" : (action === "close" ? "JOB_CLOSED" : "JOB_UPDATED"),
+        action: auditAction[action] ?? (updates.primaryRecruiterId && updates.primaryRecruiterId !== existing.primaryRecruiterId ? "JOB_RECRUITER_ASSIGNED" : "JOB_UPDATED"),
         entity: "JobRequisition",
         entityId: jobId,
-        detail: body.changeSummary || `Updated job ${existing.title} (${action || 'edit'})`,
+        detail: action === "hold" ? `On hold: ${updates.statusReason}${updates.holdResumeDate ? ` (resume ${updates.holdResumeDate})` : ""}`
+            : body.changeSummary || `Updated job ${existing.title} (${action || "edit"})`,
     });
 
     return NextResponse.json({ success: true });
+}
+
+// PUT — full update from the requisition wizard: { intent: "save" | "draft" | "submit", ...fields }
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
+    const auth = await requireRole("SUPER_ADMIN", "TA_MANAGER", "TA_RECRUITER");
+    if ("error" in auth) return auth.error;
+    const me = auth.user;
+    const { id } = await params;
+    const existing = (await getJobsFromDb(me.orgId)).find((j) => j.id === id);
+    if (!existing) return NextResponse.json({ error: "Job requisition not found" }, { status: 404 });
+    let body: Record<string, unknown>;
+    try { body = await request.json(); } catch { return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 }); }
+    return updateRequisition(me, existing, body);
 }

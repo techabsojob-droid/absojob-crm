@@ -100,6 +100,17 @@ function LeaveContent() {
         },
     });
 
+    // Independent of the tab filter: approved leave covering today
+    const { data: approvedLeave = [] } = useQuery<LeaveRequestEnriched[]>({
+        queryKey: ["hr-leave", "APPROVED-today"],
+        queryFn: async () => {
+            const res = await fetch("/api/hr/leave?status=APPROVED");
+            return res.ok ? res.json() : [];
+        },
+    });
+    const todayStr = new Date().toISOString().split("T")[0];
+    const onLeaveToday = new Set(approvedLeave.filter((r) => r.status === "APPROVED" && r.fromDate <= todayStr && r.toDate >= todayStr).map((r) => r.userId)).size;
+
     const pendingCount = requests.filter((r) => r.status === "PENDING").length;
     const approvedCount = requests.filter((r) => r.status === "APPROVED").length;
     const rejectedCount = requests.filter((r) => r.status === "REJECTED").length;
@@ -132,7 +143,7 @@ function LeaveContent() {
                 <StatCard label="Pending Applications" value={pendingCount} icon={Clock} tone="amber" hint="Awaiting review" />
                 <StatCard label="Approved Leaves" value={approvedCount} icon={CheckCircle2} tone="emerald" hint="Sanctioned days" />
                 <StatCard label="Rejected / Declined" value={rejectedCount} icon={XCircle} tone="red" hint="Declined requests" />
-                <StatCard label="On Leave Today" value={2} icon={Calendar} tone="blue" hint="Current active absences" />
+                <StatCard label="On Leave Today" value={onLeaveToday} icon={Calendar} tone="blue" hint="Current active absences" />
             </div>
 
             {/* Navigation Tabs */}

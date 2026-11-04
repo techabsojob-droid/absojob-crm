@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/mock/server";
-import { jobs, candidates, clients, users, employees, referrals, applications, invoices } from "@/lib/mock/data";
+import { jobs, candidates, clients, users, employees, referrals, applications, invoices, tasks } from "@/lib/mock/data";
+import { canViewTask, ensureTaskKeys, taskLinkFor } from "@/lib/tasks";
 import { canWorkOnApplication, isRecruitmentManager } from "@/lib/mock/pipeline";
 
 // Global search, scoped to what the signed-in role may open, with deep links
@@ -79,5 +80,15 @@ export async function GET(request: Request) {
         results.sort((a, b) => Number(mineCand.has(b.id)) - Number(mineCand.has(a.id)));
     }
 
-    return NextResponse.json(results.slice(0, 10));
+    // Tasks the user can see, by key (ABS-12) or title
+    ensureTaskKeys(tasks, orgId);
+    const keyHit = /^[a-z]+-\d+$/.test(q);
+    const taskHits = tasks
+        .filter((t) => canViewTask(user, t, users) && (t.key?.toLowerCase() === q || (!keyHit && t.title.toLowerCase().includes(q))))
+        .slice(0, 5)
+        .map((t) => ({ id: t.id, title: `${t.key} · ${t.title}`, type: "Task", href: taskLinkFor(user.role, t.key) }));
+    // An exact ticket key goes first
+    if (keyHit) results.unshift(...taskHits); else results.push(...taskHits);
+
+    return NextResponse.json(results.slice(0, 12));
 }

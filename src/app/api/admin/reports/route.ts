@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
 import {
     jobs, applications, candidates, clients, commissionLedger,
-    users, referrals, ACTIVE_STAGES,
+    users, referrals, interviews, ACTIVE_STAGES,
 } from "@/lib/mock/data";
+import { pipelineMetrics } from "@/lib/metrics";
 
 export async function GET() {
     const auth = await requireRole("SUPER_ADMIN", "HR_ADMIN", "TA_MANAGER");
@@ -28,6 +29,7 @@ export async function GET() {
             interviews: interviewsDone,
             joined,
             conversionRate: apps.length > 0 ? Math.round((joined / apps.length) * 100) : 0,
+            avgTimeToHireDays: pipelineMetrics(apps, interviews, candidates).avgTimeToHireDays,
         };
     }).sort((a, b) => b.joined - a.joined || b.conversionRate - a.conversionRate);
 
@@ -48,13 +50,15 @@ export async function GET() {
         }))
         .sort((a, b) => b.revenue - a.revenue);
 
-    // 4. Monthly placement trend (last 6 months approximated from join dates)
+    // 4. Monthly placement trend: joins per month over the last 6 months
     const monthlyTrend = Array.from({ length: 6 }, (_, i) => {
         const d = new Date();
+        d.setDate(1);
         d.setMonth(d.getMonth() - (5 - i));
+        const ym = d.toISOString().slice(0, 7);
         return {
             month: d.toLocaleString("en-IN", { month: "short" }),
-            placements: Math.max(1, ((i * 3 + orgApps.length) % 7) + (i >= 3 ? 2 : 0)),
+            placements: orgApps.filter((a) => a.stage === "JOINED" && (a.actualJoinDate || a.updatedAt).slice(0, 7) === ym).length,
         };
     });
 
@@ -78,7 +82,14 @@ export async function GET() {
             .sort((a, b) => b.hires - a.hires),
     };
 
+    // Days from entering the pipeline to joining, across everyone who joined
+    const joined = orgApps.filter((a) => a.stage === "JOINED");
+    const avgTimeToHireDays = joined.length
+        ? Math.round(joined.reduce((s, a) => s + Math.max(0, (new Date(a.actualJoinDate || a.updatedAt).getTime() - new Date(a.createdAt).getTime()) / 86400000), 0) / joined.length)
+        : null;
+
     return NextResponse.json({
+        avgTimeToHireDays,
         recruiterStats,
         sourceCounts,
         clientRevenue,

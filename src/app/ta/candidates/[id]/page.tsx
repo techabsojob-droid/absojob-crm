@@ -13,14 +13,32 @@ import { Badge, SectionCard, EmptyState, ModalShell } from "@/components/shared/
 import { SkeletonPulse } from "@/components/shared/UIStates";
 import { btn, fileToPayload, inputCls, Tabs, useAct } from "@/components/finance/kit";
 import CandidateComms from "@/components/ta/CandidateComms";
+import CandidateCalls from "@/components/ta/CallLog";
 import { api } from "@/lib/api";
+import { RelatedTasks } from "@/components/tasks/TaskWidgets";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-type Tab = "overview" | "applications" | "communicate" | "submissions" | "interviews" | "notes" | "activity";
+type Tab = "overview" | "applications" | "calls" | "communicate" | "submissions" | "interviews" | "notes" | "activity";
+
+const TIMELINE_FILTERS = [["ALL", "All"], ["CALL", "Calls"], ["EMAIL", "Emails & messages"], ["INTERVIEW", "Interviews"], ["FOLLOW_UP", "Follow-ups"], ["STATUS", "Status changes"], ["REMARK", "Remarks"]] as const;
+type TimelineFilter = (typeof TIMELINE_FILTERS)[number][0];
+// Timeline event type → filter group
+const timelineGroup = (type: string): TimelineFilter => (
+    type === "CALL" ? "CALL"
+        : type === "EMAIL" || type === "MESSAGE" ? "EMAIL"
+            : type === "INTERVIEW" ? "INTERVIEW"
+                : type === "FOLLOW_UP" ? "FOLLOW_UP"
+                    : type === "REMARK" ? "REMARK"
+                        : "STATUS"
+);
+const TIMELINE_DOT: Partial<Record<TimelineFilter, string>> = {
+    CALL: "bg-emerald-500", EMAIL: "bg-sky-500", INTERVIEW: "bg-violet-500", FOLLOW_UP: "bg-amber-500", STATUS: "bg-primary/70", REMARK: "bg-neutral-400",
+};
 
 export default function TaCandidateProfilePage() {
     const { id } = useParams<{ id: string }>();
     const [tab, setTab] = useState<Tab>("overview");
+    const [tlFilter, setTlFilter] = useState<TimelineFilter>("ALL");
     const [noteOpen, setNoteOpen] = useState(false);
     const [note, setNote] = useState({ text: "", category: "General" });
     const [pipeOpen, setPipeOpen] = useState(false);
@@ -34,6 +52,7 @@ export default function TaCandidateProfilePage() {
 
     const { data, isLoading, error, refetch } = useQuery<any>({ queryKey: ["ta-candidate-detail", id], queryFn: () => api(`/api/admin/candidates/${id}`) });
     const { data: jobs } = useQuery<any[]>({ queryKey: ["ta-jobs-active"], queryFn: () => api("/api/admin/jobs"), enabled: pipeOpen });
+    const { data: calls } = useQuery<any[]>({ queryKey: ["cand-calls", id], queryFn: () => api(`/api/ta/calls?candidateId=${id}`) });
 
     const addNote = useAct(`/api/admin/candidates/${id}`, "PATCH", ["ta-candidate-detail"], "Note added");
     const addToPipe = useAct("/api/ta/applications", "POST", ["ta-candidate-detail", "pipeline"], "Added to pipeline");
@@ -47,7 +66,7 @@ export default function TaCandidateProfilePage() {
     const apps: any[] = data.applications ?? [];
     const subs: any[] = c.clientSubmissions ?? [];
     const resumes = (c.documents ?? []).filter((d: any) => d.type === "RESUME");
-    const openApps = apps.filter((a) => !["REJECTED", "BACKED_OUT", "BLACKLISTED", "JOINED"].includes(a.stage));
+    const openApps = apps.filter((a) => !["REJECTED", "BACKED_OUT", "NOT_INTERESTED", "WITHDRAWN", "BLACKLISTED", "JOINED"].includes(a.stage));
 
     const onResume = async (file?: File) => {
         if (!file) return;
@@ -85,6 +104,7 @@ export default function TaCandidateProfilePage() {
                     <div className="flex items-center gap-2 flex-wrap">
                         <button onClick={() => setPipeOpen(true)} disabled={c.blacklisted} className={`${btn.primary} flex items-center gap-1.5 py-2`}><GitBranch size={14} /> Add to job</button>
                         <button onClick={() => openApps[0] ? setShare(openApps[0]) : toast.error("Add the candidate to a job first")} className={`${btn.ghost} flex items-center gap-1.5 py-2`}><Send size={14} /> Share with client</button>
+                        <button onClick={() => setTab("calls")} className={`${btn.ghost} flex items-center gap-1.5 py-2`}><Phone size={14} /> Log call</button>
                         <button onClick={() => setTab("communicate")} className={`${btn.ghost} flex items-center gap-1.5 py-2`}><Mail size={14} /> Contact</button>
                         <button onClick={() => setNoteOpen(true)} className={`${btn.ghost} flex items-center gap-1.5 py-2`}><MessageSquare size={14} /> Note</button>
                         <Link href={`/ta/interviews?candidate=${c.id}`} className={`${btn.ghost} flex items-center gap-1.5 py-2`}><Calendar size={14} /> Interview</Link>
@@ -102,6 +122,7 @@ export default function TaCandidateProfilePage() {
             <Tabs<Tab> value={tab} onChange={setTab} tabs={[
                 { id: "overview", label: "Overview" },
                 { id: "applications", label: `Applications (${apps.length})` },
+                { id: "calls", label: `Calls (${calls?.length ?? 0})` },
                 { id: "communicate", label: `Communicate (${c.communications?.length ?? 0})` },
                 { id: "submissions", label: `Client submissions (${subs.length})` },
                 { id: "interviews", label: `Interviews (${data.allInterviews?.length ?? 0})` },
@@ -112,6 +133,7 @@ export default function TaCandidateProfilePage() {
             {tab === "overview" && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2 space-y-6">
+                        <RelatedTasks relatedType="CANDIDATE" relatedId={c.id} recordName={c.name} />
                         <SectionCard title="Summary"><p className="text-sm text-neutral-700 leading-relaxed">{c.bio || c.headline || "No summary added."}</p></SectionCard>
                         <SectionCard title="Skills"><div className="flex flex-wrap gap-2">{(c.skills ?? []).length ? c.skills.map((s: string) => <span key={s} className="px-3 py-1 bg-primary/10 text-primary font-bold rounded-lg text-xs">{s}</span>) : <span className="text-xs text-neutral-400">No skills listed</span>}</div></SectionCard>
                         <SectionCard title="Work experience">
@@ -161,7 +183,7 @@ export default function TaCandidateProfilePage() {
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <Badge value={a.stage} />
-                                            {!shared && !["REJECTED", "BACKED_OUT", "BLACKLISTED", "JOINED"].includes(a.stage) && <button onClick={() => setShare(a)} className={btn.soft}><Send size={11} className="inline" /> Share CV</button>}
+                                            {!shared && !["REJECTED", "BACKED_OUT", "NOT_INTERESTED", "WITHDRAWN", "BLACKLISTED", "JOINED"].includes(a.stage) && <button onClick={() => setShare(a)} className={btn.soft}><Send size={11} className="inline" /> Share CV</button>}
                                             <Link href={`/ta/pipeline?candidate=${c.id}`} className={btn.ghost}>Pipeline</Link>
                                         </div>
                                     </li>
@@ -171,6 +193,8 @@ export default function TaCandidateProfilePage() {
                     )}
                 </SectionCard>
             )}
+
+            {tab === "calls" && <CandidateCalls candidateId={c.id} applications={apps.map((a) => ({ id: a.id, jobTitle: a.jobTitle, clientName: a.clientName, stage: a.stage }))} defaults={{ currentCtcLpa: c.currentCtcLpa, expectedCtcLpa: c.expectedCtcLpa, noticePeriodDays: c.noticePeriodDays, location: c.location || undefined }} />}
 
             {tab === "communicate" && <CandidateComms candidateId={c.id} applications={apps.map((a) => ({ id: a.id, jobTitle: a.jobTitle, clientName: a.clientName, stage: a.stage }))} />}
 
@@ -217,14 +241,27 @@ export default function TaCandidateProfilePage() {
             )}
 
             {tab === "activity" && (
-                <SectionCard title="Candidate journey">
-                    {!(data.timeline ?? []).length ? <p className="text-xs text-neutral-400">No activity.</p> : (
-                        <ol className="relative border-l border-neutral-200 ml-2 space-y-4">
-                            {[...data.timeline].sort((a: any, b: any) => +new Date(b.date) - +new Date(a.date)).map((t: any, i: number) => (
-                                <li key={i} className="ml-4 text-xs"><span className="absolute -left-1.5 w-3 h-3 rounded-full bg-primary/70 border-2 border-white" /><p className="font-bold text-neutral-900">{t.title}</p><p className="text-neutral-500">{t.detail}</p><p className="text-neutral-400 flex items-center gap-1"><Clock size={10} /> {new Date(t.date).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</p></li>
-                            ))}
-                        </ol>
-                    )}
+                <SectionCard title="Candidate journey" subtitle="Calls, emails, interviews, follow-ups, status changes and remarks">
+                    <div className="flex flex-wrap gap-1.5 mb-4">
+                        {TIMELINE_FILTERS.map(([k, l]) => {
+                            const n = k === "ALL" ? (data.timeline ?? []).length : (data.timeline ?? []).filter((t: any) => timelineGroup(t.type) === k).length;
+                            return (
+                                <button key={k} type="button" onClick={() => setTlFilter(k)} className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border ${tlFilter === k ? "bg-primary text-white border-primary" : "bg-white text-neutral-600 border-neutral-200 hover:bg-neutral-50"}`}>
+                                    {l} <span className="opacity-70">{n}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                    {(() => {
+                        const rows = [...(data.timeline ?? [])].filter((t: any) => tlFilter === "ALL" || timelineGroup(t.type) === tlFilter).sort((a: any, b: any) => +new Date(b.date) - +new Date(a.date));
+                        return !rows.length ? <p className="text-xs text-neutral-400">No activity{tlFilter !== "ALL" ? " of this type" : ""}.</p> : (
+                            <ol className="relative border-l border-neutral-200 ml-2 space-y-4">
+                                {rows.map((t: any, i: number) => (
+                                    <li key={i} className="ml-4 text-xs"><span className={`absolute -left-1.5 w-3 h-3 rounded-full border-2 border-white ${TIMELINE_DOT[timelineGroup(t.type)] ?? "bg-primary/70"}`} /><p className="font-bold text-neutral-900">{t.title}</p><p className="text-neutral-500">{t.detail}</p><p className="text-neutral-400 flex items-center gap-1"><Clock size={10} /> {new Date(t.date).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</p></li>
+                                ))}
+                            </ol>
+                        );
+                    })()}
                 </SectionCard>
             )}
 

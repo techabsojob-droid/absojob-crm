@@ -14,11 +14,13 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const tab = url.searchParams.get("tab") || "all";
 
+    // Pay figures are for Super Admin and HR only
+    const pay = me.role === "SUPER_ADMIN" || me.role === "HR_ADMIN";
     return NextResponse.json({
         probation: probationRecords.filter((p) => p.orgId === me.orgId),
-        promotions: promotions.filter((p) => p.orgId === me.orgId),
+        promotions: promotions.filter((p) => p.orgId === me.orgId).map((p) => (pay ? p : { ...p, currentCtcLpa: null, newCtcLpa: null })),
         transfers: transfers.filter((t) => t.orgId === me.orgId),
-        salaryRevisions: salaryRevisions.filter((s) => s.orgId === me.orgId),
+        salaryRevisions: pay ? salaryRevisions.filter((s) => s.orgId === me.orgId) : [],
     });
 }
 

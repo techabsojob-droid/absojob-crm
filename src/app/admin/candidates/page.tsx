@@ -89,7 +89,7 @@ export default function AdminCandidatesPage() {
 
     const kpiMetrics = useMemo(() => {
         const total = list.length;
-        const inPipeline = list.filter((c) => c.currentStage && !["REJECTED", "BACKED_OUT"].includes(c.currentStage)).length;
+        const inPipeline = list.filter((c) => c.currentStage && !["REJECTED", "BACKED_OUT", "NOT_INTERESTED", "WITHDRAWN"].includes(c.currentStage)).length;
         const interviewing = list.filter((c) => ["INTERVIEW_SCHEDULED", "TECH_ROUND", "CLIENT_ROUND", "HR_ROUND"].includes(c.currentStage)).length;
         const immediateJoiners = list.filter((c) => c.noticePeriodDays <= 15 || c.tags?.includes("Immediate Joiner")).length;
         const followupsDue = list.filter((c) => c.nextFollowUp != null).length;

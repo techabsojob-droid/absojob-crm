@@ -601,6 +601,18 @@ export default function AdminSettingsControlCenter() {
                                         <option value="PHONE_ONLY">Phone Only</option>
                                     </select>
                                 </label>
+                                <label className="block p-3.5 bg-neutral-50 rounded-xl border border-neutral-200">
+                                    <span className="font-bold text-neutral-700 block mb-1">Requisition Approval</span>
+                                    <select
+                                        value={form.requisitionApprovalMode || "RECRUITERS_ONLY"}
+                                        onChange={(e) => handleFormChange("requisitionApprovalMode", e.target.value)}
+                                        className="w-full px-3 py-1.5 rounded-lg border border-neutral-200 bg-white font-bold outline-none"
+                                    >
+                                        <option value="RECRUITERS_ONLY">Recruiter requests need team lead approval (Recommended)</option>
+                                        <option value="ALL">Every requisition needs approval (team leads too)</option>
+                                        <option value="NONE">No approval — submitted requisitions open directly</option>
+                                    </select>
+                                </label>
                             </div>
 
                             {/* Master Data Items (Part 48) */}

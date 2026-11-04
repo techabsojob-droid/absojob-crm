@@ -8,6 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { Client } from "pg";
 import { SCHEMA } from "./config";
+import { TABLES } from "../../src/lib/db/registry.generated";
 
 const ROOT = path.resolve(__dirname, "../..");
 
@@ -25,6 +26,24 @@ async function run(client: Client, file: string) {
     const start = Date.now();
     await client.query(sql);
     console.log(`  ✓ ${path.relative(ROOT, file)} (${Date.now() - start} ms)`);
+}
+
+// "create table if not exists" leaves existing tables alone, so add any columns
+// the schema files define that an older table is missing. Never drops anything.
+async function addMissingColumns(client: Client) {
+    const { rows } = await client.query(
+        "select table_name, column_name from information_schema.columns where table_schema = $1", [SCHEMA]);
+    const have = new Set(rows.map((r: { table_name: string; column_name: string }) => `${r.table_name}.${r.column_name}`));
+    let added = 0;
+    for (const t of TABLES) {
+        for (const c of t.columns) {
+            if (have.has(`${t.table}.${c.column}`)) continue;
+            await client.query(`alter table ${SCHEMA}."${t.table}" add column if not exists "${c.column}" ${c.type}`);
+            console.log(`  + ${t.table}.${c.column} ${c.type}`);
+            added++;
+        }
+    }
+    if (added) console.log(`  ✓ added ${added} new column(s) to existing tables`);
 }
 
 async function main() {
@@ -47,7 +66,10 @@ async function main() {
         if (schema) {
             const dir = path.join(ROOT, "supabase/schema");
             await client.query("begin");
-            for (const f of fs.readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) await run(client, path.join(dir, f));
+            for (const f of fs.readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) {
+                await run(client, path.join(dir, f));
+                if (f.startsWith("08_")) await addMissingColumns(client); // before relationships reference them
+            }
             await client.query("commit");
         }
         if (seed) await run(client, path.join(ROOT, "supabase/seed/seed.sql"));

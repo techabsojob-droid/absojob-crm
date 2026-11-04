@@ -79,63 +79,112 @@ create table if not exists crm.client_communications (
 
 -- Backs the "jobs" collection (type JobRequisition).
 create table if not exists crm.jobs (
-  id                         text not null,
-  org_id                     text not null,
-  client_id                  text,
-  title                      text,
-  department                 text,
-  location                   text,
-  work_mode                  text, -- ONSITE | HYBRID | REMOTE | FIELD
-  city                       text,
-  country                    text,
-  employment_type            text, -- HYBRID | REMOTE | FULL_TIME | PART_TIME | CONTRACT | TEMPORARY | INTERNSHIP | CONSULTANT
-  priority                   text, -- LOW | MEDIUM | HIGH | URGENT
-  priority_reason            text,
-  openings                   numeric,
-  filled                     numeric,
-  salary_min_lpa             numeric,
-  salary_max_lpa             numeric,
-  salary_currency            text,
-  fixed_salary_lpa           numeric,
-  variable_salary_lpa        numeric,
-  bonus_details              text,
-  benefits                   text,
-  experience_min_years       numeric,
-  experience_max_years       numeric,
-  skills                     text[],
-  preferred_skills           text[],
-  education                  text,
-  certifications             text[],
-  languages                  text[],
-  notice_period_preference   text,
-  description                text,
-  about_company              text,
-  responsibilities           text,
-  status                     text, -- DRAFT | PENDING_APPROVAL | APPROVED | SOURCING | SCREENING | CLIENT_REVIEW | INTERVIEWING | OFFER_STAGE | JOINING | FULFILLED | ON_HOLD | CLOSED | CANCELLED
-  status_reason              text,
-  hold_resume_date           date,
-  closure_reason             text,
-  cancel_reason              text,
-  requested_by_id            text,
-  approved_by_id             text,
-  assigned_tas               text[],
-  primary_recruiter_id       text,
-  ta_manager_id              text,
-  account_manager_id         text,
-  target_close_date          text,
-  target_joining_date        text,
-  sla_days                   numeric,
-  sla                        jsonb,
-  tags                       text[],
-  openings_list              jsonb,
-  requirement_versions       jsonb,
-  assignment_history         jsonb,
-  documents                  jsonb,
-  approvals                  jsonb,
-  created_at                 timestamptz,
-  updated_at                 timestamptz,
-  _extra                     jsonb not null default '{}'::jsonb, -- values that don't fit a typed column (kept losslessly)
-  _position                  double precision not null default 0, -- list order the app expects
+  id                           text not null,
+  org_id                       text not null,
+  requisition_code             text,
+  client_requisition_id        text,
+  job_category                 text, -- INFORMATION_TECHNOLOGY | SOFTWARE_DEVELOPMENT | FINANCE_ACCOUNTING | HUMAN_RESOURCES | SALES_MARKETING | OPERATIONS | CUSTOMER_SUPPORT | ENGINEERING | ADMINISTRATION | OTHER
+  requisition_type             text, -- NEW_POSITION | REPLACEMENT | BACKFILL | PROJECT_BASED
+  salary_type                  text, -- ANNUAL_CTC | MONTHLY | HOURLY
+  salary_amount_min            numeric,
+  salary_amount_max            numeric,
+  minimum_qualification        text,
+  preferred_qualification      text,
+  description_html             text,
+  responsibilities_html        text,
+  additional_requirements      text,
+  hiring_reason                text, -- OTHER | BUSINESS_EXPANSION | EMPLOYEE_REPLACEMENT | NEW_PROJECT | ADDITIONAL_HEADCOUNT | URGENT_REQUIREMENT
+  recruiter_team               text,
+  location_state_code          text,
+  location_state               text,
+  location_district_id         text,
+  location_district            text,
+  location_city_id             text,
+  location_locality            text,
+  location_pincode             text,
+  office_address               jsonb,
+  remote_location_preference   text,
+  relocation_required          boolean,
+  travel_required              boolean,
+  client_contact_name          text,
+  client_contact_email         text,
+  client_contact_phone         text,
+  billing_type                 text, -- HOURLY | PERCENTAGE | FIXED_FEE | MONTHLY_CONTRACT
+  placement_fee_pct            numeric,
+  contract_type                text, -- OTHER | PERMANENT_PLACEMENT | CONTRACT_STAFFING | TEMPORARY_STAFFING | RPO
+  replacement_guarantee_days   numeric,
+  commercial_notes             text,
+  updated_by_id                text,
+  submitted_at                 timestamptz,
+  approved_at                  timestamptz,
+  rejection_reason             text,
+  closed_at                    timestamptz,
+  client_id                    text,
+  title                        text,
+  department                   text,
+  location                     text,
+  work_mode                    text, -- ONSITE | HYBRID | REMOTE | WFH | FIELD
+  city                         text,
+  country                      text,
+  employment_type              text, -- HYBRID | REMOTE | FULL_TIME | PART_TIME | CONTRACT | PERMANENT | INTERNSHIP | FREELANCE | TEMPORARY | CONSULTANT
+  job_level                    text, -- INTERN | JUNIOR | MID | SENIOR | LEAD | MANAGER | DIRECTOR
+  vacancy_type                 text, -- REPLACEMENT | NEW_HIRING
+  replacement_for              text,
+  shift_timing                 text, -- DAY | NIGHT | ROTATIONAL | FLEXIBLE
+  joining_preference           text,
+  hiring_manager_name          text,
+  interview_rounds             text[],
+  internal_notes               text,
+  published                    boolean,
+  published_at                 timestamptz,
+  published_by_id              text,
+  priority                     text, -- LOW | MEDIUM | HIGH | URGENT
+  priority_reason              text,
+  openings                     numeric,
+  filled                       numeric,
+  salary_min_lpa               numeric,
+  salary_max_lpa               numeric,
+  salary_currency              text,
+  fixed_salary_lpa             numeric,
+  variable_salary_lpa          numeric,
+  bonus_details                text,
+  benefits                     text,
+  experience_min_years         numeric,
+  experience_max_years         numeric,
+  skills                       text[],
+  preferred_skills             text[],
+  education                    text,
+  certifications               text[],
+  languages                    text[],
+  notice_period_preference     text,
+  description                  text,
+  about_company                text,
+  responsibilities             text,
+  status                       text, -- DRAFT | PENDING_APPROVAL | APPROVED | SOURCING | SCREENING | CLIENT_REVIEW | INTERVIEWING | OFFER_STAGE | JOINING | FULFILLED | ON_HOLD | CLOSED | CANCELLED
+  status_reason                text,
+  hold_resume_date             date,
+  closure_reason               text,
+  cancel_reason                text,
+  requested_by_id              text,
+  approved_by_id               text,
+  assigned_tas                 text[],
+  primary_recruiter_id         text,
+  ta_manager_id                text,
+  account_manager_id           text,
+  target_close_date            text,
+  target_joining_date          text,
+  sla_days                     numeric,
+  sla                          jsonb,
+  tags                         text[],
+  openings_list                jsonb,
+  requirement_versions         jsonb,
+  assignment_history           jsonb,
+  documents                    jsonb,
+  approvals                    jsonb,
+  created_at                   timestamptz,
+  updated_at                   timestamptz,
+  _extra                       jsonb not null default '{}'::jsonb, -- values that don't fit a typed column (kept losslessly)
+  _position                    double precision not null default 0, -- list order the app expects
   primary key (id)
 );
 
@@ -200,7 +249,7 @@ create table if not exists crm.candidates (
   website_url                 text,
   rating                      numeric,
   profile_completion_score    numeric,
-  source                      text, -- LINKEDIN | AGENT_REFERRAL | JOB_PORTAL | WALK_IN | DATABASE | CAMPUS | OTHER
+  source                      text, -- LINKEDIN | OTHER | AGENT_REFERRAL | JOB_PORTAL | WALK_IN | DATABASE | CAMPUS
   source_campaign             text,
   referred_by_user_id         text,
   blacklisted                 boolean,
@@ -226,19 +275,132 @@ create table if not exists crm.applications (
   org_id               text not null,
   candidate_id         text,
   job_id               text,
-  stage                text, -- ONBOARDING | SCREENING | ON_HOLD | JOINED | REJECTED | BLACKLISTED | SOURCED | INTERVIEW_SCHEDULED | TECH_ROUND | CLIENT_ROUND | HR_ROUND | OFFER_SENT | OFFER_ACCEPTED | BACKED_OUT
+  stage                text, -- ONBOARDING | CONTACTED | SCREENING | ON_HOLD | JOINED | REJECTED | BLACKLISTED | SOURCED | SHORTLISTED | INTERVIEW_SCHEDULED | TECH_ROUND | CLIENT_ROUND | HR_ROUND | INTERVIEW_COMPLETED | SELECTED | OFFER_SENT | OFFER_ACCEPTED | BACKED_OUT | NOT_INTERESTED | WITHDRAWN
   recruiter_id         text,
   fit_score            numeric,
   screening_notes      text,
   rejection_reason     text,
   hold_reason          text,
-  stage_before_hold    text, -- ONBOARDING | SCREENING | ON_HOLD | JOINED | REJECTED | BLACKLISTED | SOURCED | INTERVIEW_SCHEDULED | TECH_ROUND | CLIENT_ROUND | HR_ROUND | OFFER_SENT | OFFER_ACCEPTED | BACKED_OUT
+  stage_before_hold    text, -- ONBOARDING | CONTACTED | SCREENING | ON_HOLD | JOINED | REJECTED | BLACKLISTED | SOURCED | SHORTLISTED | INTERVIEW_SCHEDULED | TECH_ROUND | CLIENT_ROUND | HR_ROUND | INTERVIEW_COMPLETED | SELECTED | OFFER_SENT | OFFER_ACCEPTED | BACKED_OUT | NOT_INTERESTED | WITHDRAWN
   expected_join_date   date,
   actual_join_date     date,
   created_at           timestamptz,
   updated_at           timestamptz,
   _extra               jsonb not null default '{}'::jsonb, -- values that don't fit a typed column (kept losslessly)
   _position            double precision not null default 0, -- list order the app expects
+  primary key (id)
+);
+
+-- One row per recruiter call with a candidate (status, interest, ratings, remarks, next action). Rows are appended, never overwritten, so the full call history is kept.
+create table if not exists crm.call_activities (
+  id                       text not null,
+  org_id                   text not null,
+  candidate_id             text,
+  application_id           text,
+  job_id                   text,
+  recruiter_id             text,
+  called_at                timestamptz,
+  duration_mins            numeric,
+  call_type                text, -- INCOMING | OUTGOING
+  call_status              text, -- CONNECTED | NOT_ANSWERED | BUSY | SWITCHED_OFF | CALL_BACK | WRONG_NUMBER
+  purpose                  text, -- OTHER | INITIAL_SCREENING | FOLLOW_UP | INTERVIEW_SCHEDULING | INTERVIEW_FEEDBACK | SALARY_DISCUSSION | OFFER_DISCUSSION | DOCUMENT_COLLECTION | JOINING_CONFIRMATION
+  candidate_interest       text, -- NOT_INTERESTED | INTERESTED | MAYBE | NOT_DISCUSSED
+  communication_rating     text, -- EXCELLENT | GOOD | MODERATE | POOR
+  technical_rating         text, -- EXCELLENT | GOOD | MODERATE | POOR
+  screening_feedback       text,
+  reason_for_job_change    text,
+  call_outcome             text,
+  attitude_rating          text, -- EXCELLENT | GOOD | MODERATE | POOR
+  overall_rating           text, -- EXCELLENT | GOOD | MODERATE | POOR
+  role_fit                 text, -- STRONG_FIT | GOOD_FIT | AVERAGE_FIT | NOT_FIT
+  skills_assessed          text[],
+  strengths                text,
+  concerns                 text,
+  offer_in_hand            boolean,
+  offer_in_hand_ctc_lpa    numeric,
+  willing_to_relocate      text, -- MAYBE | YES | NO
+  current_location         text,
+  interview_availability   text,
+  recording_url            text,
+  remarks                  text,
+  next_action              text, -- CALL_BACK | FOLLOW_UP | SCHEDULE_TECH_INTERVIEW | SCHEDULE_HR_INTERVIEW | SHARE_WITH_CLIENT | SEND_JD | COLLECT_DOCUMENTS | REJECT | NO_ACTION
+  follow_up_date           date,
+  follow_up_task_id        text,
+  current_ctc_lpa          numeric,
+  expected_ctc_lpa         numeric,
+  notice_period_days       numeric,
+  created_at               timestamptz,
+  _extra                   jsonb not null default '{}'::jsonb, -- values that don't fit a typed column (kept losslessly)
+  _position                double precision not null default 0, -- list order the app expects
+  primary key (id)
+);
+
+-- Calls to people who are not in the candidate database yet (numbers from job portals, Excel sheets, references). One row per call with the person's details and the same feedback as a candidate call; linked to the candidate once they are added.
+create table if not exists crm.external_calls (
+  id                       text not null,
+  org_id                   text not null,
+  recruiter_id             text,
+  person_name              text,
+  phone                    text,
+  email                    text,
+  source                   text, -- LINKEDIN | OTHER | WALK_IN | NAUKRI | INDEED | MONSTER | SHINE | APNA | EXCEL_SHEET | REFERENCE | SOCIAL_MEDIA | OTHER_PORTAL
+  source_detail            text,
+  current_company          text,
+  current_designation      text,
+  total_experience_years   numeric,
+  skills                   text[],
+  job_id                   text,
+  called_at                timestamptz,
+  duration_mins            numeric,
+  call_type                text, -- INCOMING | OUTGOING
+  call_status              text, -- CONNECTED | NOT_ANSWERED | BUSY | SWITCHED_OFF | CALL_BACK | WRONG_NUMBER
+  purpose                  text, -- OTHER | INITIAL_SCREENING | FOLLOW_UP | INTERVIEW_SCHEDULING | INTERVIEW_FEEDBACK | SALARY_DISCUSSION | OFFER_DISCUSSION | DOCUMENT_COLLECTION | JOINING_CONFIRMATION
+  candidate_interest       text, -- NOT_INTERESTED | INTERESTED | MAYBE | NOT_DISCUSSED
+  communication_rating     text, -- EXCELLENT | GOOD | MODERATE | POOR
+  technical_rating         text, -- EXCELLENT | GOOD | MODERATE | POOR
+  attitude_rating          text, -- EXCELLENT | GOOD | MODERATE | POOR
+  overall_rating           text, -- EXCELLENT | GOOD | MODERATE | POOR
+  role_fit                 text, -- STRONG_FIT | GOOD_FIT | AVERAGE_FIT | NOT_FIT
+  skills_assessed          text[],
+  strengths                text,
+  concerns                 text,
+  screening_feedback       text,
+  reason_for_job_change    text,
+  current_ctc_lpa          numeric,
+  expected_ctc_lpa         numeric,
+  notice_period_days       numeric,
+  offer_in_hand            boolean,
+  offer_in_hand_ctc_lpa    numeric,
+  willing_to_relocate      text, -- MAYBE | YES | NO
+  current_location         text,
+  interview_availability   text,
+  recording_url            text,
+  call_outcome             text,
+  remarks                  text,
+  next_action              text, -- CALL_BACK | FOLLOW_UP | SCHEDULE_TECH_INTERVIEW | SCHEDULE_HR_INTERVIEW | SHARE_WITH_CLIENT | SEND_JD | COLLECT_DOCUMENTS | REJECT | NO_ACTION
+  follow_up_date           date,
+  follow_up_task_id        text,
+  converted_candidate_id   text,
+  converted_at             timestamptz,
+  created_at               timestamptz,
+  _extra                   jsonb not null default '{}'::jsonb, -- values that don't fit a typed column (kept losslessly)
+  _position                double precision not null default 0, -- list order the app expects
+  primary key (id)
+);
+
+-- Localities / areas recruiters typed in that are not in the India Post directory (e.g. "Hinjewadi Phase 1"), stored once per city + name + PIN and suggested afterwards. State / district / city ids refer to the built-in India location dataset.
+create table if not exists crm.custom_localities (
+  id              text not null,
+  org_id          text not null,
+  state_code      text,
+  district_id     text,
+  city_id         text,
+  name            text,
+  pincode         text,
+  created_by_id   text,
+  created_at      timestamptz,
+  _extra          jsonb not null default '{}'::jsonb, -- values that don't fit a typed column (kept losslessly)
+  _position       double precision not null default 0, -- list order the app expects
   primary key (id)
 );
 
@@ -254,7 +416,7 @@ create table if not exists crm.interviews (
   interviewer_name      text,
   interviewer_user_id   text,
   status                text, -- CANCELLED | SCHEDULED | COMPLETED | NO_SHOW | RESCHEDULED
-  outcome               text, -- PENDING | STRONG_HIRE | HIRE | MAYBE | NO_HIRE
+  outcome               text, -- MAYBE | PENDING | STRONG_HIRE | HIRE | NO_HIRE
   score                 numeric,
   feedback              text,
   meeting_link          text,

@@ -5,7 +5,7 @@ import {
     addAudit, nextIds, todayStr,
 } from "@/lib/mock/data";
 import { markApplicationJoined, notifyRoles } from "@/lib/mock/pipeline";
-import { ensureUserForEmployee, nextEmployeeCode, uniqueEmployeeId } from "@/lib/mock/identity";
+import { ensureUserForEmployee, issueTempPassword, nextEmployeeCode, uniqueEmployeeId } from "@/lib/mock/identity";
 import type { OnboardingRecord, Employee } from "@/lib/types";
 
 // Checklist items completed as part of the "Create Employee" step itself;
@@ -299,7 +299,8 @@ export async function PATCH(request: Request) {
 
         employees.unshift(newEmp);
         // Provision the employee's self-service login (checklist: "Employee Account")
-        ensureUserForEmployee(newEmp);
+        const login = ensureUserForEmployee(newEmp);
+        const tempPassword = login.passwordHash ? null : issueTempPassword(login);
 
         record.status = "COMPLETED";
         record.progressPercent = 100;
@@ -330,7 +331,7 @@ export async function PATCH(request: Request) {
             link: `/hr/employees?id=${newEmp.id}`,
         });
 
-        return NextResponse.json({ success: true, employee: newEmp, onboarding: record });
+        return NextResponse.json({ success: true, employee: newEmp, onboarding: record, login: { email: login.email, tempPassword } });
     }
 
     return NextResponse.json(record);

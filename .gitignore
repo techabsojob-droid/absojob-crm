@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# login credentials issued by npm run db:set-passwords
+CREDENTIALS.local.md

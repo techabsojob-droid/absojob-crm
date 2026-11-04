@@ -11,7 +11,7 @@ export async function GET() {
     const today = new Date().toISOString().slice(0, 10);
     const days = (d?: string | null) => (d ? Math.round((+new Date(d) - +new Date(today)) / 86400000) : null);
 
-    const rows = applications.filter((a) => a.orgId === me.orgId && canWorkOnApplication(me, a) && ["OFFER_SENT", "OFFER_ACCEPTED", "ONBOARDING", "JOINED", "BACKED_OUT"].includes(a.stage)).map((a) => {
+    const rows = applications.filter((a) => a.orgId === me.orgId && canWorkOnApplication(me, a) && ["OFFER_SENT", "OFFER_ACCEPTED", "ONBOARDING", "JOINED", "BACKED_OUT", "NOT_INTERESTED", "WITHDRAWN"].includes(a.stage)).map((a) => {
         const cand = candidates.find((c) => c.id === a.candidateId);
         const job = jobs.find((j) => j.id === a.jobId);
         const offer = cand?.offers?.filter((o) => o.applicationId === a.id).sort((x, y) => +new Date(y.createdAt) - +new Date(x.createdAt))[0];

@@ -15,6 +15,7 @@ import {
     ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, Legend
 } from "recharts";
 import { useState } from "react";
+import { MyWork } from "@/components/tasks/TaskWidgets";
 
 export default function AdminDashboard() {
     const [dateRange, setDateRange] = useState("THIS_MONTH");
@@ -63,10 +64,10 @@ export default function AdminDashboard() {
     ];
 
     const agingChartData = [
-        { bucket: "0–30 Days", amount: agingReceivables["0_30"] || 120000 },
-        { bucket: "31–60 Days", amount: agingReceivables["31_60"] || 85000 },
-        { bucket: "61–90 Days", amount: agingReceivables["61_90"] || 40000 },
-        { bucket: "90+ Days", amount: agingReceivables["90_plus"] || (k.overdueReceivables || 25000) },
+        { bucket: "0–30 Days", amount: agingReceivables["0_30"] ?? 0 },
+        { bucket: "31–60 Days", amount: agingReceivables["31_60"] ?? 0 },
+        { bucket: "61–90 Days", amount: agingReceivables["61_90"] ?? 0 },
+        { bucket: "90+ Days", amount: agingReceivables["90_plus"] ?? 0 },
     ];
 
     return (
@@ -164,6 +165,8 @@ export default function AdminDashboard() {
                     <StatCard label="Team Capacity" value={k.teamSize} icon={ClipboardCheck} tone="blue" hint={`${k.recruiters} TA · ${k.agents} Agents`} href="/admin/team" />
                 </div>
             </div>
+
+            <MyWork />
 
             <div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-3">Financial Performance & Receivables</p>
@@ -524,13 +527,13 @@ export default function AdminDashboard() {
                         <div className="grid grid-cols-2 gap-3 text-xs">
                             <div className="p-3 rounded-xl bg-emerald-50/60 border border-emerald-200">
                                 <span className="text-[10px] font-bold uppercase text-emerald-800">Consent Verified</span>
-                                <p className="text-xl font-black text-emerald-900 mt-1">92%</p>
-                                <p className="text-[10px] text-emerald-700 mt-0.5">GDPR / DPDP Compliant</p>
+                                <p className="text-xl font-black text-emerald-900 mt-1">{data.platformHealth?.consentPct != null ? `${data.platformHealth.consentPct}%` : "—"}</p>
+                                <p className="text-[10px] text-emerald-700 mt-0.5">{data.platformHealth ? `${data.platformHealth.consented} of ${data.platformHealth.candidates} candidates (DPDP)` : "DPDP consent"}</p>
                             </div>
                             <div className="p-3 rounded-xl bg-blue-50/60 border border-blue-200">
-                                <span className="text-[10px] font-bold uppercase text-blue-800">API Health</span>
-                                <p className="text-xl font-black text-blue-900 mt-1">99.98%</p>
-                                <p className="text-[10px] text-blue-700 mt-0.5">Webhook & Auth Sync</p>
+                                <span className="text-[10px] font-bold uppercase text-blue-800">Integrations</span>
+                                <p className="text-xl font-black text-blue-900 mt-1">{data.platformHealth ? `${data.platformHealth.integrationsConnected}/${data.platformHealth.integrationsTotal}` : "—"}</p>
+                                <p className="text-[10px] text-blue-700 mt-0.5">{data.platformHealth?.integrationsNeedingAttention ? `${data.platformHealth.integrationsNeedingAttention} need attention` : "connected and healthy"}</p>
                             </div>
                         </div>
 

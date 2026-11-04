@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
+import { nextCandidateCode } from "@/lib/fit";
 import {
     referrals, candidates, jobs, clients, users, applications, storedFiles, referralMessages, addAudit, addNotification, nextIds,
 } from "@/lib/mock/data";
@@ -100,7 +101,7 @@ export async function POST(request: Request) {
         isNew = true;
         candidate = {
             id: nextIds.candidate(),
-            candidateCode: `CAN-${Math.floor(1000 + Math.random() * 9000)}`,
+            candidateCode: nextCandidateCode(candidates, me.orgId),
             orgId: me.orgId,
             status: "NEW" as const,
             tags: ["Referral", "Pending Review"],
@@ -135,7 +136,7 @@ export async function POST(request: Request) {
     if (claim) {
         return NextResponse.json({ error: "This candidate was already referred by another partner and is under their ownership." }, { status: 409 });
     }
-    if (!isNew && applications.some((a) => a.candidateId === candidate!.id && !["REJECTED", "BACKED_OUT", "JOINED"].includes(a.stage))) {
+    if (!isNew && applications.some((a) => a.candidateId === candidate!.id && !["REJECTED", "BACKED_OUT", "NOT_INTERESTED", "WITHDRAWN", "JOINED"].includes(a.stage))) {
         return NextResponse.json({ error: "This candidate is already in an active hiring process with us." }, { status: 409 });
     }
 

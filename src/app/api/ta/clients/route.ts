@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { nextTaskKey } from "@/lib/tasks";
 import { requireRole } from "@/lib/mock/server";
 import { applications, candidates, clientCommunications, clients, jobs, tasks, addAudit, nextIds } from "@/lib/mock/data";
 import { bad, body } from "@/lib/mock/fin/http";
@@ -29,7 +30,7 @@ export async function GET() {
             id: c.id, companyName: c.companyName, industry: c.industry, status: c.status, website: c.website ?? null,
             contactPerson: c.contactPerson, contactEmail: c.contactEmail, contactPhone: c.contactPhone,
             openJobs: cJobs.filter((j) => OPEN.includes(j.status)).map((j) => ({ id: j.id, title: j.title, openings: j.openings - j.filled, status: j.status })),
-            activeCandidates: apps.filter((a) => !["JOINED", "REJECTED", "BACKED_OUT", "BLACKLISTED"].includes(a.stage)).length,
+            activeCandidates: apps.filter((a) => !["JOINED", "REJECTED", "BACKED_OUT", "NOT_INTERESTED", "WITHDRAWN", "BLACKLISTED"].includes(a.stage)).length,
             joined: apps.filter((a) => a.stage === "JOINED").length,
             awaitingFeedback: subs.filter((s) => s.clientId === c.id && s.status === "PENDING_REVIEW" && jobIds.has(s.jobId)).map((s) => ({ ...s, daysWaiting: Math.floor((Date.now() - +new Date(s.submittedAt)) / 86400000) })),
             communications: clientCommunications.filter((m) => m.clientId === c.id).sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)).slice(0, 30),
@@ -65,7 +66,7 @@ export async function POST(request: Request) {
 
     const rec = { id: `ccm-${crypto.randomUUID().slice(0, 8)}`, orgId: me.orgId, clientId: client.id, channel: b.channel, direction: direction as "INCOMING" | "OUTGOING", subject: subject.slice(0, 200), body: text.slice(0, 5000), jobId: b.jobId || null, nextFollowUpDate: b.nextFollowUpDate || null, byUserId: me.id, byName: me.name, createdAt: new Date().toISOString() };
     clientCommunications.push(rec);
-    if (b.nextFollowUpDate) tasks.push({ id: nextIds.task(), orgId: me.orgId, assignedToId: me.id, createdById: me.id, title: `Follow up with ${client.companyName}`, description: subject, dueDate: b.nextFollowUpDate, priority: "MEDIUM", linkedApplicationId: null, completed: false, completedAt: null, createdAt: rec.createdAt });
+    if (b.nextFollowUpDate) tasks.push({ id: nextIds.task(), orgId: me.orgId, key: nextTaskKey(tasks, me.orgId), type: "FOLLOW_UP", status: "TODO", labels: ["client"], watcherIds: [], relatedType: "CLIENT", relatedId: client.id, assignedToId: me.id, createdById: me.id, title: `Follow up with ${client.companyName}`, description: subject, dueDate: b.nextFollowUpDate, priority: "MEDIUM", linkedApplicationId: null, completed: false, completedAt: null, createdAt: rec.createdAt });
     addAudit({ orgId: me.orgId, actorUserId: me.id, actorRole: me.role, action: "CLIENT_CONTACTED", entity: "Client", entityId: client.id, detail: `${rec.channel}: ${rec.subject}` });
     return NextResponse.json({ communication: rec, emailStatus, link }, { status: 201 });
 }
