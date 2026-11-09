@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/mock/server";
 import { jobs, candidates, clients, users, employees, referrals, applications, invoices, tasks } from "@/lib/mock/data";
 import { canViewTask, ensureTaskKeys, taskLinkFor } from "@/lib/tasks";
-import { canWorkOnApplication, isRecruitmentManager } from "@/lib/mock/pipeline";
+import { canAccessJob, canWorkOnApplication } from "@/lib/mock/pipeline";
 
 // Global search, scoped to what the signed-in role may open, with deep links
 export async function GET(request: Request) {
@@ -22,7 +22,7 @@ export async function GET(request: Request) {
 
     if (isSA || isTA) {
         for (const j of jobs.filter((j) => j.orgId === orgId)) {
-            const mine = isRecruitmentManager(user) || j.primaryRecruiterId === user.id || (j.assignedTas || []).includes(user.id) || j.requestedById === user.id;
+            const mine = canAccessJob(user, j);
             if (mine && j.title.toLowerCase().includes(q)) {
                 results.push({ id: j.id, title: j.title, type: "Job", href: isSA ? `/admin/jobs/${j.id}` : `/ta/requisitions/${j.id}` });
             }

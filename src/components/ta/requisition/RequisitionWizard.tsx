@@ -20,7 +20,7 @@ import { EMPTY_LOCATION, IndiaLocationPicker, locationSummary, type LocationValu
 interface Contact { name: string; email: string; phone: string; source: string }
 interface Options {
     isManager: boolean; needsApproval: boolean; me: { id: string; name: string; role: string };
-    clients: { id: string; name: string; industry: string; status: string; creditHold: boolean; creditReasons: string[]; contacts: Contact[]; defaults: { billingType: string; placementFeePct: number | null; replacementGuaranteeDays: number | null } }[];
+    clients: { id: string; name: string; industry: string; status: string; assignable?: boolean; creditHold: boolean; creditReasons: string[]; contacts: Contact[]; defaults: { billingType: string; placementFeePct: number | null; replacementGuaranteeDays: number | null } }[];
     departments: string[]; recruiterTeams: string[];
     recruiters: { id: string; name: string; role: string; designation: string | null; department: string | null }[];
     managers: { id: string; name: string; role: string }[];
@@ -377,7 +377,7 @@ export default function RequisitionWizard({ jobId, duplicateOf }: { jobId?: stri
                                 </Field>
                                 <Field label="Client" required error={errors.clientId} htmlFor="client" hint={client?.creditHold ? `Credit hold: ${client.creditReasons.join("; ")}` : undefined}>
                                     <Combobox id="client" value={f.clientId} error={errors.clientId} placeholder="Search client"
-                                        options={(o?.clients ?? []).map((c) => ({ value: c.id, label: c.name, hint: [c.industry, c.creditHold ? "credit hold" : c.status !== "ACTIVE" ? c.status.toLowerCase() : ""].filter(Boolean).join(" · ") }))}
+                                        options={(o?.clients ?? []).filter((c) => c.assignable !== false || c.id === f.clientId).map((c) => ({ value: c.id, label: c.name, hint: [c.industry, c.creditHold ? "credit hold" : c.status !== "ACTIVE" ? c.status.toLowerCase() : ""].filter(Boolean).join(" · ") }))}
                                         onChange={(v) => {
                                             const c = o?.clients.find((x) => x.id === v);
                                             setF((p) => ({

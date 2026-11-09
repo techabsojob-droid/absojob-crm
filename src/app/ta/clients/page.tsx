@@ -11,7 +11,18 @@ import { api } from "@/lib/api";
 
 interface Sub { id: string; candidateId: string; candidateName: string; jobTitle: string; clientName: string; submittedBy: string; submittedAt: string; status: string; clientFeedback?: string; rejectionReason?: string; daysWaiting: number; applicationStage?: string | null; emailedTo?: string[] }
 interface Comm { id: string; channel: string; direction: string; subject: string; body: string; byName: string; createdAt: string; nextFollowUpDate?: string | null }
-interface ClientRow { id: string; companyName: string; industry: string; status: string; contactPerson: string; contactEmail: string; contactPhone: string; openJobs: { id: string; title: string; openings: number; status: string }[]; activeCandidates: number; joined: number; awaitingFeedback: Sub[]; communications: Comm[] }
+type Counts = Record<string, number>;
+interface Req { id: string; code: string | null; title: string; status: string; priority: string; location: string; openings: number; filled: number; primaryRecruiterName: string | null; recruiters: { id: string; name: string }[]; inPipeline: number; targetCloseDate: string | null }
+interface ClientRow {
+    id: string; companyName: string; industry: string; status: string; contactPerson: string; contactEmail: string; contactPhone: string;
+    accountManagerName: string | null; mappedToMe: boolean;
+    openJobs: { id: string; title: string; openings: number; status: string }[]; activeCandidates: number; joined: number; awaitingFeedback: Sub[]; communications: Comm[];
+    requisitions: Req[];
+    recruiters: { id: string; name: string; requisitions: number; activeCandidates: number; joined: number }[];
+    funnel: { key: string; label: string; count: number }[];
+    performance: { totalOpenings: number; filled: number; fillRatePct: number | null; thisMonth: Counts; allTime: Counts; pendingFeedback: number };
+}
+const OPEN_REQ = ["APPROVED", "SOURCING", "SCREENING", "CLIENT_REVIEW", "INTERVIEWING", "OFFER_STAGE", "JOINING"];
 interface Tpl { id: string; name: string; channel: string; audience: string; renderedSubject: string | null; renderedBody: string }
 
 export default function MyClientsPage() {
@@ -20,26 +31,86 @@ export default function MyClientsPage() {
     const { data: subs } = useQuery<Sub[]>({ queryKey: ["ta-submissions"], queryFn: () => api("/api/ta/submissions") });
     const [log, setLog] = useState<ClientRow | null>(null);
     const [fb, setFb] = useState<Sub | null>(null);
+    const [open, setOpen] = useState<string | null>(null);
+    const [q, setQ] = useState("");
 
     if (isLoading || !data) return <SkeletonPulse className="h-96 w-full" />;
     const pending = (subs ?? []).filter((s) => s.status === "PENDING_REVIEW").length;
 
     return (
         <div className="space-y-6">
-            <PageHeader title="My Clients" subtitle="Client contacts, open roles, CVs awaiting feedback and every interaction in one place" />
+            <PageHeader title="My Clients" subtitle="Clients assigned to you: requisitions, recruiters, candidate progress, CV feedback and every interaction" action={<Link href="/ta/requisitions/new" className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold">New requisition</Link>} />
             <Tabs tabs={[{ id: "clients", label: `Clients (${data.length})` }, { id: "submissions", label: `CV submissions${pending ? ` · ${pending} awaiting feedback` : ""}` }]} value={tab} onChange={setTab} />
 
-            {tab === "clients" && (data.length === 0 ? <SectionCard><EmptyState icon={Building2} message="No clients yet — clients appear here once a requisition is assigned to you." /></SectionCard> : (
+            {tab === "clients" && data.length > 0 && (
+                <div className="flex flex-wrap items-center gap-3">
+                    <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search client or industry" className={`${inputCls} !w-64`} />
+                    <p className="text-xs text-neutral-500">{data.reduce((s, c) => s + c.openJobs.length, 0)} open requisitions · {data.reduce((s, c) => s + c.performance.totalOpenings - c.performance.filled, 0)} vacancies left · {data.reduce((s, c) => s + c.performance.thisMonth.joined, 0)} joined this month</p>
+                </div>
+            )}
+            {tab === "clients" && (data.length === 0 ? <SectionCard><EmptyState icon={Building2} message="No clients are assigned to you yet. Super Admin maps clients to TA Managers from Admin › Clients; recruiters see a client once one of its requisitions is assigned to them." /></SectionCard> : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {data.map((c) => (
-                        <SectionCard key={c.id} title={c.companyName} subtitle={`${c.industry} · ${c.activeCandidates} active candidate(s) · ${c.joined} joined`} action={<Badge value={c.status} />}>
+                    {data.filter((c) => !q || `${c.companyName} ${c.industry}`.toLowerCase().includes(q.toLowerCase())).map((c) => (
+                        <SectionCard key={c.id} title={c.companyName} subtitle={`${c.industry} · ${c.activeCandidates} active · ${c.joined} joined${c.accountManagerName ? ` · AM ${c.accountManagerName}` : ""}`} action={<Badge value={c.status} />}>
                             <div className="space-y-3 text-sm">
                                 <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-600">
                                     <span className="font-bold text-neutral-800">{c.contactPerson}</span>
                                     <a href={`mailto:${c.contactEmail}`} className="flex items-center gap-1 hover:text-primary"><Mail size={12} />{c.contactEmail}</a>
                                     <a href={`tel:${c.contactPhone}`} className="flex items-center gap-1 hover:text-primary"><Phone size={12} />{c.contactPhone}</a>
                                 </div>
+                                <div className="grid grid-cols-4 gap-2 text-center">
+                                    {[["Open reqs", c.openJobs.length], ["Vacancies", `${c.performance.totalOpenings - c.performance.filled}/${c.performance.totalOpenings}`], ["Fill rate", c.performance.fillRatePct === null ? "—" : `${c.performance.fillRatePct}%`], ["Joined (mo)", c.performance.thisMonth.joined]].map(([l, v]) => (
+                                        <div key={l as string} className="bg-neutral-50 rounded-xl py-2"><p className="text-base font-extrabold text-neutral-900 tabular-nums">{v}</p><p className="text-[10px] font-bold text-neutral-500 uppercase">{l}</p></div>
+                                    ))}
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-bold text-neutral-500 uppercase mb-1">Candidate progress</p>
+                                    <div className="flex gap-1">
+                                        {c.funnel.map((f) => (
+                                            <div key={f.key} className="flex-1 rounded-lg bg-primary/5 px-1.5 py-1 text-center" title={`${f.label}: ${f.count}`}>
+                                                <p className="text-sm font-extrabold text-primary tabular-nums">{f.count}</p><p className="text-[9px] font-bold text-neutral-500 truncate">{f.label}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
                                 <div className="flex flex-wrap gap-1.5">{c.openJobs.length === 0 ? <span className="text-xs text-neutral-400">No open roles</span> : c.openJobs.map((j) => <Link key={j.id} href={`/ta/requisitions/${j.id}`} className="text-[11px] px-2 py-0.5 rounded-full bg-neutral-100 hover:bg-primary/10">{j.title} · {j.openings}</Link>)}</div>
+                                <div className="text-xs text-neutral-600"><span className="font-bold text-neutral-500">Recruiters: </span>{c.recruiters.length === 0 ? <span className="text-amber-700 font-bold">none assigned</span> : c.recruiters.map((r) => `${r.name} (${r.activeCandidates} active)`).join(", ")}</div>
+                                <button onClick={() => setOpen(open === c.id ? null : c.id)} className="text-xs font-bold text-primary">{open === c.id ? "Hide" : "Show"} requisitions & performance</button>
+                                {open === c.id && (
+                                    <div className="space-y-3 border-t border-neutral-100 pt-3">
+                                        {c.requisitions.length === 0 ? <p className="text-xs text-neutral-400">No requisitions yet.</p> : (
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full text-xs">
+                                                    <thead><tr className="text-left text-[10px] text-neutral-500 uppercase"><th className="py-1">Requisition</th><th>Recruiter</th><th className="text-right">Filled</th><th className="text-right">Pipeline</th><th>Status</th></tr></thead>
+                                                    <tbody className="divide-y divide-neutral-100">
+                                                        {c.requisitions.map((r) => (
+                                                            <tr key={r.id} className={OPEN_REQ.includes(r.status) ? "" : "opacity-60"}>
+                                                                <td className="py-1.5"><Link href={`/ta/requisitions/${r.id}`} className="font-semibold hover:text-primary">{r.title}</Link><span className="block text-[10px] text-neutral-400">{[r.code, r.location].filter(Boolean).join(" · ")}</span></td>
+                                                                <td>{r.primaryRecruiterName ?? <span className="text-amber-700 font-bold">Unassigned</span>}</td>
+                                                                <td className="text-right font-mono">{r.filled}/{r.openings}</td>
+                                                                <td className="text-right font-mono">{r.inPipeline}</td>
+                                                                <td><Badge value={r.status} /></td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        )}
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-xs">
+                                                <thead><tr className="text-left text-[10px] text-neutral-500 uppercase"><th className="py-1">Performance</th><th className="text-right">Sourced</th><th className="text-right">Submitted</th><th className="text-right">Interviews</th><th className="text-right">Offers</th><th className="text-right">Joined</th></tr></thead>
+                                                <tbody className="divide-y divide-neutral-100">
+                                                    {([["This month", c.performance.thisMonth], ["All time", c.performance.allTime]] as const).map(([l, k]) => (
+                                                        <tr key={l}><td className="py-1.5 font-semibold">{l}</td>{["sourced", "submitted", "interviewsScheduled", "offersReleased", "joined"].map((x) => <td key={x} className="text-right font-mono">{k[x]}</td>)}</tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        {c.recruiters.length > 0 && (
+                                            <ul className="text-xs space-y-1">{c.recruiters.map((r) => <li key={r.id} className="flex justify-between"><span className="font-semibold">{r.name}</span><span className="text-neutral-500">{r.requisitions} req · {r.activeCandidates} active · {r.joined} joined</span></li>)}</ul>
+                                        )}
+                                    </div>
+                                )}
                                 {c.awaitingFeedback.length > 0 && (
                                     <div className="rounded-xl bg-amber-50 border border-amber-100 p-3 text-xs">
                                         <p className="font-bold text-amber-800 mb-1 flex items-center gap-1"><Clock size={12} /> {c.awaitingFeedback.length} CV(s) awaiting feedback</p>

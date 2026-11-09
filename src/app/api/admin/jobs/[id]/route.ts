@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
 import { getJobsFromDb, getClientsFromDb, updateJobInDb, logAudit } from "@/lib/supabase/db";
-import { isRecruitmentManager, notifyJobAssignment, resolveApprovalsFor, validRecruiters } from "@/lib/mock/pipeline";
+import { canAccessJob, isRecruitmentManager, notifyJobAssignment, resolveApprovalsFor, validRecruiters } from "@/lib/mock/pipeline";
 import {
     users,
     clients,
@@ -35,7 +35,7 @@ export async function GET(
     if (!job) {
         return NextResponse.json({ error: "Job requisition not found" }, { status: 404 });
     }
-    if (!isRecruitmentManager(me) && !(job.primaryRecruiterId === me.id || (job.assignedTas || []).includes(me.id) || job.requestedById === me.id)) {
+    if (!canAccessJob(me, job)) {
         return NextResponse.json({ error: "This requisition is not assigned to you" }, { status: 403 });
     }
 
@@ -325,6 +325,9 @@ export async function PATCH(
     if (!existing) {
         return NextResponse.json({ error: "Job requisition not found" }, { status: 404 });
     }
+    if (!canAccessJob(me, existing)) {
+        return NextResponse.json({ error: "This requisition belongs to a client that is not assigned to you" }, { status: 403 });
+    }
 
     const updates: Record<string, any> = {};
     for (const k of EDITABLE) if (body[k] !== undefined) updates[k] = body[k];
@@ -496,6 +499,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const { id } = await params;
     const existing = (await getJobsFromDb(me.orgId)).find((j) => j.id === id);
     if (!existing) return NextResponse.json({ error: "Job requisition not found" }, { status: 404 });
+    if (!canAccessJob(me, existing)) return NextResponse.json({ error: "This requisition is not assigned to you" }, { status: 403 });
     let body: Record<string, unknown>;
     try { body = await request.json(); } catch { return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 }); }
     return updateRequisition(me, existing, body);

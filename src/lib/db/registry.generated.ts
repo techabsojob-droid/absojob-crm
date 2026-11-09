@@ -8,7 +8,7 @@ export interface TableDef { key: string; table: string; kind: "rows" | "orgMap";
 export const DB_SCHEMA = "crm";
 
 // Orders column maps when old and new code share one dev server (hot reload)
-export const REGISTRY_GENERATED_AT = "2026-11-04T20:18:25.194Z";
+export const REGISTRY_GENERATED_AT = "2026-11-09T21:22:56.367Z";
 
 export const TABLES: TableDef[] = [
     {
@@ -254,6 +254,12 @@ export const TABLES: TableDef[] = [
                 "field": "accountManagerId",
                 "column": "account_manager_id",
                 "type": "text"
+            },
+            {
+                "field": "taManagerIds",
+                "column": "ta_manager_ids",
+                "type": "text[]",
+                "omitIfNull": true
             },
             {
                 "field": "estimatedValue",
@@ -2474,6 +2480,18 @@ export const TABLES: TableDef[] = [
                 "field": "setByName",
                 "column": "set_by_name",
                 "type": "text"
+            },
+            {
+                "field": "setById",
+                "column": "set_by_id",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "updatedAt",
+                "column": "updated_at",
+                "type": "timestamptz",
+                "omitIfNull": true
             }
         ]
     },
@@ -4036,6 +4054,30 @@ export const TABLES: TableDef[] = [
                 "field": "reviewedByName",
                 "column": "reviewed_by_name",
                 "type": "text"
+            },
+            {
+                "field": "reviewedById",
+                "column": "reviewed_by_id",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "reviewedAt",
+                "column": "reviewed_at",
+                "type": "timestamptz",
+                "omitIfNull": true
+            },
+            {
+                "field": "reviewNote",
+                "column": "review_note",
+                "type": "text",
+                "omitIfNull": true
+            },
+            {
+                "field": "requestedAt",
+                "column": "requested_at",
+                "type": "timestamptz",
+                "omitIfNull": true
             }
         ]
     },

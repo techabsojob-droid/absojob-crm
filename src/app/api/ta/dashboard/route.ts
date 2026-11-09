@@ -5,6 +5,7 @@ import {
     onboardingRecords, auditLogs, ACTIVE_STAGES, STAGE_ORDER
 } from "@/lib/mock/data";
 import type { ApplicationStage, JobPriority } from "@/lib/types";
+import { canAccessJob, canWorkOnApplication, hasOrgWideRecruitmentAccess, teamScopeIds } from "@/lib/mock/pipeline";
 
 export async function GET(request: Request) {
     const auth = await requireRole("TA_MANAGER", "TA_RECRUITER", "SUPER_ADMIN");
@@ -51,6 +52,13 @@ export async function GET(request: Request) {
     const orgOnboarding = onboardingRecords.filter((o) => o.orgId === me.orgId);
     const orgCandidates = candidates.filter((c) => me.role === "SUPER_ADMIN" || c.orgId === me.orgId);
 
+    // TA Manager: only requisitions of assigned clients and their team's tasks (Super Admin sees all)
+    if (isManager && !hasOrgWideRecruitmentAccess(me)) {
+        const teamIds = teamScopeIds(me)!;
+        orgJobs = orgJobs.filter((j) => canAccessJob(me, j));
+        orgApps = orgApps.filter((a) => canWorkOnApplication(me, a));
+        orgTasks = orgTasks.filter((t) => teamIds.has(t.assignedToId) || t.createdById === me.id);
+    }
     // Filter by user role if not manager
     if (!isManager) {
         orgJobs = orgJobs.filter((j) => j.assignedTas?.includes(me.id) || j.primaryRecruiterId === me.id);
@@ -527,7 +535,8 @@ export async function GET(request: Request) {
     attentionItems.sort((a, b) => priorityWeight[b.priority] - priorityWeight[a.priority]);
 
     // 14. TEAM WORKLOAD MATRIX (Recruiter-wise operational metrics)
-    const recruiterUsers = users.filter((u) => u.orgId === me.orgId && (u.role === "TA_RECRUITER" || u.role === "TA_MANAGER"));
+    const workloadIds = teamScopeIds(me);
+    const recruiterUsers = users.filter((u) => u.orgId === me.orgId && (u.role === "TA_RECRUITER" || u.role === "TA_MANAGER") && (!workloadIds || workloadIds.has(u.id)));
     const teamWorkload = recruiterUsers.map((rec) => {
         const assignedJobs = jobs.filter((j) => j.assignedTas?.includes(rec.id) || j.primaryRecruiterId === rec.id);
         const recApps = applications.filter((a) => a.recruiterId === rec.id && a.orgId === me.orgId);

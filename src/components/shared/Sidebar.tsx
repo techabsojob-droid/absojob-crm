@@ -128,9 +128,9 @@ export default function Sidebar({ items, groups, collapsed, onToggle }: SidebarP
                             )}
                             {grp.items.map((item) => {
                                 const Icon = item.icon;
-                                const isActive =
-                                    pathname === item.href ||
-                                    (pathname.startsWith(item.href + "/") && !item.href.endsWith("/dashboard"));
+                                const matches = (href: string) => pathname === href || (pathname.startsWith(href + "/") && !href.endsWith("/dashboard"));
+                                // Only the most specific matching entry is highlighted (e.g. /ta/requisitions/new)
+                                const isActive = matches(item.href) && !resolvedGroups.some((g) => g.items.some((o) => o.href.length > item.href.length && matches(o.href)));
 
                                 // Compute dynamic badge count if badgeKey is provided, or use static badge
                                 const rawBadge = item.badgeKey ? badgeData[item.badgeKey] : item.badge;

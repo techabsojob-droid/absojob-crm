@@ -27,7 +27,7 @@ interface Perf {
     incentives: { pending: number; paid: number; entries: { id: string; description: string; amount: number; status: string; createdAt: string }[] };
     earnings: Earnings;
     ratios: { submissionToOffer: number; offerToJoin: number; activePipeline: number };
-    team: { userId: string; name: string; role: string; actual: Kpi; target: Kpi | null; earnings: Pick<Earnings, "thisMonth" | "yearToDate" | "incentive"> }[] | null;
+    team: { userId: string; name: string; role: string; canSetTarget?: boolean; actual: Kpi; target: Kpi | null; earnings: Pick<Earnings, "thisMonth" | "yearToDate" | "incentive"> }[] | null;
     canSetTargets: boolean;
 }
 
@@ -185,7 +185,7 @@ export default function PerformancePage() {
                                             {t.earnings.thisMonth.target == null ? "—" : (t.earnings.thisMonth.shortfall ?? 0) > 0 ? money(t.earnings.thisMonth.shortfall!) : "Achieved"}
                                         </td>
                                         <td className="py-2.5 text-right font-mono text-xs">{money(t.earnings.incentive.earnedThisYear)}{t.earnings.incentive.pending ? <span className="block text-[10px] text-amber-600">{money(t.earnings.incentive.pending)} pending</span> : null}</td>
-                                        <td className="py-2.5 text-right"><button className={btn.ghost} onClick={() => setEdit({ userId: t.userId, name: t.name, vals: Object.fromEntries(METRICS.map((m) => [m.key, String(t.target?.[m.key] ?? "")])) })}>Set target</button></td>
+                                        <td className="py-2.5 text-right">{t.canSetTarget === false ? <span className="text-[10px] text-neutral-400" title="Your own target is set by Super Admin">Set by admin</span> : <button className={btn.ghost} onClick={() => setEdit({ userId: t.userId, name: t.name, vals: Object.fromEntries(METRICS.map((m) => [m.key, String(t.target?.[m.key] ?? "")])) })}>Set target</button>}</td>
                                     </tr>
                                 ))}
                             </tbody>

@@ -5,7 +5,8 @@ import Sidebar, { NavGroup } from "@/components/shared/Sidebar";
 import TopBar from "@/components/shared/TopBar";
 import {
     LayoutDashboard, Briefcase, GitBranch, Users, CalendarClock, CheckSquare,
-    BarChart3, UserPlus, ShieldCheck, Building2, CalendarCheck, Target, MessageSquareText, Handshake, PhoneCall
+    BarChart3, UserPlus, ShieldCheck, Building2, CalendarCheck, Target, MessageSquareText, Handshake, PhoneCall,
+    FilePlus2, Layers, Clock, Gauge, Crosshair
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
@@ -21,7 +22,9 @@ const TA_NAV_GROUPS: NavGroup[] = [
     {
         groupTitle: "RECRUITMENT",
         items: [
+            { label: "Create Requisition", icon: FilePlus2, href: "/ta/requisitions/new", tooltipHint: "Raise a new job requisition (save as draft or submit)" },
             { label: "Job Listing", icon: Briefcase, href: "/ta/requisitions", badgeKey: "requisitions", badgeTone: "amber", tooltipHint: "Urgent requisitions needing attention" },
+            { label: "All Openings", icon: Layers, href: "/ta/openings", tooltipHint: "Every opening you can work on, filterable by industry, client, location and more" },
             { label: "Pipeline", icon: GitBranch, href: "/ta/pipeline", badgeKey: "pipeline", badgeTone: "neutral", tooltipHint: "Candidates requiring next action" },
             { label: "Candidates", icon: Users, href: "/ta/candidates", badgeKey: "candidates", badgeTone: "emerald", tooltipHint: "Total talent pool" },
             { label: "Calls", icon: PhoneCall, href: "/ta/calls", tooltipHint: "Log calls with feedback and review call history" },
@@ -37,6 +40,14 @@ const TA_NAV_GROUPS: NavGroup[] = [
             { label: "My Clients", icon: Building2, href: "/ta/clients", tooltipHint: "Client contacts, CV feedback and communication log" },
             { label: "Templates", icon: MessageSquareText, href: "/ta/templates", tooltipHint: "Email / WhatsApp message templates" },
             { label: "Partners", icon: Handshake, href: "/ta/partners", tooltipHint: "External recruiters — KYC and performance" },
+        ],
+    },
+    {
+        groupTitle: "TEAM",
+        items: [
+            { label: "Attendance & Leave", icon: Clock, href: "/ta/attendance", tooltipHint: "Check in / out, apply leave, team attendance and approvals" },
+            { label: "Recruiter KPIs", icon: Gauge, href: "/ta/kpis", tooltipHint: "Recruiter-wise KPIs: daily, weekly, monthly" },
+            { label: "Targets", icon: Crosshair, href: "/ta/targets", tooltipHint: "Monthly targets, achievement % and shortfall" },
         ],
     },
     {

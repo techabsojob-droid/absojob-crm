@@ -3,7 +3,7 @@ import { requireRole } from "@/lib/mock/server";
 import { applications, candidates, clients, jobs, addAudit, addNotification } from "@/lib/mock/data";
 import { bad, body } from "@/lib/mock/fin/http";
 import { sendEmail } from "@/lib/mock/finance";
-import { canWorkOnApplication, isRecruitmentManager } from "@/lib/mock/pipeline";
+import { canAccessJobId, canWorkOnApplication } from "@/lib/mock/pipeline";
 import { esc, resumeFileOf } from "@/lib/mock/recruiter";
 import type { CandidateClientSubmission } from "@/lib/types";
 
@@ -20,7 +20,7 @@ export async function GET(request: Request) {
         const app = s.applicationId ? applications.find((a) => a.id === s.applicationId) : undefined;
         return { ...s, candidateId: c.id, candidateName: c.name, applicationStage: app?.stage ?? null, mine: s.submittedBy === me.name || (app ? app.recruiterId === me.id : false), daysWaiting: Math.floor((Date.now() - +new Date(s.submittedAt)) / 86400000) };
     }))
-        .filter((s) => isRecruitmentManager(me) || s.mine)
+        .filter((s) => s.mine || canAccessJobId(me, s.jobId))
         .filter((s) => !status || status === "ALL" || s.status === status)
         .sort((a, b) => +new Date(b.submittedAt) - +new Date(a.submittedAt));
     return NextResponse.json(list);
@@ -91,7 +91,7 @@ export async function PATCH(request: Request) {
     const sub = cand?.clientSubmissions?.find((s) => s.id === b.submissionId);
     if (!cand || !sub) return NextResponse.json({ error: "Submission not found" }, { status: 404 });
     const app = sub.applicationId ? applications.find((a) => a.id === sub.applicationId) : undefined;
-    if (!isRecruitmentManager(me) && sub.submittedBy !== me.name && !(app && canWorkOnApplication(me, app))) return NextResponse.json({ error: "Not your submission" }, { status: 403 });
+    if (sub.submittedBy !== me.name && !canAccessJobId(me, sub.jobId) && !(app && canWorkOnApplication(me, app))) return NextResponse.json({ error: "Not your submission" }, { status: 403 });
     if (!["SHORTLISTED", "REJECTED", "INTERVIEW_REQUESTED", "PENDING_REVIEW"].includes(b.status)) return bad("Invalid status");
     if (b.status === "REJECTED" && !String(b.rejectionReason ?? "").trim()) return bad("Add the client's rejection reason");
     sub.status = b.status;

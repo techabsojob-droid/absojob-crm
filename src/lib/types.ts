@@ -54,6 +54,9 @@ export interface Client {
   commissionRate: number; // % of annual CTC
   creditDays: number; // payment terms
   accountManagerId: string | null; // TA_MANAGER / SUPER_ADMIN user
+  // TA Managers allowed to work on this client (besides the account manager). A TA Manager
+  // only sees clients mapped to them here or as account manager; Super Admin sees all.
+  taManagerIds?: string[];
   estimatedValue: string;
   notes?: string | null;
   billing?: ClientBillingProfile;
@@ -1732,6 +1735,10 @@ export interface AttendanceCorrectionRecord {
   reason: string;
   status: "PENDING" | "APPROVED" | "REJECTED";
   reviewedByName?: string | null;
+  reviewedById?: string | null;
+  reviewedAt?: string | null;
+  reviewNote?: string | null;
+  requestedAt?: string | null;
 }
 
 export interface WfhRecord {
@@ -2298,6 +2305,8 @@ export interface RecruiterTarget {
   joinings: number;
   revenue: number;
   setByName: string;
+  setById?: string | null;
+  updatedAt?: string | null;
 }
 
 // ─── Employee self-service ───────────────────────────────────

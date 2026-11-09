@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
 import { users, recruiterTargets } from "@/lib/mock/data";
-import { isRecruitmentManager } from "@/lib/mock/pipeline";
+import { hasOrgWideRecruitmentAccess, isInRecruitmentTeam, isRecruitmentManager, teamScopeIds } from "@/lib/mock/pipeline";
 import { recruiterEarnings, recruiterMonth, recruiterPerformance } from "@/lib/mock/recruiter";
 
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -16,18 +16,20 @@ export async function GET(request: Request) {
     const month = MONTH_RE.test(sp.get("month") ?? "") ? sp.get("month")! : new Date().toISOString().slice(0, 7);
     const manager = isRecruitmentManager(me);
     const userId = sp.get("userId") || me.id;
-    if (userId !== me.id && !manager) return NextResponse.json({ error: "You can only view your own performance" }, { status: 403 });
+    if (userId !== me.id && !(manager && (hasOrgWideRecruitmentAccess(me) || isInRecruitmentTeam(me, userId)))) return NextResponse.json({ error: "You can only view your own or your team's performance" }, { status: 403 });
     const subject = users.find((u) => u.id === userId && u.orgId === me.orgId);
     if (!subject) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     const perf = recruiterPerformance(subject, month);
+    const teamIds = teamScopeIds(me);
     const team = manager
-        ? users.filter((u) => u.orgId === me.orgId && u.status === "ACTIVE" && ["TA_RECRUITER", "TA_MANAGER"].includes(u.role)).map((u) => ({
+        ? users.filter((u) => u.orgId === me.orgId && u.status === "ACTIVE" && ["TA_RECRUITER", "TA_MANAGER"].includes(u.role) && (!teamIds || teamIds.has(u.id))).map((u) => ({
             userId: u.id, name: u.name, role: u.role,
+            canSetTarget: hasOrgWideRecruitmentAccess(me) || isInRecruitmentTeam(me, u.id),
             actual: recruiterMonth(u, month),
             target: recruiterTargets.find((t) => t.orgId === me.orgId && t.userId === u.id && t.month === month) ?? null,
             earnings: (({ thisMonth, yearToDate, incentive }) => ({ thisMonth, yearToDate, incentive }))(recruiterEarnings(u, month)),
         }))
         : null;
-    return NextResponse.json({ user: { id: subject.id, name: subject.name, role: subject.role }, ...perf, earnings: recruiterEarnings(subject, month), team, canSetTargets: manager });
+    return NextResponse.json({ user: { id: subject.id, name: subject.name, role: subject.role }, ...perf, earnings: recruiterEarnings(subject, month), team, canSetTargets: manager, canSetOwnTarget: hasOrgWideRecruitmentAccess(me) });
 }

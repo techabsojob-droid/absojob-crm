@@ -6,6 +6,7 @@ import {
     cleanLabels, newActivity, notifyTask, statusOf, taskFollowers, taskView,
 } from "@/lib/tasks";
 import type { Task, TaskRelatedType, TaskStatus, User } from "@/lib/types";
+import { canAccessClient, canAccessJobId } from "@/lib/mock/pipeline";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const RELATED: TaskRelatedType[] = ["CANDIDATE", "JOB", "CLIENT", "EMPLOYEE"];
@@ -64,7 +65,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         const n = to == null || to === "" ? null : String(to);
         if (f !== n) changes.push({ field, from: f, to: n });
     };
-    const bad = (error: string) => NextResponse.json({ error }, { status: 400 });
+    const bad = (error: string, status = 400) => NextResponse.json({ error }, { status });
 
     // Validate everything first so a bad field doesn't leave a half-applied edit
     if (b.title !== undefined && !String(b.title).trim()) return bad("Summary can't be empty");
@@ -78,6 +79,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         if (!newAssignee || !canAssignTo(me, newAssignee)) return NextResponse.json({ error: "You can't assign this task to that person" }, { status: 403 });
     }
     if (b.relatedType !== undefined && b.relatedType !== null && !RELATED.includes(b.relatedType)) return bad("Invalid link type");
+    if (b.relatedId && ["TA_MANAGER", "TA_RECRUITER"].includes(me.role)) {
+        if (b.relatedType === "JOB" && !canAccessJobId(me, String(b.relatedId))) return bad("That requisition is not assigned to you", 403);
+        if (b.relatedType === "CLIENT" && !canAccessClient(me, String(b.relatedId))) return bad("That client is not assigned to you", 403);
+    }
 
     const prevStatus = statusOf(t);
     if (b.title !== undefined) { const v = String(b.title).trim().slice(0, 200); track("summary", t.title, v); t.title = v; }

@@ -3,7 +3,7 @@
 // onboarding conversion, offer response) goes through these helpers so
 // job fill counts, placements, audit and notifications stay consistent.
 
-import type { Application, ApprovalRequest, JobRequisition, ReferralStatus, User, UserRole } from "@/lib/types";
+import type { Application, ApprovalRequest, Client, JobRequisition, ReferralStatus, User, UserRole } from "@/lib/types";
 import { addAudit, addNotification, applications, approvals, candidates, clients, commissionLedger, jobs, nextIds, placements, referrals, users } from "./data";
 
 export function notifyRoles(
@@ -190,11 +190,21 @@ export function syncReferralFromApplication(app: Application, actor: User) {
 }
 
 // ─── Recruitment access scoping ───────────────────────────────
-// Super Admin / TA Manager see and act on everything in their org.
-// A recruiter works on jobs assigned to them and applications they own.
+// Every recruitment API decides what a user may see through these helpers.
+//  • Super Admin: every client, requisition and application in the org.
+//  • TA Manager: manager privileges (approve, assign, set targets), but only on clients
+//    mapped to them (client.accountManagerId or client.taManagerIds) and requisitions they
+//    are directly on (TA manager, recruiter or requester).
+//  • Recruiter: requisitions assigned to them and applications they own.
 
+/** Has team-lead privileges (approve, assign, override). Says nothing about which records. */
 export function isRecruitmentManager(user: User): boolean {
     return user.role === "SUPER_ADMIN" || user.role === "TA_MANAGER";
+}
+
+/** Sees every recruitment record in the org, regardless of client mapping. */
+export function hasOrgWideRecruitmentAccess(user: User): boolean {
+    return user.role === "SUPER_ADMIN";
 }
 
 export function isJobAssignedTo(jobId: string, userId: string): boolean {
@@ -203,10 +213,113 @@ export function isJobAssignedTo(jobId: string, userId: string): boolean {
     return job.primaryRecruiterId === userId || (job.assignedTas || []).includes(userId) || job.requestedById === userId;
 }
 
+/** Client mapped to this TA Manager (as account manager or in the assigned TA managers list). */
+export function isClientMappedTo(client: Pick<Client, "accountManagerId" | "taManagerIds">, userId: string): boolean {
+    return client.accountManagerId === userId || (client.taManagerIds ?? []).includes(userId);
+}
+
+/** Clients mapped directly to the user (TA Manager mapping, or account manager for anyone). */
+export function mappedClientIds(user: User): Set<string> {
+    if (hasOrgWideRecruitmentAccess(user)) return new Set(clients.filter((c) => c.orgId === user.orgId).map((c) => c.id));
+    const mine = clients.filter((c) => c.orgId === user.orgId && (user.role === "TA_MANAGER" ? isClientMappedTo(c, user.id) : c.accountManagerId === user.id));
+    return new Set(mine.map((c) => c.id));
+}
+
+export function canAccessJob(user: User, job: JobRequisition | undefined | null): boolean {
+    if (!job || job.orgId !== user.orgId) return false;
+    if (hasOrgWideRecruitmentAccess(user)) return true;
+    if (job.primaryRecruiterId === user.id || (job.assignedTas || []).includes(user.id) || job.requestedById === user.id) return true;
+    if (user.role !== "TA_MANAGER") return false;
+    if (job.taManagerId === user.id) return true;
+    const client = clients.find((c) => c.id === job.clientId);
+    return !!client && isClientMappedTo(client, user.id);
+}
+
+export function canAccessJobId(user: User, jobId: string | null | undefined): boolean {
+    return !!jobId && canAccessJob(user, jobs.find((j) => j.id === jobId));
+}
+
+export function accessibleJobIds(user: User): Set<string> {
+    return new Set(jobs.filter((j) => canAccessJob(user, j)).map((j) => j.id));
+}
+
+/** Clients a user may see: mapped clients plus clients of requisitions they can access. */
+export function accessibleClientIds(user: User): Set<string> {
+    const ids = mappedClientIds(user);
+    for (const j of jobs) if (canAccessJob(user, j)) ids.add(j.clientId);
+    return ids;
+}
+
+export function canAccessClient(user: User, clientId: string | null | undefined): boolean {
+    if (!clientId) return false;
+    const c = clients.find((x) => x.id === clientId);
+    return !!c && c.orgId === user.orgId && accessibleClientIds(user).has(c.id);
+}
+
+/**
+ * May this user raise a requisition for the client? Super Admin: any client; TA Manager:
+ * mapped clients only; recruiter: clients they already work on. Partners keep raising
+ * requests for any client (they go through approval).
+ */
+export function canCreateForClient(user: User, clientId: string | null | undefined): boolean {
+    const c = clientId ? clients.find((x) => x.id === clientId && x.orgId === user.orgId) : undefined;
+    if (!c) return false;
+    if (hasOrgWideRecruitmentAccess(user) || user.role === "AGENT") return true;
+    if (user.role === "TA_MANAGER") return isClientMappedTo(c, user.id);
+    return accessibleClientIds(user).has(c.id);
+}
+
+/** Validates a list of TA Manager ids for a client mapping (Super Admin only). */
+export function validTaManagerIds(orgId: string, input: unknown): { ok: string[]; invalid: string[] } {
+    const ids = Array.isArray(input) ? [...new Set(input.map(String))] : [];
+    const ok: string[] = [];
+    const invalid: string[] = [];
+    for (const id of ids) {
+        if (users.some((u) => u.id === id && u.orgId === orgId && u.role === "TA_MANAGER" && u.status === "ACTIVE")) ok.push(id); else invalid.push(id);
+    }
+    return { ok, invalid };
+}
+
+/** Requisition approvals follow requisition access: a TA Manager only sees their clients' requests. */
+export function approvalInScope(user: User, a: Pick<ApprovalRequest, "relatedRecordType" | "relatedRecordId" | "requestedById">): boolean {
+    if (hasOrgWideRecruitmentAccess(user) || a.requestedById === user.id) return true;
+    if (user.role === "TA_MANAGER" && a.relatedRecordType === "JOB") return canAccessJobId(user, a.relatedRecordId);
+    return true;
+}
+
 export function canWorkOnApplication(user: User, app: Application): boolean {
     if (app.orgId !== user.orgId) return false;
-    if (isRecruitmentManager(user)) return true;
-    return app.recruiterId === user.id || isJobAssignedTo(app.jobId, user.id);
+    if (hasOrgWideRecruitmentAccess(user)) return true;
+    return app.recruiterId === user.id || canAccessJobId(user, app.jobId);
+}
+
+/**
+ * The recruiters a TA lead manages: Super Admin → every active TA user; TA Manager →
+ * active recruiters reporting to them (User.reportingTo). Recruiters have no team.
+ */
+export function recruitmentTeam(user: User): User[] {
+    const ta = users.filter((u) => u.orgId === user.orgId && u.status === "ACTIVE" && (u.role === "TA_RECRUITER" || u.role === "TA_MANAGER"));
+    if (hasOrgWideRecruitmentAccess(user)) return ta.filter((u) => u.id !== user.id);
+    if (user.role !== "TA_MANAGER") return [];
+    return ta.filter((u) => u.reportingTo === user.id && u.id !== user.id);
+}
+
+export function isInRecruitmentTeam(lead: User, userId: string): boolean {
+    return recruitmentTeam(lead).some((u) => u.id === userId);
+}
+
+/** Users whose activity a lead reviews in "team" views (self + team); null = whole org (Super Admin). */
+export function teamScopeIds(user: User): Set<string> | null {
+    if (hasOrgWideRecruitmentAccess(user)) return null;
+    return new Set([user.id, ...recruitmentTeam(user).map((u) => u.id)]);
+}
+
+/** People a lead can pick in "team" filters: self + team (everyone in TA for Super Admin). */
+export function teamPickList(user: User): { id: string; name: string }[] {
+    const ids = teamScopeIds(user);
+    return users
+        .filter((u) => u.orgId === user.orgId && (u.role === "TA_RECRUITER" || u.role === "TA_MANAGER") && u.status !== "EXITED" && (!ids || ids.has(u.id)))
+        .map((u) => ({ id: u.id, name: u.name }));
 }
 
 /** Validates recruiter ids for assignment: active TA users (or Super Admin) in the org. */

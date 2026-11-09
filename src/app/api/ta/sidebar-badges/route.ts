@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
 import { jobs, applications, interviews, tasks, candidates, approvals, dataQualityIssues, expenses, payrollRecords } from "@/lib/mock/data";
 import { financeSnapshot } from "@/lib/mock/finance";
-import { canWorkOnApplication } from "@/lib/mock/pipeline";
+import { approvalInScope, canAccessJob, canWorkOnApplication, teamScopeIds } from "@/lib/mock/pipeline";
 
 export async function GET() {
     const auth = await requireRole("TA_MANAGER", "TA_RECRUITER", "SUPER_ADMIN", "HR_ADMIN", "FINANCE_ADMIN");
@@ -11,11 +11,12 @@ export async function GET() {
 
     const isManager = me.role === "TA_MANAGER" || me.role === "SUPER_ADMIN";
 
-    const orgJobs = jobs.filter((j) => j.orgId === me.orgId && (isManager || j.assignedTas?.includes(me.id) || j.primaryRecruiterId === me.id));
+    const teamIds = teamScopeIds(me);
+    const orgJobs = jobs.filter((j) => j.orgId === me.orgId && (isManager ? canAccessJob(me, j) : j.assignedTas?.includes(me.id) || j.primaryRecruiterId === me.id));
     const orgApps = applications.filter((a) => canWorkOnApplication(me, a));
     const appIds = new Set(orgApps.map((a) => a.id));
     const orgInterviews = interviews.filter((i) => i.orgId === me.orgId && appIds.has(i.applicationId));
-    const orgTasks = tasks.filter((t) => t.orgId === me.orgId && (isManager || t.assignedToId === me.id));
+    const orgTasks = tasks.filter((t) => t.orgId === me.orgId && (isManager ? !teamIds || teamIds.has(t.assignedToId) : t.assignedToId === me.id));
 
     const now = new Date();
     const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
@@ -65,7 +66,7 @@ export async function GET() {
     };
     const mineTypes = approvalTypes[me.role] ?? [];
     const pendingApprovals = approvals.filter(
-        (a) => a.orgId === me.orgId && a.status === "PENDING" && (mineTypes === "*" || mineTypes.includes(a.type))
+        (a) => a.orgId === me.orgId && a.status === "PENDING" && (mineTypes === "*" || mineTypes.includes(a.type)) && approvalInScope(me, a)
     ).length;
     const openDataIssues = me.role === "SUPER_ADMIN"
         ? dataQualityIssues.filter((d) => d.orgId === me.orgId).length

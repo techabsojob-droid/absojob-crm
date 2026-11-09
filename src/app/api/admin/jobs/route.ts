@@ -4,7 +4,7 @@ import { requireRole } from "@/lib/mock/server";
 import { clients, users, applications, nextIds } from "@/lib/mock/data";
 import { getJobsFromDb, createJobInDb, updateJobInDb, deleteJobFromDb, logAudit } from "@/lib/supabase/db";
 import { creditStatusOf } from "@/lib/mock/finance";
-import { createApproval, isRecruitmentManager, notifyJobAssignment, resolveApprovalsFor, validRecruiters } from "@/lib/mock/pipeline";
+import { canAccessJob, canAccessJobId, canCreateForClient, createApproval, isRecruitmentManager, notifyJobAssignment, resolveApprovalsFor, validRecruiters } from "@/lib/mock/pipeline";
 import { nextRequisitionCode } from "@/lib/fit";
 import type { JobRequisition, JobLevel, ShiftTiming } from "@/lib/types";
 
@@ -28,10 +28,9 @@ export async function GET(request: Request) {
     const slaRisk = url.searchParams.get("slaRisk"); // "NEAR", "OVER", "ALL"
 
     const dbJobs = await getJobsFromDb(me.orgId);
-    // Recruiters see requisitions assigned to them (or that they requested); managers see all
-    const scoped = (isRecruitmentManager(me)
-        ? dbJobs
-        : dbJobs.filter((j) => j.primaryRecruiterId === me.id || (j.assignedTas || []).includes(me.id) || j.requestedById === me.id))
+    // Super Admin sees every requisition; a TA Manager sees requisitions of clients mapped to them
+    // (or that they are on); recruiters see requisitions assigned to them or that they requested
+    const scoped = dbJobs.filter((j) => canAccessJob(me, j))
         // A draft is private to its author until it is submitted
         .filter((j) => j.status !== "DRAFT" || j.requestedById === me.id);
 
@@ -140,6 +139,9 @@ export async function POST(request: Request) {
     const numOpenings = Math.max(1, Math.floor(Number(body.openings) || 1));
     if (!clients.some((c) => c.id === body.clientId && c.orgId === me.orgId)) {
         return NextResponse.json({ error: "Client not found" }, { status: 400 });
+    }
+    if (!canCreateForClient(me, body.clientId)) {
+        return NextResponse.json({ error: "This client is not assigned to you" }, { status: 403 });
     }
     const credit = creditStatusOf(me.orgId, body.clientId);
     if (credit.onHold && me.role !== "SUPER_ADMIN") {
@@ -327,7 +329,10 @@ export async function PATCH(request: Request) {
         updates.approvedById = me.id;
     }
     const before = (await getJobsFromDb(me.orgId)).find((j) => j.id === id);
-    if (!before) return NextResponse.json({ error: "Job not found" }, { status: 404 });
+    if (!before || !canAccessJob(me, before)) return NextResponse.json({ error: "Job not found" }, { status: 404 });
+    if (updates.clientId !== undefined && updates.clientId !== before.clientId && !canCreateForClient(me, updates.clientId)) {
+        return NextResponse.json({ error: "This client is not assigned to you" }, { status: 403 });
+    }
     const newTeam = [...(updates.assignedTas || []), ...(updates.primaryRecruiterId ? [updates.primaryRecruiterId] : [])];
     const { invalid } = validRecruiters(me.orgId, newTeam);
     if (invalid.length) return NextResponse.json({ error: `Recruiter(s) not found: ${invalid.join(", ")}` }, { status: 400 });
@@ -369,6 +374,7 @@ export async function DELETE(request: Request) {
     const id = url.searchParams.get("id");
     if (!id) return NextResponse.json({ error: "Job ID is required" }, { status: 400 });
 
+    if (!canAccessJobId(me, id)) return NextResponse.json({ error: "Job not found" }, { status: 404 });
     const linkedApps = applications.filter((a) => a.jobId === id && a.orgId === me.orgId).length;
     if (linkedApps > 0) {
         return NextResponse.json(

@@ -291,6 +291,10 @@ export function decideCorrection(me: User, id: string, approve: boolean, note?: 
     if (!approve && !String(note ?? "").trim()) return { error: "A reason is required when rejecting", status: 400 };
     c.status = approve ? "APPROVED" : "REJECTED";
     c.reviewedByName = me.name;
+    c.reviewedById = me.id;
+    c.reviewedAt = new Date().toISOString();
+    c.reviewNote = String(note ?? "").trim() || null;
+    let changed = "";
     if (approve) {
         const emp = employees.find((e) => e.id === c.employeeId);
         const uid = emp?.userId ?? c.employeeId;
@@ -301,13 +305,15 @@ export function decideCorrection(me: User, id: string, approve: boolean, note?: 
         }
         // Requested times are IST wall-clock times
         const at = (t: string) => (t.includes("T") ? t : new Date(`${c.date}T${t.length === 5 ? `${t}:00` : t}+05:30`).toISOString());
+        const beforeStatus = rec.checkIn ? rec.status : "NO PUNCH";
         rec.checkIn = at(c.requestedCheckIn);
         rec.checkOut = at(c.requestedCheckOut);
         const shift = shiftFor(emp, me.orgId);
         rec.status = hoursOf(rec) < shift.workingHours / 2 ? "HALF_DAY" : "PRESENT";
         rec.lateByMinutes = 0;
+        changed = ` (${beforeStatus} → ${rec.status}, ${c.requestedCheckIn}–${c.requestedCheckOut})`;
     }
-    addAudit({ orgId: me.orgId, actorUserId: me.id, actorRole: me.role, action: `ATTENDANCE_CORRECTION_${c.status}`, entity: "AttendanceCorrection", entityId: c.id, detail: `${c.employeeName}: ${c.date}${note ? ` — ${note}` : ""}` });
+    addAudit({ orgId: me.orgId, actorUserId: me.id, actorRole: me.role, action: `ATTENDANCE_CORRECTION_${c.status}`, entity: "AttendanceCorrection", entityId: c.id, detail: `${c.employeeName}: ${c.date}${changed}${note ? ` — ${note}` : ""}` });
     notifyEmp(c.employeeId, me.orgId, `Attendance correction ${c.status.toLowerCase()}`, `Your correction for ${c.date} was ${c.status.toLowerCase()} by ${me.name}${note ? ` — ${note}` : ""}`, "/portal/attendance");
     return {};
 }

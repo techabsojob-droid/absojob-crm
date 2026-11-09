@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
 import { getClientsFromDb, getJobsFromDb, logAudit } from "@/lib/supabase/db";
+import { canAccessClient, canAccessJob, mappedClientIds, validTaManagerIds } from "@/lib/mock/pipeline";
 import {
     users,
     candidates as mockCandidates,
@@ -25,13 +26,13 @@ export async function GET(
     const dbClients = await getClientsFromDb(me.orgId);
     const client = dbClients.find((c) => c.id === clientId);
 
-    if (!client) {
+    if (!client || !canAccessClient(me, client.id)) {
         return NextResponse.json({ error: "Client not found" }, { status: 404 });
     }
 
-    // 2. Fetch Jobs for this client
+    // 2. Fetch Jobs for this client (only requisitions the user may open)
     const allJobs = await getJobsFromDb(me.orgId);
-    const clientJobs = allJobs.filter((j) => j.clientId === clientId);
+    const clientJobs = allJobs.filter((j) => j.clientId === clientId && canAccessJob(me, j));
     const clientJobIds = clientJobs.map((j) => j.id);
 
     // 3. Applications & Candidates
@@ -249,6 +250,8 @@ export async function GET(
             accountManagerName: accountManager?.name ?? "Aarav Mehta",
             accountManagerEmail: accountManager?.email ?? "admin@absojob.com",
             accountManagerPhone: accountManager?.phone ?? "+91 98200 11223",
+            taManagerIds: client.taManagerIds ?? [],
+            taManagers: (client.taManagerIds ?? []).map((id) => users.find((u) => u.id === id)).filter(Boolean).map((u) => ({ id: u!.id, name: u!.name })),
         },
         stats: {
             totalJobs: clientJobs.length,
@@ -290,7 +293,15 @@ export async function PATCH(
     const body = await request.json();
     const dbClients = await getClientsFromDb(me.orgId);
     const client = dbClients.find((c) => c.id === clientId);
-    if (!client) return NextResponse.json({ error: "Client not found" }, { status: 404 });
+    if (!client || !mappedClientIds(me).has(client.id)) return NextResponse.json({ error: "Client not found" }, { status: 404 });
+    if ((body.accountManagerId !== undefined || body.taManagerIds !== undefined) && me.role !== "SUPER_ADMIN") {
+        return NextResponse.json({ error: "Only Super Admin can change who is assigned to a client" }, { status: 403 });
+    }
+    if (body.taManagerIds !== undefined) {
+        const v = validTaManagerIds(me.orgId, body.taManagerIds);
+        if (v.invalid.length) return NextResponse.json({ error: `Not an active TA Manager: ${v.invalid.join(", ")}` }, { status: 400 });
+        client.taManagerIds = v.ok;
+    }
 
     if (body.status) client.status = body.status;
     if (body.companyName) client.companyName = body.companyName;

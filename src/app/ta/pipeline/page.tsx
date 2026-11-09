@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import {
@@ -44,6 +44,7 @@ export default function TaPipelinePage() {
 
     // Views & Filters
     const [viewMode, setViewMode] = useState<"kanban" | "table">("kanban");
+    const boardRef = useRef<HTMLDivElement>(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [jobFilter, setJobFilter] = useState("ALL");
     const [stageFilter, setStageFilter] = useState("ALL");
@@ -518,7 +519,16 @@ export default function TaPipelinePage() {
                 </SectionCard>
             ) : viewMode === "kanban" ? (
                 /* Real Interactive Drag & Drop Kanban View */
-                <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-10 gap-3 items-start overflow-x-auto pb-4">
+                <div className="relative">
+                    {/* Scroll controls — the board is wider than the screen */}
+                    <div className="flex items-center justify-between mb-2">
+                        <p className="text-[11px] text-neutral-400 font-medium">{COLUMNS.length} stages · scroll sideways or drag cards between columns</p>
+                        <div className="flex gap-1">
+                            <button onClick={() => boardRef.current?.scrollBy({ left: -560, behavior: "smooth" })} className="p-1.5 rounded-lg border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50" aria-label="Scroll board left"><ChevronLeft size={14} /></button>
+                            <button onClick={() => boardRef.current?.scrollBy({ left: 560, behavior: "smooth" })} className="p-1.5 rounded-lg border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50" aria-label="Scroll board right"><ChevronRight size={14} /></button>
+                        </div>
+                    </div>
+                <div ref={boardRef} className="flex gap-3 items-start overflow-x-auto pb-4 snap-x scroll-smooth [scrollbar-width:thin]">
                     {COLUMNS.map((stage) => {
                         const stageApps = filteredApps.filter((a: any) => a.stage === stage);
                         const stageIdx = (STAGES as readonly string[]).indexOf(stage);
@@ -565,7 +575,7 @@ export default function TaPipelinePage() {
                                         console.error("Drop error:", err);
                                     }
                                 }}
-                                className={`rounded-2xl p-2.5 min-h-[380px] flex flex-col justify-between transition-all duration-150 ${
+                                className={`w-[272px] shrink-0 snap-start rounded-2xl p-2.5 min-h-[380px] max-h-[calc(100vh-180px)] overflow-y-auto flex flex-col transition-all duration-150 ${
                                     isColumnOver
                                         ? "bg-emerald-50/70 border-2 border-dashed border-emerald-500 ring-4 ring-emerald-500/10 shadow-lg scale-[1.01]"
                                         : "bg-neutral-50/90 border border-neutral-200/60"
@@ -573,8 +583,8 @@ export default function TaPipelinePage() {
                             >
                                 <div>
                                     {/* Stage Column Header */}
-                                    <div className="flex items-center justify-between px-1 mb-2.5">
-                                        <span className="text-[10px] font-black uppercase tracking-wider text-neutral-600 leading-tight">
+                                    <div className="sticky -top-2.5 z-10 -mx-2.5 -mt-2.5 px-3.5 pt-3 pb-2 mb-2 flex items-center justify-between gap-2 bg-inherit rounded-t-2xl backdrop-blur-sm">
+                                        <span className="text-[11px] font-black uppercase tracking-wider text-neutral-600 whitespace-nowrap truncate">
                                             {stageLabel(stage)}
                                         </span>
                                         <span className={`text-[10px] font-black rounded-md px-1.5 py-0.5 border ${
@@ -663,9 +673,9 @@ export default function TaPipelinePage() {
                                                     </div>
 
                                                     {/* CTC & Exp */}
-                                                    <div className="flex items-center justify-between text-[10px] text-neutral-500 pt-1 border-t border-neutral-50 pl-4.5">
-                                                        <span><strong>{a.totalExperienceYears}y</strong> exp</span>
-                                                        <span>exp ₹{a.expectedCtcLpa}L</span>
+                                                    <div className="flex items-center justify-between text-[10px] text-neutral-500 pt-1.5 border-t border-neutral-100 pl-4.5">
+                                                        <span>Exp <strong className="text-neutral-700">{a.totalExperienceYears} yrs</strong></span>
+                                                        <span>Expects <strong className="text-neutral-700">₹{a.expectedCtcLpa}L</strong></span>
                                                     </div>
 
                                                     {/* Aging Badge & Interview Pill */}
@@ -802,6 +812,7 @@ export default function TaPipelinePage() {
                             </div>
                         );
                     })}
+                </div>
                 </div>
             ) : (
                 /* Table View */

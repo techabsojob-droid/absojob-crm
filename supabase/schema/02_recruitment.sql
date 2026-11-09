@@ -20,6 +20,7 @@ create table if not exists crm.clients (
   commission_rate      numeric,
   credit_days          numeric,
   account_manager_id   text,
+  ta_manager_ids       text[],
   estimated_value      text,
   notes                text,
   billing              jsonb,
@@ -486,6 +487,8 @@ create table if not exists crm.recruiter_targets (
   joinings      numeric,
   revenue       numeric,
   set_by_name   text,
+  set_by_id     text,
+  updated_at    timestamptz,
   _extra        jsonb not null default '{}'::jsonb, -- values that don't fit a typed column (kept losslessly)
   _position     double precision not null default 0, -- list order the app expects
   primary key (id)

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { LogIn, LogOut, CalendarCheck, Clock, AlarmClock, Home, ChevronLeft, ChevronRight, CalendarOff } from "lucide-react";
 import { PageHeader, StatCard, SectionCard, Badge, ModalShell } from "@/components/shared/ui";
@@ -35,6 +36,9 @@ export default function PortalAttendancePage() {
     const regularize = useAct("/api/hr/employee-requests", "POST", ["my-attendance", "my-requests"], "Correction sent for approval");
     const [fix, setFix] = useState<Day | null>(null);
     const [fixForm, setFixForm] = useState({ requestedCheckIn: "09:30", requestedCheckOut: "18:30", description: "" });
+    // Inside the TA workspace leave lives on a tab of this page; elsewhere it's the portal leave page
+    const inTa = usePathname()?.startsWith("/ta") ?? false;
+    const leaveHref = (date?: string) => (inTa ? `/ta/attendance?tab=leave${date ? `&apply=${date}` : ""}` : `/portal/leave${date ? `?apply=${date}` : ""}`);
 
     if (isLoading || !data) return <SkeletonPulse className="h-96 w-full" />;
     const { today, shift, summary: s } = data;
@@ -95,7 +99,7 @@ export default function PortalAttendancePage() {
                     })}
                 </div>
                 <div className="flex flex-wrap gap-2 mt-4">{["PRESENT", "LATE", "HALF_DAY", "WFH", "ON_LEAVE", "ABSENT", "HOLIDAY", "WEEK_OFF"].map((k) => <span key={k} className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${CELL[k]}`}>{LABEL[k]}</span>)}</div>
-                <p className="text-[11px] text-neutral-400 mt-2">Missed a punch or marked late by mistake? Click the day to request a correction — it goes to your manager / HR.</p>
+                <p className="text-[11px] text-neutral-400 mt-2">Missed a punch or marked late by mistake? Click the day to request a correction. Were you on leave? Click the day and choose <b>Apply leave</b>, or <Link href={leaveHref()} className="text-primary font-bold">apply leave here</Link>. Both go to your manager / HR. Holidays are set by HR and appear automatically.</p>
             </SectionCard>
 
             {data.corrections.length > 0 && (
@@ -104,10 +108,17 @@ export default function PortalAttendancePage() {
                 </SectionCard>
             )}
 
-            <ModalShell open={!!fix} onClose={() => setFix(null)} title={fix ? `Regularise ${fix.date}` : ""}>
+            <ModalShell open={!!fix} onClose={() => setFix(null)} title={fix ? `${fix.date} — correct attendance or apply leave` : ""}>
                 {fix && (
                     <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); regularize.mutate({ type: "ATTENDANCE_CORRECTION", date: fix.date, ...fixForm }, { onSuccess: () => setFix(null) }); }}>
                         <p className="text-xs text-neutral-500">Recorded: {fix.checkIn ? `${t(fix.checkIn)} – ${t(fix.checkOut)}` : "no punch"} ({LABEL[fix.status] || fix.status})</p>
+                        {["ABSENT", "NOT_MARKED"].includes(fix.status) && (
+                            <div className="rounded-xl bg-sky-50 border border-sky-100 p-3 text-xs text-sky-900 flex items-center justify-between gap-3">
+                                <span>Weren&apos;t working this day? Apply leave instead of a correction.</span>
+                                <Link href={leaveHref(fix.date)} onClick={() => setFix(null)} className="shrink-0 px-3 py-1.5 rounded-lg bg-sky-600 text-white font-bold">Apply leave</Link>
+                            </div>
+                        )}
+                        <p className="text-[11px] font-bold text-neutral-500 uppercase">I was working — correct my punch</p>
                         <div className="grid grid-cols-2 gap-3">
                             <label className="text-xs font-bold text-neutral-600">Actual check-in<input required type="time" value={fixForm.requestedCheckIn} onChange={(e) => setFixForm({ ...fixForm, requestedCheckIn: e.target.value })} className={inputCls} /></label>
                             <label className="text-xs font-bold text-neutral-600">Actual check-out<input required type="time" value={fixForm.requestedCheckOut} onChange={(e) => setFixForm({ ...fixForm, requestedCheckOut: e.target.value })} className={inputCls} /></label>

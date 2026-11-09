@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -19,9 +20,16 @@ const today = () => new Date().toISOString().slice(0, 10);
 const span = (l: Leave) => (l.halfDay ? `${l.fromDate} (${l.halfDay.toLowerCase()} half)` : l.fromDate === l.toDate ? l.fromDate : `${l.fromDate} → ${l.toDate}`);
 
 export default function PortalLeavePage() {
+    return <Suspense fallback={<SkeletonPulse className="h-96 w-full" />}><LeaveInner /></Suspense>;
+}
+
+function LeaveInner() {
     const { data, isLoading } = useQuery<Data>({ queryKey: ["my-leaves"], queryFn: () => api("/api/portal/leave"), refetchInterval: 30000 });
-    const [open, setOpen] = useState(false);
-    const [form, setForm] = useState(EMPTY);
+    // ?apply=YYYY-MM-DD (e.g. from an Absent day on the attendance calendar) opens the form for that date
+    const applyFor = useSearchParams().get("apply");
+    const preset = applyFor && /^\d{4}-\d{2}-\d{2}$/.test(applyFor) ? applyFor : null;
+    const [open, setOpen] = useState(!!preset);
+    const [form, setForm] = useState(preset ? { ...EMPTY, fromDate: preset, toDate: preset } : EMPTY);
     const [uploading, setUploading] = useState(false);
     const keys = ["my-leaves", "portal-dashboard", "my-attendance"];
     const apply = useAct("/api/portal/leave", "POST", keys, "Leave request sent to your manager and HR");

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
 import { candidates, clients, jobs, users } from "@/lib/mock/data";
-import { isRecruitmentManager } from "@/lib/mock/pipeline";
+import { accessibleClientIds, canCreateForClient, isRecruitmentManager } from "@/lib/mock/pipeline";
 import { creditStatusOf } from "@/lib/mock/fin/receivables";
 import { needsApproval } from "@/lib/requisition-server";
 import { DEFAULT_DEPARTMENTS } from "@/lib/requisition-options";
@@ -25,12 +25,14 @@ export async function GET() {
     const org = (x: { orgId: string }) => x.orgId === me.orgId;
     const orgJobs = jobs.filter(org);
     const ta = users.filter((u) => org(u) && u.status === "ACTIVE" && ["TA_RECRUITER", "TA_MANAGER", "SUPER_ADMIN"].includes(u.role));
+    // Only clients the user may work on; `assignable` = may raise a new requisition for it
+    const visibleClients = accessibleClientIds(me);
 
     return NextResponse.json({
         isManager: isRecruitmentManager(me),
         needsApproval: needsApproval(me),
         me: { id: me.id, name: me.name, role: me.role },
-        clients: clients.filter(org).filter((c) => c.status !== "CHURNED").map((c) => {
+        clients: clients.filter(org).filter((c) => c.status !== "CHURNED" && (visibleClients.has(c.id) || canCreateForClient(me, c.id))).map((c) => {
             const credit = creditStatusOf(me.orgId, c.id);
             // Contacts already on record for this client: its main contact, billing emails and contacts used on earlier requisitions
             const contacts = new Map<string, { name: string; email: string; phone: string; source: string }>();
@@ -44,7 +46,7 @@ export async function GET() {
             for (const j of orgJobs.filter((j) => j.clientId === c.id)) add(j.clientContactName, j.clientContactEmail, j.clientContactPhone, `Used on ${j.requisitionCode ?? j.title}`);
             for (const e of c.billing?.billingEmails ?? []) add("", e, "", "Billing email");
             return {
-                id: c.id, name: c.companyName, industry: c.industry, status: c.status,
+                id: c.id, name: c.companyName, industry: c.industry, status: c.status, assignable: canCreateForClient(me, c.id),
                 creditHold: credit.onHold, creditReasons: credit.reasons,
                 contacts: [...contacts.values()],
                 defaults: {

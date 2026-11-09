@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import type { JobAssignmentRecord, JobOpeningItem, JobRequisition, User } from "@/lib/types";
 import { approvals, organizationSettingsSeed, users, nextIds } from "@/lib/mock/data";
-import { createApproval, isRecruitmentManager, notifyJobAssignment } from "@/lib/mock/pipeline";
+import { canCreateForClient, createApproval, isRecruitmentManager, notifyJobAssignment } from "@/lib/mock/pipeline";
 import { creditStatusOf } from "@/lib/mock/fin/receivables";
 import { createJobInDb, getJobsFromDb, logAudit, updateJobInDb } from "@/lib/supabase/db";
 import { nextRequisitionCode } from "@/lib/fit";
@@ -50,6 +50,7 @@ export async function createRequisition(me: User, body: Record<string, unknown>)
     const manager = isRecruitmentManager(me);
     const { errors, warnings, values: v, location } = parseRequisition(body, { me, manager, strict: intent !== "draft" });
     if (Object.keys(errors).length) return invalid(errors);
+    if (!canCreateForClient(me, v.clientId)) return invalid({ clientId: "This client is not assigned to you" });
 
     const credit = creditStatusOf(me.orgId, v.clientId!);
     if (credit.onHold && me.role !== "SUPER_ADMIN") {
@@ -146,6 +147,7 @@ export async function updateRequisition(me: User, existing: JobRequisition, body
     const { errors, warnings, values: v, location } = parseRequisition(body, { me, manager, strict: intent !== "draft", existing });
     if (Object.keys(errors).length) return invalid(errors);
     if (v.clientId !== existing.clientId) {
+        if (!canCreateForClient(me, v.clientId)) return invalid({ clientId: "This client is not assigned to you" });
         const credit = creditStatusOf(me.orgId, v.clientId!);
         if (credit.onHold && me.role !== "SUPER_ADMIN") return NextResponse.json({ error: `Client is on credit hold (${credit.reasons.join("; ")})` }, { status: 423 });
     }

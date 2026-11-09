@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
-import { employeeRequests, wfhRequests, attendanceCorrections, attendance, storedFiles, addAudit } from "@/lib/mock/data";
-import { employeeForUser } from "@/lib/mock/identity";
+import { employeeRequests, wfhRequests, attendanceCorrections, attendance, storedFiles, addAudit, addNotification, users } from "@/lib/mock/data";
+import { approversFor, employeeForUser } from "@/lib/mock/identity";
 import { decideEmployeeRequest } from "@/lib/mock/ess";
 import { notifyRoles } from "@/lib/mock/pipeline";
 import type { EmployeeRequest, EmployeeRequestType } from "@/lib/types";
@@ -110,10 +110,16 @@ export async function POST(request: Request) {
         const rec = {
             id: `acr-${crypto.randomUUID().slice(0, 8)}`, orgId: me.orgId, employeeId: emp.id, employeeName: emp.name, date,
             originalCheckIn: original?.checkIn ?? null, originalCheckOut: original?.checkOut ?? null,
-            requestedCheckIn, requestedCheckOut, reason: description, status: "PENDING" as const, reviewedByName: null,
+            requestedCheckIn, requestedCheckOut, reason: description, status: "PENDING" as const, reviewedByName: null, requestedAt: new Date().toISOString(),
         };
         attendanceCorrections.unshift(rec);
         notifyRoles(me.orgId, ["HR_ADMIN"], { title: "Attendance correction", message: `${emp.name}: ${date} (${requestedCheckIn}–${requestedCheckOut})`, link: "/hr/approvals" });
+        // The reporting manager can decide it too — TA leads review it in Team Attendance
+        const managerId = approversFor(me.id).managerUserId;
+        const manager = managerId ? users.find((u) => u.id === managerId && u.status === "ACTIVE") : undefined;
+        if (manager && manager.role !== "HR_ADMIN") {
+            addNotification({ orgId: me.orgId, userId: manager.id, title: "Attendance regularization request", message: `${emp.name}: ${date} (${requestedCheckIn}–${requestedCheckOut})`, link: ["TA_MANAGER", "SUPER_ADMIN"].includes(manager.role) && ["TA_RECRUITER", "TA_MANAGER"].includes(me.role) ? "/ta/attendance?tab=team" : "/portal/team" });
+        }
         addAudit({ orgId: me.orgId, actorUserId: me.id, actorRole: me.role, action: "ATTENDANCE_CORRECTION_REQUESTED", entity: "AttendanceCorrection", entityId: rec.id, detail: `${emp.name}: ${date}` });
         return NextResponse.json(rec, { status: 201 });
     }
