@@ -19,6 +19,7 @@ import { fileUrl } from "@/lib/mock/finance";
 import type { JobLevel, JobRequisition, ShiftTiming } from "@/lib/types";
 import { pipelineMetrics } from "@/lib/metrics";
 import { approvalHistory, updateRequisition } from "@/lib/requisition-server";
+import { jobOverviewFor } from "@/lib/mock/job-overview";
 
 export async function GET(
     request: Request,
@@ -247,6 +248,8 @@ export async function GET(
     const manager = isRecruitmentManager(me);
     const canEdit = !["CLOSED", "CANCELLED", "FULFILLED"].includes(job.status) && (manager || (job.requestedById === me.id && ["DRAFT", "PENDING_APPROVAL"].includes(job.status)));
     return NextResponse.json({
+        // Standard job card shared with the Admin and employee/partner portals
+        overview: jobOverviewFor(job, { internal: true }),
         canManage: manager,
         canEdit,
         requisitionStats,

@@ -7,9 +7,11 @@ import { PageHeader, SectionCard, Badge, EmptyState, ModalShell } from "@/compon
 import { SkeletonPulse } from "@/components/shared/UIStates";
 import { btn, inputCls, money } from "@/components/finance/kit";
 import ReferralForm from "@/components/portal/ReferralForm";
+import { JobOverview } from "@/components/shared/JobOverview";
+import type { JobOverview as Overview } from "@/lib/mock/job-overview";
 import { api } from "@/lib/api";
 
-interface Job { id: string; title: string; clientName: string | null; industry: string | null; location: string; workMode: string | null; department: string; employmentType: string; experienceMinYears: number; experienceMaxYears: number; salaryMinLpa: number; salaryMaxLpa: number; skills: string[]; preferredSkills: string[]; education: string | null; noticePeriodPreference: string | null; description: string; responsibilities: string | null; openings: number; priority: string; postedAt: string; incentiveEstimate: number; myReferrals: number }
+interface Job { id: string; title: string; clientName: string | null; industry: string | null; location: string; workMode: string | null; department: string; employmentType: string; experienceMinYears: number; experienceMaxYears: number; salaryMinLpa: number; salaryMaxLpa: number; skills: string[]; preferredSkills: string[]; education: string | null; noticePeriodPreference: string | null; description: string; responsibilities: string | null; openings: number; priority: string; postedAt: string; incentiveEstimate: number; myReferrals: number; overview: Overview }
 
 export default function PortalJobsPage() {
     const { data, isLoading } = useQuery<Job[]>({ queryKey: ["portal-open-jobs"], queryFn: () => api("/api/portal/jobs") });
@@ -62,14 +64,8 @@ export default function PortalJobsPage() {
             {view && (
                 <ModalShell onClose={() => setView(null)} title={view.title} wide>
                     <div className="space-y-4 text-sm">
-                        <p className="text-xs text-neutral-500">{view.clientName} · {view.location} · {view.employmentType.replace(/_/g, " ").toLowerCase()} · posted {view.postedAt.slice(0, 10)}</p>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                            {[["Experience", `${view.experienceMinYears}–${view.experienceMaxYears} yrs`], ["Salary", `${view.salaryMinLpa}–${view.salaryMaxLpa} LPA`], ["Openings", view.openings], ["Your incentive", money(view.incentiveEstimate)]].map(([k, v]) => <div key={String(k)} className="rounded-xl bg-neutral-50 p-2.5"><p className="text-neutral-400 font-bold">{k}</p><p className="font-bold">{v}</p></div>)}
-                        </div>
-                        <div><p className="text-xs font-bold text-neutral-500 mb-1">About the role</p><p className="text-neutral-700 whitespace-pre-line">{view.description}</p></div>
-                        {view.responsibilities && <div><p className="text-xs font-bold text-neutral-500 mb-1">Responsibilities</p><p className="text-neutral-700 whitespace-pre-line">{view.responsibilities}</p></div>}
-                        <div><p className="text-xs font-bold text-neutral-500 mb-1">Must-have skills</p><p>{view.skills.join(", ")}</p>{view.preferredSkills.length > 0 && <p className="text-xs text-neutral-500 mt-1">Nice to have: {view.preferredSkills.join(", ")}</p>}</div>
-                        {(view.education || view.noticePeriodPreference) && <p className="text-xs text-neutral-600">{view.education ? `Education: ${view.education}` : ""}{view.education && view.noticePeriodPreference ? " · " : ""}{view.noticePeriodPreference ? `Notice: ${view.noticePeriodPreference}` : ""}</p>}
+                        <JobOverview job={view.overview} />
+                        <p className="rounded-xl bg-emerald-50 border border-emerald-100 px-4 py-3 text-sm text-emerald-800">Your referral incentive: <b>{money(view.incentiveEstimate)}</b> (estimate at the mid salary){view.myReferrals ? ` · you've referred ${view.myReferrals} so far` : ""}</p>
                         <button onClick={() => { setReferFor(view.id); setView(null); }} className="w-full py-2.5 rounded-xl bg-primary text-white font-bold">Refer a candidate for this job</button>
                     </div>
                 </ModalShell>

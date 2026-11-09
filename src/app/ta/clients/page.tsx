@@ -8,6 +8,8 @@ import { PageHeader, SectionCard, Badge, EmptyState, ModalShell } from "@/compon
 import { SkeletonPulse } from "@/components/shared/UIStates";
 import { ago, btn, inputCls, Tabs, useAct } from "@/components/finance/kit";
 import { api } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
+import { canCreateRequisition } from "@/lib/access";
 
 interface Sub { id: string; candidateId: string; candidateName: string; jobTitle: string; clientName: string; submittedBy: string; submittedAt: string; status: string; clientFeedback?: string; rejectionReason?: string; daysWaiting: number; applicationStage?: string | null; emailedTo?: string[] }
 interface Comm { id: string; channel: string; direction: string; subject: string; body: string; byName: string; createdAt: string; nextFollowUpDate?: string | null }
@@ -26,6 +28,7 @@ const OPEN_REQ = ["APPROVED", "SOURCING", "SCREENING", "CLIENT_REVIEW", "INTERVI
 interface Tpl { id: string; name: string; channel: string; audience: string; renderedSubject: string | null; renderedBody: string }
 
 export default function MyClientsPage() {
+    const { user } = useAuth();
     const [tab, setTab] = useState<"clients" | "submissions">("clients");
     const { data, isLoading } = useQuery<ClientRow[]>({ queryKey: ["ta-clients"], queryFn: () => api("/api/ta/clients") });
     const { data: subs } = useQuery<Sub[]>({ queryKey: ["ta-submissions"], queryFn: () => api("/api/ta/submissions") });
@@ -39,7 +42,7 @@ export default function MyClientsPage() {
 
     return (
         <div className="space-y-6">
-            <PageHeader title="My Clients" subtitle="Clients assigned to you: requisitions, recruiters, candidate progress, CV feedback and every interaction" action={<Link href="/ta/requisitions/new" className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold">New requisition</Link>} />
+            <PageHeader title="My Clients" subtitle="Clients assigned to you: requisitions, recruiters, candidate progress, CV feedback and every interaction" action={canCreateRequisition(user?.role) ? <Link href="/ta/requisitions/new" className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold">New requisition</Link> : undefined} />
             <Tabs tabs={[{ id: "clients", label: `Clients (${data.length})` }, { id: "submissions", label: `CV submissions${pending ? ` · ${pending} awaiting feedback` : ""}` }]} value={tab} onChange={setTab} />
 
             {tab === "clients" && data.length > 0 && (

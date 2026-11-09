@@ -31,6 +31,12 @@ const ACCESS: Record<UserRole, Workspace[]> = {
     EMPLOYEE: ["PORTAL"],
 };
 
+/** Who may raise new job requisitions (create, duplicate, submit). Recruiters may not. */
+const REQUISITION_CREATORS: UserRole[] = ["SUPER_ADMIN", "TA_MANAGER"];
+export function canCreateRequisition(role: UserRole | null | undefined): boolean {
+    return !!role && REQUISITION_CREATORS.includes(role);
+}
+
 export function workspacesFor(role: UserRole): Workspace[] {
     return ACCESS[role] ?? ["PORTAL"];
 }

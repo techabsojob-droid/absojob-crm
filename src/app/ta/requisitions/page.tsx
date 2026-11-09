@@ -12,6 +12,7 @@ import {
 import { Badge, StatCard } from "@/components/shared/ui";
 import { ActionDialog, StatusPill, type ActionKind } from "@/components/ta/requisition/RequisitionActions";
 import { useAuth } from "@/lib/auth";
+import { canCreateRequisition } from "@/lib/access";
 import { api } from "@/lib/api";
 import { requisitionLabel } from "@/lib/fit";
 import {
@@ -25,12 +26,16 @@ interface Row {
     priority: string; employmentType: string; primaryRecruiterId?: string | null; primaryRecruiterName?: string | null; assignedTas: string[];
     targetCloseDate?: string | null; status: string; statusReason?: string; createdAt: string; requestedById: string | null; requestedByName?: string | null;
     inPipeline: number; totalCandidates: number; canEdit: boolean; daysRemaining: number; workMode?: string;
+    clientIndustry?: string; publishedAt?: string | null; approvedAt?: string | null;
 }
 
 const PAGE_SIZE = 25;
 const sel = "h-9 px-2.5 rounded-xl border border-neutral-200 bg-white text-xs font-semibold text-neutral-700 outline-none hover:border-neutral-300 focus:border-primary";
 const isOpen = (s: string) => (OPEN_JOB_STATUSES as readonly string[]).includes(s);
 const isClosed = (s: string) => ["CLOSED", "CANCELLED", "FULFILLED"].includes(s);
+/** When the opening went live: published, else approved, else created. */
+const postedOf = (j: Pick<Row, "publishedAt" | "approvedAt" | "createdAt">) => (j.publishedAt ?? j.approvedAt ?? j.createdAt).slice(0, 10);
+const industryOf = (j: Pick<Row, "clientIndustry">) => j.clientIndustry || "Other";
 const fmtDate = (d?: string | null) => (d ? new Date(d.length === 10 ? `${d}T00:00:00` : d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—");
 export default function TaRequisitionsPage() {
     const router = useRouter();
@@ -48,6 +53,8 @@ export default function TaRequisitionsPage() {
     const [priority, setPriority] = useState("");
     const [employmentType, setEmploymentType] = useState("");
     const [recruiterId, setRecruiterId] = useState("");
+    const [industry, setIndustry] = useState("");
+    const [experience, setExperience] = useState("");
     const [createdFrom, setCreatedFrom] = useState("");
     const [createdTo, setCreatedTo] = useState("");
     const [closeFrom, setCloseFrom] = useState("");
@@ -73,6 +80,7 @@ export default function TaRequisitionsPage() {
     const states = facet((j) => j.locationStateCode, (j) => j.locationState ?? "");
     const cities = facet((j) => (!stateCode || j.locationStateCode === stateCode ? j.city : null), (j) => j.city ?? "");
     const recruiters = facet((j) => j.primaryRecruiterId, (j) => j.primaryRecruiterName ?? "");
+    const industries = facet((j) => industryOf(j), (j) => industryOf(j));
 
     const filtered = useMemo(() => {
         const t = q.trim().toLowerCase();
@@ -86,19 +94,28 @@ export default function TaRequisitionsPage() {
             && (!priority || j.priority === priority)
             && (!employmentType || j.employmentType === employmentType)
             && (!recruiterId || j.primaryRecruiterId === recruiterId || j.assignedTas?.includes(recruiterId))
-            && (!createdFrom || j.createdAt.slice(0, 10) >= createdFrom) && (!createdTo || j.createdAt.slice(0, 10) <= createdTo)
+            && (!industry || industryOf(j) === industry)
+            // Candidate's experience must fit the opening's range
+            && (experience === "" || (Number(experience) >= j.experienceMinYears && Number(experience) <= j.experienceMaxYears))
+            && (!createdFrom || postedOf(j) >= createdFrom) && (!createdTo || postedOf(j) <= createdTo)
             && (!closeFrom || (j.targetCloseDate ?? "") >= closeFrom) && (!closeTo || (!!j.targetCloseDate && j.targetCloseDate <= closeTo)));
         return list.sort((a, b) => {
             const x = a[sort.key] ?? "", y = b[sort.key] ?? "";
             return (typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y))) * sort.dir;
         });
-    }, [all, q, status, clientId, department, stateCode, city, priority, employmentType, recruiterId, createdFrom, createdTo, closeFrom, closeTo, sort]);
+    }, [all, q, status, clientId, department, stateCode, city, priority, employmentType, recruiterId, industry, experience, createdFrom, createdTo, closeFrom, closeTo, sort]);
 
     const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
     const current = Math.min(page, pages);
     const rows = filtered.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
-    const filtersOn = !!(q || status !== "ACTIVE" || clientId || department || stateCode || city || priority || employmentType || recruiterId || createdFrom || createdTo || closeFrom || closeTo);
-    const resetFilters = () => { setQ(""); setStatus("ACTIVE"); setClientId(""); setDepartment(""); setStateCode(""); setCity(""); setPriority(""); setEmploymentType(""); setRecruiterId(""); setCreatedFrom(""); setCreatedTo(""); setCloseFrom(""); setCloseTo(""); setPage(1); };
+    const filtersOn = !!(q || status !== "ACTIVE" || clientId || department || stateCode || city || priority || employmentType || recruiterId || industry || experience || createdFrom || createdTo || closeFrom || closeTo);
+    const resetFilters = () => { setQ(""); setStatus("ACTIVE"); setClientId(""); setDepartment(""); setStateCode(""); setCity(""); setPriority(""); setEmploymentType(""); setRecruiterId(""); setIndustry(""); setExperience(""); setCreatedFrom(""); setCreatedTo(""); setCloseFrom(""); setCloseTo(""); setPage(1); };
+    // Open openings per industry (respecting every filter except industry itself) for the quick chips
+    const industryCounts = useMemo(() => {
+        const m = new Map<string, number>();
+        for (const j of all) if (isOpen(j.status)) m.set(industryOf(j), (m.get(industryOf(j)) ?? 0) + 1);
+        return [...m.entries()].sort((a, b) => b[1] - a[1]);
+    }, [all]);
 
     const metrics = useMemo(() => {
         const open = all.filter((j) => isOpen(j.status));
@@ -115,14 +132,14 @@ export default function TaRequisitionsPage() {
 
     const exportCsv = () => {
         if (!filtered.length) return toast.error("No requisitions to export");
-        const head = ["Requisition ID", "Job Title", "Client", "Department", "Location", "State", "Openings", "Filled", "Experience", "Salary (LPA)", "Priority", "Employment Type", "Assigned Recruiter", "Target Closure", "Status", "Created"];
+        const head = ["Requisition ID", "Job Title", "Client", "Industry", "Department", "Location", "State", "Openings", "Filled", "Experience", "Salary (LPA)", "Priority", "Employment Type", "Assigned Recruiter", "Target Closure", "Status", "Created"];
         const cell = (v: unknown) => { const s = String(v ?? ""); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
-        const lines = filtered.map((j) => [requisitionLabel(j), j.title, j.clientName, j.department, j.location, j.locationState ?? "", j.openings, j.filled, `${j.experienceMinYears}-${j.experienceMaxYears} yrs`,
+        const lines = filtered.map((j) => [requisitionLabel(j), j.title, j.clientName, industryOf(j), j.department, j.location, j.locationState ?? "", j.openings, j.filled, `${j.experienceMinYears}-${j.experienceMaxYears} yrs`,
             `${j.salaryMinLpa}-${j.salaryMaxLpa}`, optLabel(PRIORITIES, j.priority), optLabel(EMPLOYMENT_TYPES, j.employmentType), j.primaryRecruiterName ?? "", j.targetCloseDate ?? "", requisitionStatusLabel(j.status), j.createdAt.slice(0, 10)].map(cell).join(","));
         const blob = new Blob([`﻿${[head.join(","), ...lines].join("\r\n")}`], { type: "text/csv;charset=utf-8" });
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
-        a.download = `job-listing-${new Date().toISOString().slice(0, 10)}.csv`;
+        a.download = `all-openings-${new Date().toISOString().slice(0, 10)}.csv`;
         a.click();
         URL.revokeObjectURL(a.href);
     };
@@ -133,12 +150,12 @@ export default function TaRequisitionsPage() {
         <div className="space-y-5 pb-16 max-w-[1600px] mx-auto">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-neutral-900">Job Listing</h1>
-                    <p className="text-sm text-neutral-500 mt-0.5">Client requisitions — openings, ownership, approval and hiring progress.</p>
+                    <h1 className="text-2xl font-bold text-neutral-900">All Openings</h1>
+                    <p className="text-sm text-neutral-500 mt-0.5">Every opening you can work on — by industry, client and location, with ownership, approval and hiring progress.</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <button type="button" onClick={exportCsv} className="h-10 px-3.5 rounded-xl border border-neutral-200 bg-white text-sm font-semibold text-neutral-700 hover:bg-neutral-50 flex items-center gap-1.5"><Download size={15} /> Export</button>
-                    <Link href="/ta/requisitions/new" className="h-10 px-4 rounded-xl bg-primary text-white text-sm font-semibold shadow-sm shadow-primary/20 hover:bg-primary-dark flex items-center gap-1.5"><Plus size={15} /> New Requisition</Link>
+                    {canCreateRequisition(user?.role) && <Link href="/ta/requisitions/new" className="h-10 px-4 rounded-xl bg-primary text-white text-sm font-semibold shadow-sm shadow-primary/20 hover:bg-primary-dark flex items-center gap-1.5"><Plus size={15} /> New Requisition</Link>}
                 </div>
             </div>
 
@@ -166,6 +183,9 @@ export default function TaRequisitionsPage() {
                     <select value={clientId} onChange={(e) => { setClientId(e.target.value); setPage(1); }} className={`${sel} max-w-[180px]`} aria-label="Client">
                         <option value="">All clients</option>{clients.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                     </select>
+                    <select value={industry} onChange={(e) => { setIndustry(e.target.value); setPage(1); }} className={`${sel} max-w-[170px]`} aria-label="Industry">
+                        <option value="">All industries</option>{industries.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                    </select>
                     <select value={priority} onChange={(e) => { setPriority(e.target.value); setPage(1); }} className={sel} aria-label="Priority">
                         <option value="">All priorities</option>{PRIORITIES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
                     </select>
@@ -184,18 +204,31 @@ export default function TaRequisitionsPage() {
                     {filtersOn && <button type="button" onClick={resetFilters} className="text-xs font-semibold text-red-600 hover:underline px-1">Reset</button>}
                 </div>
                 {moreFilters && (
-                    <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-2 pt-2 border-t border-neutral-100">
+                    <div className="grid grid-cols-2 md:grid-cols-5 xl:grid-cols-9 gap-2 pt-2 border-t border-neutral-100">
                         <select value={department} onChange={(e) => { setDepartment(e.target.value); setPage(1); }} className={sel} aria-label="Department"><option value="">All departments</option>{departments.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
                         <select value={stateCode} onChange={(e) => { setStateCode(e.target.value); setCity(""); setPage(1); }} className={sel} aria-label="State"><option value="">All states</option>{states.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
                         <select value={city} onChange={(e) => { setCity(e.target.value); setPage(1); }} className={sel} aria-label="City"><option value="">All cities</option>{cities.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
                         <select value={employmentType} onChange={(e) => { setEmploymentType(e.target.value); setPage(1); }} className={sel} aria-label="Employment type"><option value="">All employment types</option>{EMPLOYMENT_TYPES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
-                        <label className="flex flex-col text-[10px] font-bold uppercase tracking-wide text-neutral-400">Created from<input type="date" value={createdFrom} onChange={(e) => { setCreatedFrom(e.target.value); setPage(1); }} className={sel} /></label>
-                        <label className="flex flex-col text-[10px] font-bold uppercase tracking-wide text-neutral-400">Created to<input type="date" value={createdTo} min={createdFrom} onChange={(e) => { setCreatedTo(e.target.value); setPage(1); }} className={sel} /></label>
+                        <label className="flex flex-col text-[10px] font-bold uppercase tracking-wide text-neutral-400">Candidate exp (yrs)<input type="number" min="0" max="50" value={experience} onChange={(e) => { setExperience(e.target.value); setPage(1); }} placeholder="e.g. 3" className={sel} /></label>
+                        <label className="flex flex-col text-[10px] font-bold uppercase tracking-wide text-neutral-400">Posted from<input type="date" value={createdFrom} onChange={(e) => { setCreatedFrom(e.target.value); setPage(1); }} className={sel} /></label>
+                        <label className="flex flex-col text-[10px] font-bold uppercase tracking-wide text-neutral-400">Posted to<input type="date" value={createdTo} min={createdFrom} onChange={(e) => { setCreatedTo(e.target.value); setPage(1); }} className={sel} /></label>
                         <label className="flex flex-col text-[10px] font-bold uppercase tracking-wide text-neutral-400">Closure from<input type="date" value={closeFrom} onChange={(e) => { setCloseFrom(e.target.value); setPage(1); }} className={sel} /></label>
                         <label className="flex flex-col text-[10px] font-bold uppercase tracking-wide text-neutral-400">Closure to<input type="date" value={closeTo} min={closeFrom} onChange={(e) => { setCloseTo(e.target.value); setPage(1); }} className={sel} /></label>
                     </div>
                 )}
             </div>
+
+            {industryCounts.length > 1 && (
+                <div className="flex flex-wrap items-center gap-2">
+                    <button type="button" onClick={() => { setIndustry(""); setPage(1); }} className={`px-3 py-1.5 rounded-full text-xs font-bold border ${!industry ? "bg-primary text-white border-primary" : "bg-white border-neutral-200 text-neutral-600 hover:border-primary/40"}`}>All industries</button>
+                    {industryCounts.map(([name, n]) => (
+                        <button key={name} type="button" onClick={() => { setIndustry(industry === name ? "" : name); setPage(1); }}
+                            className={`px-3 py-1.5 rounded-full text-xs font-bold border ${industry === name ? "bg-primary text-white border-primary" : "bg-white border-neutral-200 text-neutral-600 hover:border-primary/40"}`}>
+                            {name} <span className="opacity-70">· {n} open</span>
+                        </button>
+                    ))}
+                </div>
+            )}
 
             {/* Table / cards */}
             <div className={view === "table" || !filtered.length || isLoading || isError ? "bg-white rounded-2xl border border-neutral-200/80 overflow-hidden" : ""}>
@@ -206,7 +239,8 @@ export default function TaRequisitionsPage() {
                                 <Briefcase size={28} className="mx-auto text-neutral-300" />
                                 <p className="text-sm text-neutral-500">{filtersOn ? "No requisitions match these filters." : "No requisitions yet."}</p>
                                 {filtersOn ? <button type="button" onClick={resetFilters} className="text-sm font-semibold text-primary">Reset filters</button>
-                                    : <Link href="/ta/requisitions/new" className="inline-flex h-9 px-4 items-center rounded-xl bg-primary text-white text-sm font-semibold">Create requisition</Link>}
+                                    : canCreateRequisition(user?.role) ? <Link href="/ta/requisitions/new" className="inline-flex h-9 px-4 items-center rounded-xl bg-primary text-white text-sm font-semibold">Create requisition</Link>
+                                        : <p className="text-xs text-neutral-400">Requisitions assigned to you will appear here.</p>}
                             </div>
                         ) : (
                             <>
@@ -226,7 +260,7 @@ export default function TaRequisitionsPage() {
                                             <tr className="bg-neutral-50/80 border-b border-neutral-200/70 text-neutral-400 uppercase tracking-wider text-[10px]">
                                                 <Th {...th} k="requisitionCode">Req ID</Th><Th {...th} k="title">Job Title</Th><Th {...th} k="clientName">Client</Th><Th {...th} k="department">Department</Th><Th {...th} k="location">Location</Th>
                                                 <Th {...th} k="openings">Openings</Th><Th {...th} k="experienceMinYears">Experience</Th><Th {...th} k="salaryMinLpa">Salary (LPA)</Th><Th {...th} k="priority">Priority</Th>
-                                                <Th {...th} k="primaryRecruiterName">Recruiter</Th><Th {...th} k="targetCloseDate">Target Closure</Th><Th {...th} k="status">Status</Th><Th {...th} k="createdAt">Created</Th><Th {...th} className="text-right">Actions</Th>
+                                                <Th {...th} k="primaryRecruiterName">Recruiter</Th><Th {...th} k="targetCloseDate">Target Closure</Th><Th {...th} k="status">Status</Th><Th {...th} k="createdAt">Posted</Th><Th {...th} className="text-right">Actions</Th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-neutral-100">
@@ -240,7 +274,7 @@ export default function TaRequisitionsPage() {
                                                             <Link href={`/ta/requisitions/${j.id}`} className="font-bold text-[13px] text-neutral-900 hover:text-primary line-clamp-1">{j.title}</Link>
                                                             <p className="text-[11px] text-neutral-400">{optLabel(EMPLOYMENT_TYPES, j.employmentType)} · {j.totalCandidates} candidate(s)</p>
                                                         </td>
-                                                        <td className="py-3 px-3 font-semibold text-neutral-800 max-w-[150px] truncate">{j.clientName}</td>
+                                                        <td className="py-3 px-3 max-w-[160px]"><span className="block font-semibold text-neutral-800 truncate">{j.clientName}</span><span className="block text-[11px] text-neutral-400 truncate">{industryOf(j)}</span></td>
                                                         <td className="py-3 px-3 text-neutral-600 max-w-[130px] truncate">{j.department}</td>
                                                         <td className="py-3 px-3 text-neutral-600 max-w-[170px]"><span className="line-clamp-1">{j.location || "—"}</span>{j.locationState && <span className="block text-[11px] text-neutral-400">{j.locationState}</span>}</td>
                                                         <td className="py-3 px-3 min-w-[110px]">
@@ -253,7 +287,7 @@ export default function TaRequisitionsPage() {
                                                         <td className="py-3 px-3 whitespace-nowrap text-neutral-700">{j.primaryRecruiterName ?? <span className="text-neutral-400">Unassigned</span>}</td>
                                                         <td className={`py-3 px-3 whitespace-nowrap ${late ? "text-red-600 font-semibold" : "text-neutral-600"}`}>{fmtDate(j.targetCloseDate)}</td>
                                                         <td className="py-3 px-3"><StatusPill status={j.status} /></td>
-                                                        <td className="py-3 px-3 whitespace-nowrap text-neutral-500">{fmtDate(j.createdAt)}</td>
+                                                        <td className="py-3 px-3 whitespace-nowrap text-neutral-500">{fmtDate(postedOf(j))}</td>
                                                         <td className="py-3 px-3 text-right">
                                                             <RowMenu job={j} open={menuFor === j.id} onToggle={() => setMenuFor(menuFor === j.id ? null : j.id)} onClose={() => setMenuFor(null)} isManager={isManager}
                                                                 onAction={(kind) => { setMenuFor(null); setAction({ kind, job: j }); }}
@@ -301,7 +335,7 @@ function JobCard({ job: j, menu }: { job: Row; menu: React.ReactNode }) {
 
             <div className="min-w-0">
                 <Link href={`/ta/requisitions/${j.id}`} className="block font-bold text-[15px] text-neutral-900 hover:text-primary leading-snug line-clamp-2">{j.title}</Link>
-                <p className="text-xs text-neutral-500 mt-0.5 truncate"><span className="font-semibold text-neutral-700">{j.clientName}</span> · {j.department || "—"} · {optLabel(EMPLOYMENT_TYPES, j.employmentType)}</p>
+                <p className="text-xs text-neutral-500 mt-0.5 truncate"><span className="font-semibold text-neutral-700">{j.clientName}</span> · {industryOf(j)} · {j.department || "—"} · {optLabel(EMPLOYMENT_TYPES, j.employmentType)}</p>
             </div>
 
             <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs text-neutral-600">
@@ -347,7 +381,7 @@ function RowMenu({ job, open, onToggle, onClose, onAction, onNavigate, isManager
     const items: { label: string; icon: typeof Eye; run: () => void; show: boolean; danger?: boolean }[] = [
         { label: "View details", icon: Eye, run: () => onNavigate(`/ta/requisitions/${job.id}`), show: true },
         { label: "Edit", icon: Pencil, run: () => onNavigate(`/ta/requisitions/${job.id}/edit`), show: job.canEdit },
-        { label: "Duplicate requisition", icon: Copy, run: () => onNavigate(`/ta/requisitions/new?from=${job.id}`), show: true },
+        { label: "Duplicate requisition", icon: Copy, run: () => onNavigate(`/ta/requisitions/new?from=${job.id}`), show: isManager },
         { label: "Assign recruiter", icon: UserCog, run: () => onAction("assign"), show: isManager && !closed && job.status !== "DRAFT" },
         { label: "Change status", icon: SlidersHorizontal, run: () => onAction("status"), show: isManager && !closed && job.status !== "DRAFT" && job.status !== "PENDING_APPROVAL" },
         { label: "Review approval", icon: ShieldCheck, run: () => onNavigate("/ta/approvals"), show: isManager && job.status === "PENDING_APPROVAL" },

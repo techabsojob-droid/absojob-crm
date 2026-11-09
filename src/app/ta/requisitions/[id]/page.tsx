@@ -9,8 +9,9 @@ import {
     Edit2, Check, X, ShieldAlert, Award, FileText, Download, Eye,
     ExternalLink, Layers, GitBranch, ArrowRight, UserCheck, MessageSquare,
     DollarSign, Sparkles, Filter, ChevronRight, Share2, CornerDownRight,
-    TrendingUp, ShieldCheck, History, SlidersHorizontal, RefreshCw
+    TrendingUp, ShieldCheck, History, SlidersHorizontal, RefreshCw, Link2, UserPlus
 } from "lucide-react";
+import { JobOverview, JobIconButton } from "@/components/shared/JobOverview";
 import { toast } from "sonner";
 import { PageHeader, StatCard, Badge, SectionCard, ModalShell, EmptyState, inr } from "@/components/shared/ui";
 import { SkeletonPulse } from "@/components/shared/UIStates";
@@ -21,6 +22,7 @@ import { ago } from "@/components/finance/kit";
 import { requisitionLabel } from "@/lib/fit";
 import type { JobAssignmentRecord, JobRequirementVersion } from "@/lib/types";
 import { useAuth } from "@/lib/auth";
+import { canCreateRequisition } from "@/lib/access";
 import { api } from "@/lib/api";
 import { ActionDialog, StatusPill } from "@/components/ta/requisition/RequisitionActions";
 import { RichText } from "@/components/ta/requisition/controls";
@@ -177,7 +179,7 @@ export default function TaRequisitionDetailPage({ params }: { params: Promise<{ 
         return (
             <div className="space-y-6 max-w-[1600px] mx-auto pb-16">
                 <Link href="/ta/requisitions" className="inline-flex items-center gap-2 text-xs font-bold text-neutral-600 hover:text-primary">
-                    <ArrowLeft size={16} /> Back to Job Listing
+                    <ArrowLeft size={16} /> Back to All Openings
                 </Link>
                 <SectionCard>
                     <EmptyState icon={AlertTriangle} message="Requisition not found or could not be loaded." />
@@ -210,7 +212,7 @@ export default function TaRequisitionDetailPage({ params }: { params: Promise<{ 
                         <Link
                             href="/ta/requisitions"
                             className="p-2 rounded-xl border border-neutral-200 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50 transition-colors"
-                            title="Back to Job Listing"
+                            title="Back to All Openings"
                         >
                             <ArrowLeft size={16} />
                         </Link>
@@ -257,9 +259,11 @@ export default function TaRequisitionDetailPage({ params }: { params: Promise<{ 
                                 <Edit2 size={14} /> Edit
                             </Link>
                         )}
-                        <Link href={`/ta/requisitions/new?from=${job.id}`} className="px-3.5 py-2 border border-neutral-200 rounded-xl text-xs font-bold text-neutral-700 hover:bg-neutral-50 flex items-center gap-1.5">
-                            <Layers size={14} /> Duplicate
-                        </Link>
+                        {canCreateRequisition(me?.role) && (
+                            <Link href={`/ta/requisitions/new?from=${job.id}`} className="px-3.5 py-2 border border-neutral-200 rounded-xl text-xs font-bold text-neutral-700 hover:bg-neutral-50 flex items-center gap-1.5">
+                                <Layers size={14} /> Duplicate
+                            </Link>
+                        )}
                         {canManage && !["CLOSED", "CANCELLED", "FULFILLED", "DRAFT"].includes(job.status) && (
                             <button onClick={() => setDialog("close")} className="px-3.5 py-2 border border-neutral-200 rounded-xl text-xs font-bold text-neutral-700 hover:bg-neutral-50 flex items-center gap-1.5"><CheckCircle2 size={14} /> Close</button>
                         )}
@@ -396,6 +400,16 @@ export default function TaRequisitionDetailPage({ params }: { params: Promise<{ 
             </div>
 
             {/* Tab 1: Overview */}
+            {activeTab === "overview" && data.overview && (
+                <JobOverview job={data.overview} onApplicationsClick={() => setActiveTab("applications")}
+                    actions={<>
+                        <JobIconButton label="Open pipeline" href={`/ta/pipeline?jobId=${job.id}`}><GitBranch size={17} /></JobIconButton>
+                        <JobIconButton label="View candidates" onClick={() => setActiveTab("applications")}><Users size={17} /></JobIconButton>
+                        <JobIconButton label="Copy job link" onClick={() => { navigator.clipboard?.writeText(window.location.href).then(() => toast.success("Job link copied"), () => toast.error("Couldn't copy the link")); }}><Link2 size={17} /></JobIconButton>
+                        {acceptingCandidates && <JobIconButton label="Add candidate" onClick={() => setAddOpen(true)}><UserPlus size={17} /></JobIconButton>}
+                        <JobIconButton label="Documents" onClick={() => setActiveTab("documents")}><FileText size={17} /></JobIconButton>
+                    </>} />
+            )}
             {activeTab === "overview" && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2 space-y-6">

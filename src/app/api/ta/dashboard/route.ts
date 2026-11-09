@@ -693,7 +693,7 @@ export async function GET(request: Request) {
                 assignedToName: users.find((u) => u.id === t.assignedToId)?.name ?? "Unassigned",
                 createdByName: users.find((u) => u.id === t.createdById)?.name ?? "—",
             })),
-        teamWorkload,
+        teamWorkload: isManager ? teamWorkload : [],
         offerPipeline,
         joiningTracker: joiningList.slice(0, 6),
         sourcePerformance,
