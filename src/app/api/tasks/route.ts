@@ -6,6 +6,7 @@ import {
     newActivity, nextTaskKey, notifyTask, statusOf, taskView,
 } from "@/lib/tasks";
 import type { Task, TaskRelatedType, TaskStatus, TaskType } from "@/lib/types";
+import { canAccessClient, canAccessJobId } from "@/lib/mock/pipeline";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const RELATED: TaskRelatedType[] = ["CANDIDATE", "JOB", "CLIENT", "EMPLOYEE"];
@@ -63,6 +64,13 @@ export async function POST(request: Request) {
     const watcherIds = (Array.isArray(b.watcherIds) ? b.watcherIds : [])
         .filter((id: string) => users.some((u) => u.id === id && u.orgId === me.orgId && u.status === "ACTIVE"));
     const relatedType = RELATED.includes(b.relatedType) && b.relatedId ? (b.relatedType as TaskRelatedType) : null;
+    // Recruitment links must point at a client / requisition the creator may access
+    if (relatedType === "JOB" && ["TA_MANAGER", "TA_RECRUITER"].includes(me.role) && !canAccessJobId(me, String(b.relatedId))) {
+        return NextResponse.json({ error: "That requisition is not assigned to you" }, { status: 403 });
+    }
+    if (relatedType === "CLIENT" && ["TA_MANAGER", "TA_RECRUITER"].includes(me.role) && !canAccessClient(me, String(b.relatedId))) {
+        return NextResponse.json({ error: "That client is not assigned to you" }, { status: 403 });
+    }
     const estimate = Number(b.estimateHours);
 
     const now = new Date().toISOString();

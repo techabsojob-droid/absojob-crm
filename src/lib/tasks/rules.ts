@@ -26,11 +26,14 @@ export function applyStatus(t: Task, status: TaskStatus) {
     t.updatedAt = new Date().toISOString();
 }
 
-/** Who an actor may assign tasks to. Recruiters assign to themselves only. */
+/**
+ * Who an actor may assign tasks to. A TA Manager assigns to themselves, their team (people
+ * reporting to them) and recruitment partners; recruiters assign to themselves only.
+ */
 export function canAssignTo(me: User, target: User): boolean {
     if (target.orgId !== me.orgId || target.status !== "ACTIVE") return false;
     if (me.role === "SUPER_ADMIN" || me.role === "HR_ADMIN") return true;
-    if (me.role === "TA_MANAGER") return TA_SIDE.includes(target.role) || target.id === me.id;
+    if (me.role === "TA_MANAGER") return target.id === me.id || target.reportingTo === me.id || target.role === "AGENT";
     return target.id === me.id;
 }
 
@@ -40,10 +43,22 @@ export function canViewTask(me: User, t: Task, users: User[]): boolean {
     if (t.assignedToId === me.id || t.createdById === me.id || (t.watcherIds ?? []).includes(me.id)) return true;
     if (me.role === "SUPER_ADMIN" || me.role === "HR_ADMIN") return true;
     if (me.role === "TA_MANAGER") {
-        const role = (id: string) => users.find((u) => u.id === id)?.role;
-        return TA_SIDE.includes(role(t.assignedToId)!) || TA_SIDE.includes(role(t.createdById)!);
+        const reportsToMe = (id: string) => {
+            const u = users.find((x) => x.id === id);
+            return !!u && u.reportingTo === me.id && TA_SIDE.includes(u.role);
+        };
+        return reportsToMe(t.assignedToId) || reportsToMe(t.createdById);
     }
     return false;
+}
+
+/** Pending / In progress / Completed / Overdue — the summary buckets managers track. */
+export type TaskTrackState = "PENDING" | "IN_PROGRESS" | "COMPLETED" | "OVERDUE";
+export function trackStateOf(t: { status?: Task["status"]; completed?: boolean; dueDate?: string | null }, today = new Date().toISOString().slice(0, 10)): TaskTrackState {
+    const s = t.status ?? (t.completed ? "DONE" : "TODO");
+    if (s === "DONE") return "COMPLETED";
+    if (t.dueDate && t.dueDate.slice(0, 10) < today) return "OVERDUE";
+    return s === "TODO" ? "PENDING" : "IN_PROGRESS";
 }
 
 /** Assignee, reporter and managers who can see it may change fields; anyone who can see it may comment. */

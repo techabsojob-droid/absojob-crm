@@ -3,13 +3,16 @@ import { requireRole } from "@/lib/mock/server";
 import { jobs, applications, users, nextIds, commissionLedger } from "@/lib/mock/data";
 import { getClientsFromDb, createClientInDb, logAudit } from "@/lib/supabase/db";
 import type { Client, ClientStatus } from "@/lib/types";
+import { accessibleClientIds, mappedClientIds, validTaManagerIds } from "@/lib/mock/pipeline";
 
 export async function GET(request: Request) {
     const auth = await requireRole("SUPER_ADMIN", "TA_MANAGER", "TA_RECRUITER");
     if ("error" in auth) return auth.error;
     const me = auth.user;
 
-    const dbClients = await getClientsFromDb(me.orgId);
+    // Super Admin: every client; TA Manager / recruiter: only clients assigned to them
+    const visible = accessibleClientIds(me);
+    const dbClients = (await getClientsFromDb(me.orgId)).filter((c) => visible.has(c.id));
 
     let list = dbClients.map((c) => {
         const clientJobs = jobs.filter((j) => j.clientId === c.id);
@@ -43,6 +46,8 @@ export async function GET(request: Request) {
         return {
             ...c,
             accountManagerName: users.find((u) => u.id === c.accountManagerId)?.name ?? "Aarav Mehta",
+            taManagerIds: c.taManagerIds ?? [],
+            taManagerNames: (c.taManagerIds ?? []).map((id) => users.find((u) => u.id === id)?.name).filter(Boolean),
             openJobs: activeJobsCount,
             totalJobs: clientJobs.length,
             totalOpenings,
@@ -109,6 +114,10 @@ export async function POST(request: Request) {
         commissionRate: Number(body.commissionRate) || 8.33,
         creditDays: Number(body.creditDays) || 30,
         accountManagerId: body.accountManagerId || me.id,
+        // A TA Manager who onboards a client is mapped to it; Super Admin can map TA Managers directly
+        taManagerIds: me.role === "SUPER_ADMIN"
+            ? validTaManagerIds(me.orgId, body.taManagerIds).ok
+            : (body.accountManagerId && body.accountManagerId !== me.id ? [me.id] : []),
         estimatedValue: body.estimatedValue ?? "₹25L",
         notes: body.notes ?? null,
         createdAt: new Date().toISOString(),
@@ -135,10 +144,21 @@ export async function PATCH(request: Request) {
     if ("error" in auth) return auth.error;
     const me = auth.user;
 
-    const { id, status, commissionRate, creditDays, accountManagerId, notes, address, contactPerson, contactEmail, contactPhone } = await request.json();
+    const { id, status, commissionRate, creditDays, accountManagerId, taManagerIds, notes, address, contactPerson, contactEmail, contactPhone } = await request.json();
     const dbClients = await getClientsFromDb(me.orgId);
     const client = dbClients.find((c) => c.id === id);
-    if (!client) return NextResponse.json({ error: "Client not found" }, { status: 404 });
+    if (!client || !mappedClientIds(me).has(client.id)) return NextResponse.json({ error: "Client not found" }, { status: 404 });
+    // Client ↔ TA Manager mapping controls access, so only Super Admin changes it
+    if ((accountManagerId !== undefined || taManagerIds !== undefined) && me.role !== "SUPER_ADMIN") {
+        return NextResponse.json({ error: "Only Super Admin can change who is assigned to a client" }, { status: 403 });
+    }
+    if (taManagerIds !== undefined) {
+        const v = validTaManagerIds(me.orgId, taManagerIds);
+        if (v.invalid.length) return NextResponse.json({ error: `Not an active TA Manager: ${v.invalid.join(", ")}` }, { status: 400 });
+        const before = (client.taManagerIds ?? []).join(", ") || "none";
+        client.taManagerIds = v.ok;
+        await logAudit({ orgId: me.orgId, actorUserId: me.id, actorRole: me.role, action: "CLIENT_TA_MANAGERS_CHANGED", entity: "Client", entityId: client.id, detail: `${client.companyName}: TA Managers ${before} → ${v.ok.join(", ") || "none"}` });
+    }
 
     if (status) client.status = status as ClientStatus;
     if (commissionRate !== undefined) client.commissionRate = Number(commissionRate);

@@ -7,7 +7,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
     AlertTriangle, Briefcase, ChevronLeft, ChevronRight, Clock, Copy, Download, Eye, Flame, MoreHorizontal, Pause, Pencil, Play,
-    Plus, Search, ShieldCheck, Users, UserCog, XCircle, Archive, SlidersHorizontal,
+    Plus, Search, ShieldCheck, Users, UserCog, XCircle, Archive, SlidersHorizontal, LayoutGrid, List, MapPin, CalendarClock, GitBranch, IndianRupee,
 } from "lucide-react";
 import { Badge, StatCard } from "@/components/shared/ui";
 import { ActionDialog, StatusPill, type ActionKind } from "@/components/ta/requisition/RequisitionActions";
@@ -57,6 +57,7 @@ export default function TaRequisitionsPage() {
     const [page, setPage] = useState(1);
     const [menuFor, setMenuFor] = useState<string | null>(null);
     const [action, setAction] = useState<{ kind: ActionKind; job: Row } | null>(null);
+    const [view, setView] = useState<"table" | "cards">("table");
 
     const { data, isLoading, isError, error } = useQuery<Row[]>({ queryKey: ["ta-jobs"], queryFn: () => api("/api/admin/jobs"), refetchInterval: 30000 });
     const all = useMemo(() => (Array.isArray(data) ? data : []), [data]);
@@ -171,6 +172,14 @@ export default function TaRequisitionsPage() {
                     <select value={recruiterId} onChange={(e) => { setRecruiterId(e.target.value); setPage(1); }} className={`${sel} max-w-[170px]`} aria-label="Recruiter">
                         <option value="">All recruiters</option>{recruiters.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                     </select>
+                    <div className="flex items-center bg-neutral-100 rounded-xl p-0.5" role="group" aria-label="View">
+                        {([["table", List, "Table"], ["cards", LayoutGrid, "Cards"]] as const).map(([v, Icon, l]) => (
+                            <button key={v} type="button" onClick={() => setView(v)} aria-pressed={view === v}
+                                className={`h-8 px-2.5 rounded-lg text-xs font-bold flex items-center gap-1.5 ${view === v ? "bg-white text-neutral-900 shadow-2xs" : "text-neutral-500 hover:text-neutral-800"}`}>
+                                <Icon size={13} /> {l}
+                            </button>
+                        ))}
+                    </div>
                     <button type="button" onClick={() => setMoreFilters((v) => !v)} className={`${sel} flex items-center gap-1.5 ${moreFilters ? "border-primary text-primary" : ""}`}><SlidersHorizontal size={13} /> More filters</button>
                     {filtersOn && <button type="button" onClick={resetFilters} className="text-xs font-semibold text-red-600 hover:underline px-1">Reset</button>}
                 </div>
@@ -188,8 +197,8 @@ export default function TaRequisitionsPage() {
                 )}
             </div>
 
-            {/* Table */}
-            <div className="bg-white rounded-2xl border border-neutral-200/80 overflow-hidden">
+            {/* Table / cards */}
+            <div className={view === "table" || !filtered.length || isLoading || isError ? "bg-white rounded-2xl border border-neutral-200/80 overflow-hidden" : ""}>
                 {isError ? <p className="p-10 text-center text-sm text-red-600">{(error as Error).message}</p>
                     : isLoading ? <div className="p-4 space-y-2">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-12 rounded-xl bg-neutral-100 animate-pulse" />)}</div>
                         : !filtered.length ? (
@@ -201,6 +210,16 @@ export default function TaRequisitionsPage() {
                             </div>
                         ) : (
                             <>
+                                {view === "cards" ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+                                        {rows.map((j) => (
+                                            <JobCard key={j.id} job={j}
+                                                menu={<RowMenu job={j} open={menuFor === j.id} onToggle={() => setMenuFor(menuFor === j.id ? null : j.id)} onClose={() => setMenuFor(null)} isManager={isManager}
+                                                    onAction={(kind) => { setMenuFor(null); setAction({ kind, job: j }); }}
+                                                    onNavigate={(href) => { setMenuFor(null); router.push(href); }} />} />
+                                        ))}
+                                    </div>
+                                ) : (
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left text-xs min-w-[1400px]">
                                         <thead>
@@ -246,7 +265,8 @@ export default function TaRequisitionsPage() {
                                         </tbody>
                                     </table>
                                 </div>
-                                <div className="flex items-center justify-between px-4 py-3 border-t border-neutral-100 text-xs text-neutral-500">
+                                )}
+                                <div className={`flex items-center justify-between px-4 py-3 text-xs text-neutral-500 ${view === "cards" ? "mt-4 bg-white rounded-2xl border border-neutral-200/80" : "border-t border-neutral-100"}`}>
                                     <span>{(current - 1) * PAGE_SIZE + 1}–{Math.min(current * PAGE_SIZE, filtered.length)} of {filtered.length}</span>
                                     <div className="flex items-center gap-1">
                                         <button type="button" disabled={current <= 1} onClick={() => setPage(current - 1)} className="p-1.5 rounded-lg border border-neutral-200 disabled:opacity-40" aria-label="Previous page"><ChevronLeft size={14} /></button>
@@ -259,6 +279,55 @@ export default function TaRequisitionsPage() {
             </div>
 
             {action && <ActionDialog kind={action.kind} job={action.job} onClose={() => setAction(null)} onDone={() => { setAction(null); qc.invalidateQueries({ queryKey: ["ta-jobs"] }); qc.invalidateQueries({ queryKey: ["job-360", action.job.id] }); }} />}
+        </div>
+    );
+}
+
+// ─── Card view ────────────────────────────────────────────────
+function JobCard({ job: j, menu }: { job: Row; menu: React.ReactNode }) {
+    const pct = Math.min(100, Math.round(((j.filled || 0) / Math.max(1, j.openings || 1)) * 100));
+    const today = new Date().toISOString().slice(0, 10);
+    const late = isOpen(j.status) && !!j.targetCloseDate && j.targetCloseDate < today;
+    const accent = j.priority === "URGENT" ? "border-t-red-500" : j.priority === "HIGH" ? "border-t-amber-500" : j.priority === "MEDIUM" ? "border-t-blue-500" : "border-t-neutral-300";
+    return (
+        <div className={`bg-white rounded-2xl border border-neutral-200/80 border-t-4 ${accent} p-4 flex flex-col gap-3 hover:shadow-md hover:border-neutral-300 transition-all`}>
+            <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-mono text-[11px] font-bold text-neutral-500">{requisitionLabel(j)}</span>
+                    <Badge value={j.priority} label={optLabel(PRIORITIES, j.priority)} />
+                </div>
+                <div className="flex items-center gap-1 shrink-0"><StatusPill status={j.status} />{menu}</div>
+            </div>
+
+            <div className="min-w-0">
+                <Link href={`/ta/requisitions/${j.id}`} className="block font-bold text-[15px] text-neutral-900 hover:text-primary leading-snug line-clamp-2">{j.title}</Link>
+                <p className="text-xs text-neutral-500 mt-0.5 truncate"><span className="font-semibold text-neutral-700">{j.clientName}</span> · {j.department || "—"} · {optLabel(EMPLOYMENT_TYPES, j.employmentType)}</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs text-neutral-600">
+                <span className="flex items-center gap-1.5 min-w-0" title={[j.location, j.locationState].filter(Boolean).join(", ")}><MapPin size={12} className="text-neutral-400 shrink-0" /><span className="truncate">{j.location || "—"}</span></span>
+                <span className="flex items-center gap-1.5"><Briefcase size={12} className="text-neutral-400 shrink-0" />{j.experienceMinYears}–{j.experienceMaxYears} yrs</span>
+                <span className="flex items-center gap-1.5"><IndianRupee size={12} className="text-neutral-400 shrink-0" />{j.salaryMinLpa}–{j.salaryMaxLpa} LPA</span>
+                <span className="flex items-center gap-1.5"><GitBranch size={12} className="text-neutral-400 shrink-0" />{j.inPipeline} in pipeline</span>
+            </div>
+
+            <div>
+                <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-neutral-800">{j.filled}/{j.openings} <span className="font-medium text-neutral-400">filled</span></span>
+                    <span className="text-neutral-400">{j.totalCandidates} candidate{j.totalCandidates === 1 ? "" : "s"}</span>
+                </div>
+                <div className="h-1.5 bg-neutral-100 rounded-full mt-1.5 overflow-hidden"><div className={`h-full rounded-full ${pct >= 100 ? "bg-emerald-500" : "bg-primary"}`} style={{ width: `${pct}%` }} /></div>
+            </div>
+
+            <div className="mt-auto pt-3 border-t border-neutral-100 flex items-center justify-between gap-2 text-xs">
+                <span className="flex items-center gap-1.5 min-w-0">
+                    <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-[10px] font-bold flex items-center justify-center shrink-0">{(j.primaryRecruiterName ?? "?").charAt(0)}</span>
+                    <span className={`truncate ${j.primaryRecruiterName ? "text-neutral-700 font-semibold" : "text-amber-700 font-bold"}`}>{j.primaryRecruiterName ?? "Unassigned"}</span>
+                </span>
+                <span className={`flex items-center gap-1 whitespace-nowrap ${late ? "text-red-600 font-semibold" : "text-neutral-500"}`} title="Target closure">
+                    <CalendarClock size={12} />{fmtDate(j.targetCloseDate)}{late ? " · overdue" : ""}
+                </span>
+            </div>
         </div>
     );
 }

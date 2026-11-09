@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
 import { applications, candidates, jobs, clients, interviews, users, referrals, addAudit, addNotification, nextIds } from "@/lib/mock/data";
 import { fitScore } from "@/lib/fit";
-import { canWorkOnApplication, isJobAssignedTo, isRecruitmentManager, markApplicationJoined, syncReferralFromApplication, validRecruiters } from "@/lib/mock/pipeline";
+import { canAccessJob, canWorkOnApplication, isRecruitmentManager, markApplicationJoined, syncReferralFromApplication, validRecruiters } from "@/lib/mock/pipeline";
 import { canTransition, allowedNextStages, TERMINAL_STAGES, STAGE_ORDER, type ApplicationStage } from "@/lib/types";
 
 const ALL_STAGES = new Set<string>([...STAGE_ORDER, "ON_HOLD", "REJECTED", "BACKED_OUT", "NOT_INTERESTED", "WITHDRAWN", "BLACKLISTED"]);
@@ -204,7 +204,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: `Job is ${job.status.replace(/_/g, " ").toLowerCase()} and not accepting candidates` }, { status: 422 });
     }
 
-    if (!isRecruitmentManager(me) && !isJobAssignedTo(job.id, me.id)) {
+    if (!canAccessJob(me, job)) {
         return NextResponse.json({ error: "You can only add candidates to requisitions assigned to you" }, { status: 403 });
     }
 

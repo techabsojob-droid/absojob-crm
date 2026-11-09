@@ -53,6 +53,10 @@ create table if not exists crm.attendance_corrections (
   reason                text,
   status                text, -- APPROVED | REJECTED | PENDING
   reviewed_by_name      text,
+  reviewed_by_id        text,
+  reviewed_at           timestamptz,
+  review_note           text,
+  requested_at          timestamptz,
   _extra                jsonb not null default '{}'::jsonb, -- values that don't fit a typed column (kept losslessly)
   _position             double precision not null default 0, -- list order the app expects
   primary key (id)

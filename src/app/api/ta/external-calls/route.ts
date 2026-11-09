@@ -3,7 +3,7 @@ import { nextTaskKey } from "@/lib/tasks";
 import { requireRole } from "@/lib/mock/server";
 import { candidates, clients, externalCalls, jobs, tasks, users, addAudit, nextIds } from "@/lib/mock/data";
 import { bad, body } from "@/lib/mock/fin/http";
-import { isRecruitmentManager } from "@/lib/mock/pipeline";
+import { isRecruitmentManager, teamPickList, teamScopeIds } from "@/lib/mock/pipeline";
 import { csvDownload } from "@/lib/csv";
 import { CALL_INTERESTS, CALL_PURPOSES, CALL_STATUSES, EXTERNAL_SOURCES as SOURCES, isEmail, istDay, lastTen, list, num, parseCall, pick, text } from "@/lib/calls";
 import type { ExternalCallLog } from "@/lib/types";
@@ -55,6 +55,7 @@ export async function GET(request: Request) {
     }
 
     const team = isRecruitmentManager(me) && q.get("scope") === "team";
+    const teamIds = teamScopeIds(me);
     const date = (s: string | null) => (s && /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null);
     const from = date(q.get("from"));
     const to = date(q.get("to"));
@@ -70,7 +71,7 @@ export async function GET(request: Request) {
 
     const rows = externalCalls
         .filter((c) => c.orgId === me.orgId)
-        .filter((c) => (team ? true : c.recruiterId === me.id))
+        .filter((c) => (team ? !teamIds || teamIds.has(c.recruiterId) : c.recruiterId === me.id))
         .filter((c) => !recruiterId || c.recruiterId === recruiterId)
         .filter((c) => !from || istDay(c.calledAt) >= from)
         .filter((c) => !to || istDay(c.calledAt) <= to)
@@ -125,9 +126,7 @@ export async function GET(request: Request) {
         followUpsOverdue: openFollowUps.filter((t) => t.dueDate && t.dueDate < today).length,
         bySource: SOURCES.map((s) => ({ source: s, count: rows.filter((c) => c.source === s).length })).filter((x) => x.count),
     };
-    const recruiters = team
-        ? users.filter((u) => u.orgId === me.orgId && (u.role === "TA_RECRUITER" || u.role === "TA_MANAGER") && u.status !== "EXITED").map((u) => ({ id: u.id, name: u.name }))
-        : [];
+    const recruiters = team ? teamPickList(me) : [];
     return NextResponse.json({ scope: team ? "team" : "mine", items: rows.slice(0, 500), truncated: rows.length > 500, stats, recruiters });
 }
 

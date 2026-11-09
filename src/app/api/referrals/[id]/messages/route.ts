@@ -2,15 +2,15 @@ import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
 import { candidates, jobs, referralMessages, referrals, users, addNotification } from "@/lib/mock/data";
 import { bad, body } from "@/lib/mock/fin/http";
-import { isJobAssignedTo, isRecruitmentManager } from "@/lib/mock/pipeline";
+import { canAccessJobId } from "@/lib/mock/pipeline";
 import type { Referral, User } from "@/lib/types";
 
 // The referring partner and TA (managers, or recruiters on the referral's job) share one thread per referral
 function canAccess(me: User, ref: Referral) {
     if (ref.orgId !== me.orgId) return false;
     if (ref.agentId === me.id) return true;
-    if (isRecruitmentManager(me)) return true;
-    return me.role === "TA_RECRUITER" && (!ref.jobId || isJobAssignedTo(ref.jobId, me.id));
+    if (!["SUPER_ADMIN", "TA_MANAGER", "TA_RECRUITER"].includes(me.role)) return false;
+    return !ref.jobId || canAccessJobId(me, ref.jobId);
 }
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {

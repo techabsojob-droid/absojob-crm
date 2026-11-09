@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
 import { candidates, clients, employees, jobs, tasks, users } from "@/lib/mock/data";
 import { canAssignTo, canViewTask } from "@/lib/tasks";
+import { accessibleClientIds, canAccessJob } from "@/lib/mock/pipeline";
 
 const ROLE_ORDER = ["SUPER_ADMIN", "HR_ADMIN", "FINANCE_ADMIN", "TA_MANAGER", "TA_RECRUITER", "AGENT", "EMPLOYEE"];
 
@@ -19,11 +20,12 @@ export async function GET() {
     const labels = [...new Set(tasks.filter((t) => canViewTask(me, t, users)).flatMap((t) => t.labels ?? []))].sort();
 
     const recruitment = ["SUPER_ADMIN", "TA_MANAGER", "TA_RECRUITER"].includes(me.role);
+    const clientIds = recruitment ? accessibleClientIds(me) : new Set<string>();
     const hr = ["SUPER_ADMIN", "HR_ADMIN"].includes(me.role);
     const linkable = {
         CANDIDATE: recruitment ? candidates.filter((c) => c.orgId === me.orgId && !c.archived).map((c) => ({ id: c.id, label: c.name })) : [],
-        JOB: recruitment ? jobs.filter((j) => j.orgId === me.orgId).map((j) => ({ id: j.id, label: j.title })) : [],
-        CLIENT: recruitment ? clients.filter((c) => c.orgId === me.orgId).map((c) => ({ id: c.id, label: c.companyName })) : [],
+        JOB: recruitment ? jobs.filter((j) => canAccessJob(me, j)).map((j) => ({ id: j.id, label: `${j.requisitionCode ? `${j.requisitionCode} · ` : ""}${j.title}` })) : [],
+        CLIENT: recruitment ? clients.filter((c) => clientIds.has(c.id)).map((c) => ({ id: c.id, label: c.companyName })) : [],
         EMPLOYEE: hr ? employees.filter((e) => e.orgId === me.orgId && e.status !== "EXITED").map((e) => ({ id: e.id, label: e.name })) : [],
     };
 

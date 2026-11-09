@@ -3,7 +3,7 @@ import { nextTaskKey } from "@/lib/tasks";
 import { requireRole } from "@/lib/mock/server";
 import { applications, callActivities, candidates, clients, jobs, tasks, users, addAudit, nextIds } from "@/lib/mock/data";
 import { bad, body } from "@/lib/mock/fin/http";
-import { canWorkOnApplication, isRecruitmentManager } from "@/lib/mock/pipeline";
+import { canAccessJobId, canWorkOnApplication, isRecruitmentManager, teamPickList, teamScopeIds } from "@/lib/mock/pipeline";
 import { csvDownload } from "@/lib/csv";
 import type { CallActivity } from "@/lib/types";
 import { CALL_INTERESTS, CALL_PURPOSES, CALL_STATUSES, istDay, parseCall, pick } from "@/lib/calls";
@@ -54,6 +54,8 @@ export async function GET(request: Request) {
             .filter((c) => !jobId || c.jobId === jobId)
             .filter((c) => !applicationId || c.applicationId === applicationId)
             .filter((c) => q.get("mine") !== "1" || c.recruiterId === me.id)
+            // Calls about a requisition follow requisition access (own calls always visible)
+            .filter((c) => c.recruiterId === me.id || !c.jobId || canAccessJobId(me, c.jobId))
             .sort((a, b) => +new Date(b.calledAt) - +new Date(a.calledAt))
             .map(enrich);
         return NextResponse.json(rows);
@@ -62,6 +64,8 @@ export async function GET(request: Request) {
     // ── Calls log ──
     const manager = isRecruitmentManager(me);
     const team = manager && q.get("scope") === "team";
+    const teamIds = teamScopeIds(me);
+    const inTeam = (id: string) => !teamIds || teamIds.has(id);
     const date = (s: string | null) => (s && /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null);
     const from = date(q.get("from"));
     const to = date(q.get("to"));
@@ -75,7 +79,7 @@ export async function GET(request: Request) {
 
     const rows = callActivities
         .filter((c) => c.orgId === me.orgId)
-        .filter((c) => (team ? true : c.recruiterId === me.id))
+        .filter((c) => (team ? inTeam(c.recruiterId) : c.recruiterId === me.id))
         .filter((c) => !recruiterId || c.recruiterId === recruiterId)
         .filter((c) => !from || istDay(c.calledAt) >= from)
         .filter((c) => !to || istDay(c.calledAt) <= to)
@@ -109,7 +113,7 @@ export async function GET(request: Request) {
     const connected = rows.filter((c) => c.callStatus === "CONNECTED");
     const talk = connected.map((c) => c.durationMins ?? 0).filter((m) => m > 0);
     const todayIst = istDay(new Date().toISOString());
-    const followUpsOpen = tasks.filter((t) => t.orgId === me.orgId && t.type === "FOLLOW_UP" && !t.completed && (team ? true : t.assignedToId === me.id)
+    const followUpsOpen = tasks.filter((t) => t.orgId === me.orgId && t.type === "FOLLOW_UP" && !t.completed && (team ? inTeam(t.assignedToId) : t.assignedToId === me.id)
         && rows.some((c) => c.followUpTaskId === t.id));
     const stats = {
         total: rows.length,
@@ -124,9 +128,7 @@ export async function GET(request: Request) {
         followUpsOverdue: followUpsOpen.filter((t) => t.dueDate && t.dueDate < todayIst).length,
         byStatus: STATUSES.map((s) => ({ status: s, count: rows.filter((c) => c.callStatus === s).length })).filter((x) => x.count),
     };
-    const recruiters = team
-        ? users.filter((u) => u.orgId === me.orgId && (u.role === "TA_RECRUITER" || u.role === "TA_MANAGER") && u.status !== "EXITED").map((u) => ({ id: u.id, name: u.name }))
-        : [];
+    const recruiters = team ? teamPickList(me) : [];
     return NextResponse.json({ scope: team ? "team" : "mine", items: rows.slice(0, 500), truncated: rows.length > 500, stats, recruiters });
 }
 

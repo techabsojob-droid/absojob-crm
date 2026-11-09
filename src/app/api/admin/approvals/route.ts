@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
 import { approvals, jobs, auditLogs, addNotification } from "@/lib/mock/data";
-import { notifyJobAssignment } from "@/lib/mock/pipeline";
+import { approvalInScope, notifyJobAssignment } from "@/lib/mock/pipeline";
 import type { ApprovalRequest } from "@/lib/types";
 
 export async function GET(request: Request) {
@@ -21,7 +21,7 @@ export async function GET(request: Request) {
         HR_ADMIN: ["SALARY_EXCEPTION", "USER_ACCESS", "EXPENSE_APPROVAL"],
     };
     const types = visibleTypes[me.role] ?? [];
-    let list = approvals.filter((a) => a.orgId === me.orgId && (types === "*" || types.includes(a.type) || a.requestedById === me.id));
+    let list = approvals.filter((a) => a.orgId === me.orgId && (types === "*" || types.includes(a.type) || a.requestedById === me.id) && approvalInScope(me, a));
 
     if (q) {
         list = list.filter(
@@ -52,7 +52,7 @@ export async function PATCH(request: Request) {
 
     const { id, action, reviewComment } = await request.json(); // action: "APPROVE" | "REJECT" | "REQUEST_CHANGES"
     const item = approvals.find((a) => a.id === id && a.orgId === me.orgId);
-    if (!item) return NextResponse.json({ error: "Approval not found" }, { status: 404 });
+    if (!item || !approvalInScope(me, item)) return NextResponse.json({ error: "Approval not found" }, { status: 404 });
 
     const allowed = DECIDERS[me.role] ?? [];
     if (!allowed.includes("*") && !allowed.includes(item.type)) {

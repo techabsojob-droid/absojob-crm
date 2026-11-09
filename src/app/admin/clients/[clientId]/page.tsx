@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { PageHeader, StatCard, Badge, SectionCard, ModalShell, EmptyState, inr } from "@/components/shared/ui";
 import { SkeletonPulse } from "@/components/shared/UIStates";
 import { RelatedTasks } from "@/components/tasks/TaskWidgets";
+import { ClientTaManagers } from "@/components/admin/ClientTaManagers";
 
 export default function ClientDetailsPage({ params }: { params: Promise<{ clientId: string }> }) {
     const { clientId } = use(params);
@@ -331,6 +332,8 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ client
                                 </div>
                             </div>
                         </SectionCard>
+
+                        <ClientTaManagers key={(client.taManagerIds ?? []).join(",")} clientId={clientId} accountManagerId={client.accountManagerId ?? null} value={client.taManagerIds ?? []} />
                     </div>
 
                     {/* Active Jobs Preview */}

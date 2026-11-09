@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
 import { applications, callActivities, candidates, externalCalls, jobs, tasks, users } from "@/lib/mock/data";
-import { isRecruitmentManager } from "@/lib/mock/pipeline";
+import { isRecruitmentManager, teamScopeIds } from "@/lib/mock/pipeline";
 
 const today = () => {
     const d = new Date();
@@ -17,6 +17,7 @@ export async function GET(request: Request) {
     const me = auth.user;
     const q = new URL(request.url).searchParams;
     const team = q.get("scope") === "team" && isRecruitmentManager(me);
+    const teamIds = teamScopeIds(me);
     const days = Math.min(90, Math.max(1, Number(q.get("days")) || 14));
 
     const t0 = today();
@@ -25,7 +26,7 @@ export async function GET(request: Request) {
     const followUps = tasks.filter((t) =>
         t.orgId === me.orgId && t.type === "FOLLOW_UP" && !!t.relatedId
         && (t.relatedType === "CANDIDATE" || (t.labels ?? []).includes("external-call"))
-        && (team || t.assignedToId === me.id));
+        && (team ? !teamIds || teamIds.has(t.assignedToId) : t.assignedToId === me.id));
 
     const view = (t: (typeof tasks)[number]) => {
         if (t.relatedType !== "CANDIDATE") {

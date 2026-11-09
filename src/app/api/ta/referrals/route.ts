@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
 import { referrals, candidates, jobs, clients, users, applications, referralMessages, addAudit, addNotification, nextIds } from "@/lib/mock/data";
-import { isJobAssignedTo, isRecruitmentManager, syncReferralFromApplication } from "@/lib/mock/pipeline";
+import { canAccessJob, canAccessJobId, syncReferralFromApplication } from "@/lib/mock/pipeline";
 import type { Application } from "@/lib/types";
 
 const CLOSED_JOB = ["DRAFT", "PENDING_APPROVAL", "FULFILLED", "CLOSED", "CANCELLED", "ON_HOLD"];
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
 
     const list = referrals
         .filter((r) => r.orgId === me.orgId)
-        .filter((r) => isRecruitmentManager(me) || !r.jobId || isJobAssignedTo(r.jobId, me.id))
+        .filter((r) => !r.jobId || canAccessJobId(me, r.jobId))
         .filter((r) => !status || status === "ALL" || r.status === status)
         .map((r) => {
             const cand = candidates.find((c) => c.id === r.candidateId);
@@ -60,7 +60,7 @@ export async function PATCH(request: Request) {
 
     if (action === "REJECT") {
         if (!String(reason ?? "").trim()) return NextResponse.json({ error: "A reason is required" }, { status: 400 });
-        if (!isRecruitmentManager(me) && ref.jobId && !isJobAssignedTo(ref.jobId, me.id)) {
+        if (ref.jobId && !canAccessJobId(me, ref.jobId)) {
             return NextResponse.json({ error: "This referral is for a job not assigned to you" }, { status: 403 });
         }
         ref.status = "REJECTED";
@@ -77,7 +77,7 @@ export async function PATCH(request: Request) {
     const job = jobs.find((j) => j.id === targetJobId && j.orgId === me.orgId);
     if (!job) return NextResponse.json({ error: "Select the job to add this candidate to" }, { status: 400 });
     if (CLOSED_JOB.includes(job.status)) return NextResponse.json({ error: `Job is ${job.status.replace(/_/g, " ").toLowerCase()}` }, { status: 422 });
-    if (!isRecruitmentManager(me) && !isJobAssignedTo(job.id, me.id)) {
+    if (!canAccessJob(me, job)) {
         return NextResponse.json({ error: "You can only add candidates to requisitions assigned to you" }, { status: 403 });
     }
     if (!cand) return NextResponse.json({ error: "Candidate not found" }, { status: 404 });
