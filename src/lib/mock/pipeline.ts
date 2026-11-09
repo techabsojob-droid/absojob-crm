@@ -3,8 +3,9 @@
 // onboarding conversion, offer response) goes through these helpers so
 // job fill counts, placements, audit and notifications stay consistent.
 
-import type { Application, ApprovalRequest, Client, JobRequisition, ReferralStatus, User, UserRole } from "@/lib/types";
-import { addAudit, addNotification, applications, approvals, candidates, clients, commissionLedger, jobs, nextIds, placements, referrals, users } from "./data";
+import type { Application, ApprovalRequest, Client, JobRequisition, ReferralStatus, Task, User, UserRole } from "@/lib/types";
+import { newActivity, nextTaskKey } from "@/lib/tasks/rules";
+import { addAudit, addNotification, applications, approvals, candidates, clients, commissionLedger, jobs, nextIds, placements, referrals, taskActivity, tasks, users } from "./data";
 
 export function notifyRoles(
     orgId: string,
@@ -335,16 +336,64 @@ export function validRecruiters(orgId: string, ids: string[]): { ok: User[]; inv
 
 // ─── Job assignment notifications ────────────────────────────
 
-/** Notifies recruiters newly added to a job (primary or team). */
+// Requisition is live for sourcing (not a draft, awaiting approval, or closed)
+const NOT_LIVE = ["DRAFT", "PENDING_APPROVAL", "CLOSED", "CANCELLED", "FULFILLED", "ON_HOLD"];
+const addDays = (n: number) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+
+/**
+ * Creates one "work on this requisition" task per assigned recruiter (primary + secondary),
+ * once the requisition is live. Idempotent: a recruiter never gets a second open task for
+ * the same requisition, so re-saves and re-approvals don't duplicate it.
+ */
+export function ensureRequisitionTasks(job: JobRequisition, actor: User): Task[] {
+    if (NOT_LIVE.includes(job.status)) return [];
+    const recruiterIds = [...new Set([job.primaryRecruiterId, ...(job.assignedTas || [])].filter((x): x is string => !!x))];
+    const client = clients.find((c) => c.id === job.clientId);
+    const code = job.requisitionCode ?? job.id;
+    const created: Task[] = [];
+    for (const uid of recruiterIds) {
+        const u = users.find((x) => x.id === uid && x.orgId === job.orgId && x.status === "ACTIVE");
+        if (!u) continue;
+        const exists = tasks.some((t) => t.orgId === job.orgId && t.relatedType === "JOB" && t.relatedId === job.id && t.assignedToId === uid && (t.labels ?? []).includes("requisition") && !t.completed);
+        if (exists) continue;
+        const primary = job.primaryRecruiterId === uid;
+        const now = new Date().toISOString();
+        // Due: the target closure date, or a week out when none is set (never in the past)
+        const due = job.targetCloseDate && job.targetCloseDate >= addDays(0) ? job.targetCloseDate : addDays(7);
+        const t: Task = {
+            id: nextIds.task(), orgId: job.orgId, key: nextTaskKey(tasks, job.orgId), type: "TASK", status: "TODO",
+            assignedToId: uid, createdById: actor.id,
+            title: `Source candidates: ${job.title} (${code})`,
+            description: [
+                `${primary ? "You are the primary recruiter" : "You are on the recruiter team"} for ${job.title}${client ? ` at ${client.companyName}` : ""}.`,
+                `${job.openings} opening(s) · ${job.location || "location TBD"} · ${job.experienceMinYears}–${job.experienceMaxYears} yrs · ₹${job.salaryMinLpa}–${job.salaryMaxLpa} LPA`,
+                job.skills?.length ? `Key skills: ${job.skills.join(", ")}` : "",
+                "Source and screen candidates, add them to the pipeline and share suitable profiles with the client.",
+            ].filter(Boolean).join("\n"),
+            labels: ["requisition", "sourcing"], watcherIds: actor.id !== uid ? [actor.id] : [],
+            startDate: addDays(0), dueDate: due, estimateHours: null,
+            priority: job.priority, relatedType: "JOB", relatedId: job.id, linkedApplicationId: null,
+            completed: false, completedAt: null, createdAt: now, updatedAt: now,
+        };
+        tasks.unshift(t);
+        taskActivity.push(newActivity(t, actor.id, "CREATED"));
+        addAudit({ orgId: job.orgId, actorUserId: actor.id, actorRole: actor.role, action: "TASK_CREATED", entity: "Task", entityId: t.id, detail: `${t.key} auto-created for ${u.name} on requisition ${code}` });
+        created.push(t);
+    }
+    return created;
+}
+
+/** Notifies recruiters newly added to a job (primary or team) and gives each a sourcing task. */
 export function notifyJobAssignment(job: JobRequisition, previousIds: string[], actor: User) {
     const current = new Set([...(job.assignedTas || []), ...(job.primaryRecruiterId ? [job.primaryRecruiterId] : [])]);
     const client = clients.find((c) => c.id === job.clientId);
+    const newTasks = ensureRequisitionTasks(job, actor);
     current.forEach((uid) => {
         if (previousIds.includes(uid) || uid === actor.id) return;
         addNotification({
             orgId: job.orgId, userId: uid,
             title: job.primaryRecruiterId === uid ? "You are the primary recruiter" : "Job assigned to you",
-            message: `${job.title}${client ? ` · ${client.companyName}` : ""} (${job.openings} opening${job.openings > 1 ? "s" : ""})`,
+            message: `${job.title}${client ? ` · ${client.companyName}` : ""} (${job.openings} opening${job.openings > 1 ? "s" : ""})${(() => { const t = newTasks.find((x) => x.assignedToId === uid); return t ? ` — task ${t.key} added to your board` : ""; })()}`,
             link: `/ta/requisitions/${job.id}`,
         });
     });
