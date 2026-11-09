@@ -1,26 +1,41 @@
 "use client";
-
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import {
-    Briefcase, Users, UserCheck, CalendarClock, CheckSquare, Flame, ArrowRight,
-    AlertTriangle, RefreshCw, Plus, Clock, ShieldAlert,
-    TrendingUp, Filter, Sparkles, AlertCircle, ChevronRight, CheckCircle2,
-    Building2, Phone, Video, MapPin, Send, UserX, FileText, Calendar,
-    Activity, BarChart3, Search, Layers
-} from "lucide-react";
+import { CalendarClock, ArrowRight, RefreshCw, Plus, Filter, AlertCircle, ChevronRight, CheckCircle2, Phone, Video, MapPin, Calendar, Search } from "lucide-react";
 import { toast } from "sonner";
-import { StatCard, Badge, SectionCard, EmptyState, ModalShell } from "@/components/shared/ui";
+import { Badge, SectionCard, EmptyState, ModalShell } from "@/components/shared/ui";
 import { SkeletonPulse } from "@/components/shared/UIStates";
-import {
-    ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, Legend
-} from "recharts";
 import { MyWork } from "@/components/tasks/TaskWidgets";
 import FollowUpsPanel from "@/components/ta/FollowUpsPanel";
 import AddCandidateDialog from "@/components/ta/AddCandidateDialog";
 import { useAuth } from "@/lib/auth";
 import { canCreateRequisition } from "@/lib/access";
+
+type OverviewTab = "today" | "pipeline" | "interviews" | "jobs" | "joinings" | "team" | "activity";
+
+const greeting = () => { const h = new Date().getHours(); return h < 12 ? "morning" : h < 17 ? "afternoon" : "evening"; };
+
+function KpiRow({ title, children }: { title: string; children: React.ReactNode }) {
+    return (
+        <div className="flex flex-col lg:flex-row lg:items-stretch">
+            <p className="lg:w-36 shrink-0 px-4 pt-3 lg:py-4 text-[10px] font-bold uppercase tracking-widest text-neutral-400 lg:border-r lg:border-neutral-100 flex items-center">{title}</p>
+            <div className="flex-1 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6">{children}</div>
+        </div>
+    );
+}
+
+/** Compact, clickable KPI tile. Tone colours the number only; the label always names it. */
+function Kpi({ label, value, hint, href, tone }: { label: string; value: string | number; hint?: string; href: string; tone?: "good" | "warn" | "bad" }) {
+    const colour = tone === "bad" ? "text-red-600" : tone === "warn" ? "text-amber-600" : tone === "good" ? "text-emerald-700" : "text-neutral-900";
+    return (
+        <Link href={href} className="group px-4 py-3 hover:bg-neutral-50 transition-colors min-w-0">
+            <p className="text-[11px] font-semibold text-neutral-500 truncate">{label}</p>
+            <p className={`text-xl font-extrabold tabular-nums leading-tight mt-0.5 ${colour}`}>{value}</p>
+            {hint && <p className="text-[10px] text-neutral-400 truncate group-hover:text-neutral-600">{hint}</p>}
+        </Link>
+    );
+}
 
 export default function TaCommandCenterDashboard() {
     const qc = useQueryClient();
@@ -34,7 +49,9 @@ export default function TaCommandCenterDashboard() {
     const [clientId, setClientId] = useState<string>("ALL");
     const [priority, setPriority] = useState<string>("ALL");
     const [department, setDepartment] = useState<string>("ALL");
-    const [executiveMode, setExecutiveMode] = useState<boolean>(false);
+
+    // Which overview section group is open
+    const [tab, setTab] = useState<OverviewTab>("today");
 
     // Positions search / tab filter state
     const [reqTab, setReqTab] = useState<string>("ALL");
@@ -198,6 +215,16 @@ export default function TaCommandCenterDashboard() {
         return matchTab && matchSearch;
     });
 
+    const tabs: { id: OverviewTab; label: string; count?: number; alert?: boolean }[] = [
+        { id: "today", label: "Today", count: data.attentionItems?.length || 0, alert: (data.attentionItems?.length || 0) > 0 },
+        { id: "pipeline", label: "Pipeline" },
+        { id: "interviews", label: "Interviews", count: (data.todayInterviews?.length || 0) + (data.pendingFeedback?.length || 0) },
+        { id: "jobs", label: "Jobs & SLA", count: data.priorityRequisitions?.length || 0 },
+        { id: "joinings", label: "Joinings & Sourcing", count: data.joiningTracker?.length || 0 },
+        ...(isLead ? [{ id: "team" as const, label: "Team" }] : []),
+        { id: "activity", label: "Activity" },
+    ];
+
     // Trend chart data (sourced vs joined vs offers)
     const pipelineTrendData = [
         { stage: "Sourced", count: data.pipeline?.find((p: any) => p.stage === "SOURCED")?.count || 0 },
@@ -209,38 +236,18 @@ export default function TaCommandCenterDashboard() {
     ];
 
     return (
-        <div className="space-y-8 animate-fade-in pb-16">
+        <div className="space-y-5 animate-fade-in pb-16">
             {/* 1. Global Header & Controls (Matching SuperAdmin & HRMIS styling) */}
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pt-2">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div>
-                    <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
-                            Command Center
-                        </span>
-                        <span className="text-xs text-neutral-400 font-bold">AbsoJob Talent Acquisition</span>
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse ml-1" />
-                        <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                            Live Sync
-                        </span>
-                    </div>
-                    <h1 className="text-2xl font-black text-neutral-900 mt-1">
-                        Good morning, {data.user?.name?.split(" ")[0] || "Neha"} — TA Command Center
+                    <h1 className="text-2xl font-bold text-neutral-900 flex items-center gap-2.5">
+                        Good {greeting()}, {data.user?.name?.split(" ")[0] || "there"}
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />Live</span>
                     </h1>
-                    <p className="text-xs text-neutral-500 font-medium">
-                        360° Real-time visibility across client requisitions, live interviews, candidate velocity & team workload.
-                    </p>
+                    <p className="text-sm text-neutral-500 mt-0.5">Your recruitment at a glance — today, pipeline, interviews, jobs and joinings.</p>
                 </div>
 
                 <div className="flex items-center gap-2.5 flex-wrap">
-                    {/* Executive View toggle button */}
-                    <button
-                        onClick={() => setExecutiveMode(!executiveMode)}
-                        className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border shadow-xs ${
-                            executiveMode ? "bg-primary text-white border-primary" : "bg-white text-neutral-700 border-neutral-200 hover:bg-neutral-50"
-                        }`}
-                    >
-                        <BarChart3 size={14} /> {executiveMode ? "Operational Mode" : "Executive View"}
-                    </button>
 
                     {/* Refresh button */}
                     <button
@@ -277,7 +284,7 @@ export default function TaCommandCenterDashboard() {
             </div>
 
             {/* 2. Today's Operational Snapshot Pulse Bar (The signature black bar from SuperAdmin) */}
-            <div className="bg-neutral-900 text-white rounded-2xl p-4 shadow-md flex flex-wrap items-center justify-between gap-4">
+            <div className="bg-neutral-900 text-white rounded-2xl px-5 py-3 shadow-sm flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-2.5">
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
                     <span className="text-xs font-black uppercase tracking-wider text-emerald-400">Today&apos;s Pulse</span>
@@ -392,118 +399,39 @@ export default function TaCommandCenterDashboard() {
                 )}
             </div>
 
-            {/* 4. Primary KPI Rows (Standard StatCard design as SuperAdmin) */}
-            <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-3">Recruitment & Operations Core</p>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
-                    <StatCard
-                        label="Open Jobs"
-                        value={k.openRequisitions}
-                        icon={Briefcase}
-                        tone="primary"
-                        hint={`${k.openPositions} open positions`}
-                        href="/ta/requisitions"
-                    />
-                    <StatCard
-                        label="In Pipeline"
-                        value={k.inPipeline}
-                        icon={Users}
-                        tone="purple"
-                        hint={`${k.pipelineBreakdown?.interviews || 0} active in rounds`}
-                        href="/ta/pipeline"
-                    />
-                    <StatCard
-                        label="Total Joined"
-                        value={k.joinedTotal}
-                        icon={UserCheck}
-                        tone="emerald"
-                        hint={`Target: ${k.joinedTarget} (${k.joinedAchievedPct}%)`}
-                        href="/ta/pipeline"
-                    />
-                    <StatCard
-                        label="Interviews Today"
-                        value={k.interviewsToday}
-                        icon={CalendarClock}
-                        tone={k.interviewsToday > 0 ? "amber" : "blue"}
-                        hint={`${k.clientRoundTodayCount} client rounds`}
-                        href="/ta/interviews"
-                    />
-                    <StatCard
-                        label="Pending Tasks"
-                        value={k.pendingTasks}
-                        icon={CheckSquare}
-                        tone={k.tasksOverdue > 0 ? "red" : "blue"}
-                        hint={`${k.tasksOverdue} overdue · ${k.tasksDueToday} due`}
-                        href="/ta/tasks"
-                    />
-                    <StatCard
-                        label="Hiring Conversion"
-                        value={`${k.conversionRate}%`}
-                        icon={Flame}
-                        tone="emerald"
-                        hint="Candidates → Placed"
-                        href="/ta/pipeline"
-                    />
-                </div>
+            {/* 4. Key numbers — every KPI in one compact strip (click any to drill in) */}
+            <div className="bg-white rounded-2xl border border-neutral-200/80 shadow-xs divide-y divide-neutral-100">
+                <KpiRow title="Recruitment">
+                    <Kpi label="Open jobs" value={k.openRequisitions} hint={`${k.openPositions} positions`} href="/ta/requisitions" />
+                    <Kpi label="In pipeline" value={k.inPipeline} hint={`${k.pipelineBreakdown?.interviews || 0} in rounds`} href="/ta/pipeline" />
+                    <Kpi label="Joined" value={k.joinedTotal} hint={`Target ${k.joinedTarget} · ${k.joinedAchievedPct}%`} tone="good" href="/ta/pipeline" />
+                    <Kpi label="Interviews today" value={k.interviewsToday} hint={`${k.clientRoundTodayCount} client rounds`} href="/ta/interviews" />
+                    <Kpi label="Pending tasks" value={k.pendingTasks} hint={`${k.tasksOverdue} overdue · ${k.tasksDueToday} due`} tone={k.tasksOverdue > 0 ? "bad" : undefined} href="/ta/tasks" />
+                    <Kpi label="Conversion" value={`${k.conversionRate}%`} hint="Candidates → placed" tone="good" href="/ta/pipeline" />
+                </KpiRow>
+                <KpiRow title="SLA & throughput">
+                    <Kpi label="SLA risk" value={k.slaRiskCount} hint={`${k.slaRiskBreakdown?.requisitions || 0} reqs · ${k.slaRiskBreakdown?.candidates || 0} cands`} tone={k.slaRiskCount > 0 ? "bad" : "good"} href="/ta/requisitions" />
+                    <Kpi label="Offer pipeline" value={k.offerPipelineSummary?.total || 0} hint={`${k.offerPipelineSummary?.awaiting || 0} awaiting`} href="/ta/joinings" />
+                    <Kpi label="Feedback pending" value={k.pendingFeedbackCount} hint={`${k.feedbackBreakdown?.clientCount || 0} client · ${k.feedbackBreakdown?.interviewerCount || 0} team`} tone={k.pendingFeedbackCount > 0 ? "warn" : undefined} href="/ta/interviews" />
+                    <Kpi label="Urgent positions" value={k.urgentRequisitionsCount} hint="Critical mandates" tone={k.urgentRequisitionsCount > 0 ? "bad" : undefined} href="/ta/requisitions" />
+                    <Kpi label="Aging positions" value={k.agingRequisitionsCount} hint="Open > 20 days" tone={k.agingRequisitionsCount > 0 ? "warn" : undefined} href="/ta/requisitions" />
+                    {isLead && <Kpi label="Team capacity" value={`${teamMembers.length} TAs`} hint="Active recruiters" href="/ta/tasks" />}
+                </KpiRow>
             </div>
 
-            {/* Secondary KPIs: SLA, Offers, Feedback */}
-            <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-3">SLA Health & Pipeline Throughput</p>
-                <div className={`grid grid-cols-2 md:grid-cols-3 ${isLead ? "lg:grid-cols-6" : "lg:grid-cols-5"} gap-3.5`}>
-                    <StatCard
-                        label="SLA Risk"
-                        value={k.slaRiskCount}
-                        icon={ShieldAlert}
-                        tone={k.slaRiskCount > 0 ? "red" : "emerald"}
-                        hint={`${k.slaRiskBreakdown?.requisitions || 0} reqs · ${k.slaRiskBreakdown?.candidates || 0} cands`}
-                        href="/ta/requisitions"
-                    />
-                    <StatCard
-                        label="Offer Pipeline"
-                        value={k.offerPipelineSummary?.total || 0}
-                        icon={TrendingUp}
-                        tone="emerald"
-                        hint={`${k.offerPipelineSummary?.awaiting || 0} awaiting acceptance`}
-                        href="/ta/pipeline"
-                    />
-                    <StatCard
-                        label="Feedback Pending"
-                        value={k.pendingFeedbackCount}
-                        icon={Clock}
-                        tone={k.pendingFeedbackCount > 0 ? "amber" : "emerald"}
-                        hint={`${k.feedbackBreakdown?.clientCount || 0} client · ${k.feedbackBreakdown?.interviewerCount || 0} team`}
-                        href="/ta/interviews"
-                    />
-                    <StatCard
-                        label="Urgent Positions"
-                        value={k.urgentRequisitionsCount}
-                        icon={AlertTriangle}
-                        tone="red"
-                        hint="P0 critical mandates"
-                        href="/ta/requisitions"
-                    />
-                    <StatCard
-                        label="Aging Positions"
-                        value={k.agingRequisitionsCount}
-                        icon={Building2}
-                        tone="amber"
-                        hint="Open > 20 days"
-                        href="/ta/requisitions"
-                    />
-                    {isLead && (
-                        <StatCard
-                            label="Team Capacity"
-                            value={`${teamMembers.length} TAs`}
-                            icon={Users}
-                            tone="primary"
-                            hint="Active recruiters & partners"
-                            href="/ta/tasks"
-                        />
-                    )}
+            {/* Sections — grouped into tabs so the overview stays short; nothing is hidden for good */}
+            <div className="sticky z-20 -mx-1 px-1 py-2 bg-background/95 backdrop-blur-sm" style={{ top: "var(--topbar-height)" }}>
+                <div className="flex items-center gap-1 overflow-x-auto bg-white border border-neutral-200/80 rounded-2xl p-1 shadow-xs">
+                    {tabs.map((t) => (
+                        <button key={t.id} type="button" onClick={() => setTab(t.id)} aria-pressed={tab === t.id}
+                            className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition-colors ${tab === t.id ? "bg-primary text-white shadow-xs" : "text-neutral-600 hover:bg-neutral-100"}`}>
+                            {t.label}
+                            {t.count ? <span className={`text-[10px] font-black px-1.5 rounded-md ${tab === t.id ? "bg-white/20 text-white" : t.alert ? "bg-red-100 text-red-700" : "bg-neutral-100 text-neutral-600"}`}>{t.count}</span> : null}
+                        </button>
+                    ))}
                 </div>
             </div>
-
+            {tab === "today" && (<>
             <MyWork />
 
             <FollowUpsPanel canSeeTeam={user?.role === "SUPER_ADMIN" || user?.role === "TA_MANAGER"} />
@@ -557,7 +485,9 @@ export default function TaCommandCenterDashboard() {
                     </div>
                 </div>
             )}
+            </>)}
 
+            {tab === "pipeline" && (<>
             {/* 6. Recruitment Funnel Chart & Pipeline Aging Breakdown */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <SectionCard
@@ -625,7 +555,9 @@ export default function TaCommandCenterDashboard() {
                     </Link>
                 </SectionCard>
             </div>
+            </>)}
 
+            {tab === "interviews" && (<>
             {/* 7. Today's Interviews Timeline & Pending Feedback Queue */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 {/* Left: Today's Timeline (7 cols) */}
@@ -767,9 +699,10 @@ export default function TaCommandCenterDashboard() {
                     )}
                 </SectionCard>
             </div>
+            </>)}
 
             {/* 8. Recruiter Performance & Workload Matrix — team leads only */}
-            {isLead && (
+            {tab === "team" && isLead && (
             <SectionCard
                 title="Recruiter Performance & Capacity Matrix"
                 subtitle="Factual throughput across All Openings, Pipeline, Interviews, Tasks and Overdue items"
@@ -824,6 +757,7 @@ export default function TaCommandCenterDashboard() {
             </SectionCard>
             )}
 
+            {tab === "jobs" && (<>
             {/* 9. Priority Positions & Requisitions Command (Search + Tabs like SuperAdmin) */}
             <SectionCard
                 title="Priority Jobs & SLA Countdown"
@@ -937,7 +871,9 @@ export default function TaCommandCenterDashboard() {
                     </div>
                 </div>
             </SectionCard>
+            </>)}
 
+            {tab === "joinings" && (<>
             {/* 10. Sourcing Channels & Upcoming Joining Tracker */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <SectionCard
@@ -1000,7 +936,9 @@ export default function TaCommandCenterDashboard() {
                     )}
                 </SectionCard>
             </div>
+            </>)}
 
+            {tab === "activity" && (<>
             {/* 11. Recent Recruitment Activity Audit Feed */}
             <SectionCard
                 title="Recent Recruitment Activity Trail"
@@ -1023,6 +961,7 @@ export default function TaCommandCenterDashboard() {
                     })}
                 </div>
             </SectionCard>
+            </>)}
 
             {/* ─── ADD CANDIDATE — same flow as everywhere in the TA portal ─── */}
             {addCandOpen && <AddCandidateDialog jobChoice="optional" onClose={() => setAddCandOpen(false)} />}
