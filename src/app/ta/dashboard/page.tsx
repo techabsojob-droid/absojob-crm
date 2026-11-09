@@ -20,10 +20,13 @@ import { MyWork } from "@/components/tasks/TaskWidgets";
 import FollowUpsPanel from "@/components/ta/FollowUpsPanel";
 import AddCandidateDialog from "@/components/ta/AddCandidateDialog";
 import { useAuth } from "@/lib/auth";
+import { canCreateRequisition } from "@/lib/access";
 
 export default function TaCommandCenterDashboard() {
     const qc = useQueryClient();
     const { user } = useAuth();
+    // Team capacity / workload is a team-lead view; recruiters only see their own work
+    const isLead = user?.role === "SUPER_ADMIN" || user?.role === "TA_MANAGER";
 
     // Global Filters State
     const [period, setPeriod] = useState<string>("THIS_MONTH");
@@ -250,12 +253,14 @@ export default function TaCommandCenterDashboard() {
                     </button>
 
                     {/* Action buttons */}
-                    <Link
-                        href="/ta/requisitions/new"
-                        className="px-3.5 py-2 bg-primary text-white hover:bg-primary-dark rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors"
-                    >
-                        <Plus size={13} /> Requisition
-                    </Link>
+                    {canCreateRequisition(user?.role) && (
+                        <Link
+                            href="/ta/requisitions/new"
+                            className="px-3.5 py-2 bg-primary text-white hover:bg-primary-dark rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors"
+                        >
+                            <Plus size={13} /> Requisition
+                        </Link>
+                    )}
                     <button
                         onClick={() => setAddCandOpen(true)}
                         className="px-3 py-2 bg-white border border-neutral-200 text-neutral-700 hover:bg-neutral-50 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
@@ -445,7 +450,7 @@ export default function TaCommandCenterDashboard() {
             {/* Secondary KPIs: SLA, Offers, Feedback */}
             <div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-3">SLA Health & Pipeline Throughput</p>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
+                <div className={`grid grid-cols-2 md:grid-cols-3 ${isLead ? "lg:grid-cols-6" : "lg:grid-cols-5"} gap-3.5`}>
                     <StatCard
                         label="SLA Risk"
                         value={k.slaRiskCount}
@@ -486,14 +491,16 @@ export default function TaCommandCenterDashboard() {
                         hint="Open > 20 days"
                         href="/ta/requisitions"
                     />
-                    <StatCard
-                        label="Team Capacity"
-                        value={`${teamMembers.length} TAs`}
-                        icon={Users}
-                        tone="primary"
-                        hint="Active recruiters & partners"
-                        href="/ta/tasks"
-                    />
+                    {isLead && (
+                        <StatCard
+                            label="Team Capacity"
+                            value={`${teamMembers.length} TAs`}
+                            icon={Users}
+                            tone="primary"
+                            hint="Active recruiters & partners"
+                            href="/ta/tasks"
+                        />
+                    )}
                 </div>
             </div>
 
@@ -761,10 +768,11 @@ export default function TaCommandCenterDashboard() {
                 </SectionCard>
             </div>
 
-            {/* 8. Recruiter Performance & Workload Matrix (Standard Table as SuperAdmin) */}
+            {/* 8. Recruiter Performance & Workload Matrix — team leads only */}
+            {isLead && (
             <SectionCard
                 title="Recruiter Performance & Capacity Matrix"
-                subtitle="Factual throughput across Job Listing, Pipeline, Interviews, Tasks and Overdue items"
+                subtitle="Factual throughput across All Openings, Pipeline, Interviews, Tasks and Overdue items"
                 action={
                     <Link href="/ta/tasks" className="text-xs font-bold text-primary hover:underline flex items-center gap-1">
                         Task Delegation <ArrowRight size={12} />
@@ -814,6 +822,7 @@ export default function TaCommandCenterDashboard() {
                     </table>
                 </div>
             </SectionCard>
+            )}
 
             {/* 9. Priority Positions & Requisitions Command (Search + Tabs like SuperAdmin) */}
             <SectionCard
@@ -821,7 +830,7 @@ export default function TaCommandCenterDashboard() {
                 subtitle="Monitors open requisitions, candidate pipeline coverage, and SLA target dates"
                 action={
                     <Link href="/ta/requisitions" className="text-xs font-bold text-primary hover:underline flex items-center gap-1">
-                        Job Listing <ArrowRight size={12} />
+                        All Openings <ArrowRight size={12} />
                     </Link>
                 }
             >

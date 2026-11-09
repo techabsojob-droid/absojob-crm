@@ -15,6 +15,8 @@ import { toast } from "sonner";
 import { PageHeader, StatCard, Badge, SectionCard, ModalShell, EmptyState, inr } from "@/components/shared/ui";
 import { SkeletonPulse } from "@/components/shared/UIStates";
 import { RelatedTasks } from "@/components/tasks/TaskWidgets";
+import { JobOverview, JobIconButton } from "@/components/shared/JobOverview";
+import { ExternalLink as ExternalLinkIcon, Link2 as Link2Icon } from "lucide-react";
 
 export default function Job360Page({ params }: { params: Promise<{ id: string }> }) {
     const { id: jobId } = use(params);
@@ -391,6 +393,13 @@ export default function Job360Page({ params }: { params: Promise<{ id: string }>
             </div>
 
             {/* TAB 1: OVERVIEW */}
+            {activeTab === "overview" && data?.overview && (
+                <JobOverview job={data.overview} onApplicationsClick={() => setActiveTab("candidates")}
+                    actions={<>
+                        <JobIconButton label="Open in recruitment workspace" href={`/ta/requisitions/${jobId}`}><ExternalLinkIcon size={17} /></JobIconButton>
+                        <JobIconButton label="Copy job link" onClick={() => { navigator.clipboard?.writeText(window.location.href).then(() => toast.success("Job link copied"), () => toast.error("Couldn't copy the link")); }}><Link2Icon size={17} /></JobIconButton>
+                    </>} />
+            )}
             {activeTab === "overview" && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2 space-y-6">

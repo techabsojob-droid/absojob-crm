@@ -323,7 +323,7 @@ export default function RequisitionWizard({ jobId, duplicateOf }: { jobId?: stri
             <div className="flex items-start justify-between gap-4 mb-6">
                 <div>
                     <Link href={editing ? `/ta/requisitions/${jobId}` : "/ta/requisitions"} onClick={(e) => { if (dirty && !window.confirm("Discard your unsaved changes?")) e.preventDefault(); else savedOk.current = true; }} className="inline-flex items-center gap-1 text-xs font-semibold text-neutral-500 hover:text-neutral-800">
-                        <ArrowLeft size={13} /> {editing ? "Back to requisition" : "Job Listing"}
+                        <ArrowLeft size={13} /> {editing ? "Back to requisition" : "All Openings"}
                     </Link>
                     <h1 className="text-2xl font-bold text-neutral-900 mt-1">
                         {editing ? `Edit ${job?.requisitionCode ?? "requisition"}` : duplicateOf ? "Duplicate requisition" : "Create New Requisition"}

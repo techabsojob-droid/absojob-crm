@@ -131,6 +131,8 @@ export async function POST(request: Request) {
         if (me.role === "AGENT") return NextResponse.json({ error: "Partners raise requisitions through referrals" }, { status: 403 });
         return createRequisition(me, body);
     }
+    // Partners still raise requests (they go to approval); recruiters don't create requisitions
+    if (me.role === "TA_RECRUITER") return NextResponse.json({ error: "Only a TA Manager or Super Admin can create requisitions" }, { status: 403 });
     if (!body.clientId || !body.title) {
         return NextResponse.json({ error: "clientId and title are required" }, { status: 400 });
     }

@@ -2,7 +2,7 @@
 // The palette only shows entries for workspaces the signed-in role can open.
 import type { Workspace } from "@/lib/access";
 
-export interface Command { label: string; href: string; keywords?: string; kind: "page" | "action"; audience?: "AGENT" | "STAFF" }
+export interface Command { label: string; href: string; keywords?: string; kind: "page" | "action"; audience?: "AGENT" | "STAFF"; managerOnly?: boolean }
 
 const page = (label: string, href: string, keywords = ""): Command => ({ label, href, keywords, kind: "page" });
 const action = (label: string, href: string, keywords = ""): Command => ({ label, href, keywords, kind: "action" });
@@ -31,9 +31,9 @@ export const COMMANDS: Record<Workspace, Command[]> = {
     TA: [
         action("Create task", "/ta/tasks?create=1", "new todo ticket follow up"),
         action("Add candidate", "/ta/candidates", "new profile resume upload"),
-        action("Raise requisition", "/ta/requisitions/new", "new job opening create requisition"),
+        { ...action("Raise requisition", "/ta/requisitions/new", "new job opening create requisition"), managerOnly: true },
         page("TA overview", "/ta/dashboard", "home"),
-        page("Job Listing", "/ta/requisitions", "requisitions jobs openings"),
+        page("All Openings", "/ta/requisitions", "job listing requisitions jobs openings vacancies"),
         page("Calls", "/ta/calls", "call log phone screening feedback"),
         page("Pipeline", "/ta/pipeline", "kanban stages board"),
         page("Candidates", "/ta/candidates", "talent"),

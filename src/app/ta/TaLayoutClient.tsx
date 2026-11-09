@@ -6,32 +6,31 @@ import TopBar from "@/components/shared/TopBar";
 import {
     LayoutDashboard, Briefcase, GitBranch, Users, CalendarClock, CheckSquare,
     BarChart3, UserPlus, ShieldCheck, Building2, CalendarCheck, Target, MessageSquareText, Handshake, PhoneCall,
-    FilePlus2, Layers, Clock, Gauge, Crosshair
+    FilePlus2, Clock, Gauge, Crosshair
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
-const MANAGER_ONLY = new Set(["/ta/approvals", "/ta/reports", "/ta/partners"]);
+const MANAGER_ONLY = new Set(["/ta/approvals", "/ta/reports", "/ta/partners", "/ta/requisitions/new"]);
 
 const TA_NAV_GROUPS: NavGroup[] = [
     {
         groupTitle: "WORKSPACE",
         items: [
             { label: "Overview", icon: LayoutDashboard, href: "/ta/dashboard", tooltipHint: "TA Command Center" },
+            { label: "Tasks", icon: CheckSquare, href: "/ta/tasks", badgeKey: "tasks", badgeTone: "red", tooltipHint: "Tasks due today or overdue" },
         ],
     },
     {
         groupTitle: "RECRUITMENT",
         items: [
             { label: "Create Requisition", icon: FilePlus2, href: "/ta/requisitions/new", tooltipHint: "Raise a new job requisition (save as draft or submit)" },
-            { label: "Job Listing", icon: Briefcase, href: "/ta/requisitions", badgeKey: "requisitions", badgeTone: "amber", tooltipHint: "Urgent requisitions needing attention" },
-            { label: "All Openings", icon: Layers, href: "/ta/openings", tooltipHint: "Every opening you can work on, filterable by industry, client, location and more" },
+            { label: "All Openings", icon: Briefcase, href: "/ta/requisitions", badgeKey: "requisitions", badgeTone: "amber", tooltipHint: "Every opening you can work on — filter by industry, client, location, experience, status and more" },
             { label: "Pipeline", icon: GitBranch, href: "/ta/pipeline", badgeKey: "pipeline", badgeTone: "neutral", tooltipHint: "Candidates requiring next action" },
             { label: "Candidates", icon: Users, href: "/ta/candidates", badgeKey: "candidates", badgeTone: "emerald", tooltipHint: "Total talent pool" },
             { label: "Calls", icon: PhoneCall, href: "/ta/calls", tooltipHint: "Log calls with feedback and review call history" },
             { label: "Interviews", icon: CalendarClock, href: "/ta/interviews", badgeKey: "interviews", badgeTone: "blue", tooltipHint: "Interviews scheduled today" },
             { label: "Offers & Joinings", icon: CalendarCheck, href: "/ta/joinings", tooltipHint: "Offers out, joining dates and dropout risk" },
             { label: "Referrals", icon: UserPlus, href: "/ta/referrals", tooltipHint: "Agent & employee referrals to review" },
-            { label: "Tasks", icon: CheckSquare, href: "/ta/tasks", badgeKey: "tasks", badgeTone: "red", tooltipHint: "Tasks due today or overdue" },
         ],
     },
     {

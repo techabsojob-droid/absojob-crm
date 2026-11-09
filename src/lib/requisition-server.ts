@@ -6,6 +6,7 @@ import { canCreateForClient, createApproval, isRecruitmentManager, notifyJobAssi
 import { creditStatusOf } from "@/lib/mock/fin/receivables";
 import { createJobInDb, getJobsFromDb, logAudit, updateJobInDb } from "@/lib/supabase/db";
 import { nextRequisitionCode } from "@/lib/fit";
+import { canCreateRequisition } from "@/lib/access";
 import { rememberLocality } from "@/lib/geo/india";
 import { approvalModeOf, findDuplicate, parseRequisition } from "@/lib/requisition";
 
@@ -46,6 +47,7 @@ function assignmentRecords(primaryId: string | null | undefined, secondary: stri
 
 // ── Create ──
 export async function createRequisition(me: User, body: Record<string, unknown>) {
+    if (!canCreateRequisition(me.role)) return NextResponse.json({ error: "Only a TA Manager or Super Admin can create requisitions" }, { status: 403 });
     const intent: WizardIntent = body.intent === "draft" ? "draft" : "submit";
     const manager = isRecruitmentManager(me);
     const { errors, warnings, values: v, location } = parseRequisition(body, { me, manager, strict: intent !== "draft" });
@@ -143,6 +145,7 @@ export async function updateRequisition(me: User, existing: JobRequisition, body
     if (CLOSED.includes(existing.status)) return NextResponse.json({ error: `This requisition is ${existing.status.toLowerCase()} and can no longer be edited` }, { status: 422 });
     if (intent === "draft" && existing.status !== "DRAFT") return NextResponse.json({ error: "Only a draft can be saved as a draft" }, { status: 422 });
     if (intent === "submit" && existing.status !== "DRAFT") return NextResponse.json({ error: "This requisition has already been submitted" }, { status: 422 });
+    if (intent === "submit" && !canCreateRequisition(me.role)) return NextResponse.json({ error: "Only a TA Manager or Super Admin can submit requisitions" }, { status: 403 });
 
     const { errors, warnings, values: v, location } = parseRequisition(body, { me, manager, strict: intent !== "draft", existing });
     if (Object.keys(errors).length) return invalid(errors);

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
 import { jobs, clients, referrals } from "@/lib/mock/data";
 import { referralIncentiveFor } from "@/lib/mock/pipeline";
+import { jobOverviewFor } from "@/lib/mock/job-overview";
 
 const OPEN = ["APPROVED", "SOURCING", "SCREENING", "CLIENT_REVIEW", "INTERVIEWING", "OFFER_STAGE"];
 
@@ -41,6 +42,7 @@ export async function GET() {
             postedAt: j.createdAt,
             incentiveEstimate: referralIncentiveFor((j.salaryMinLpa + j.salaryMaxLpa) / 2),
             myReferrals: referrals.filter((r) => r.agentId === me.id && r.jobId === j.id).length,
+            overview: jobOverviewFor(j, { internal: false }),
         }))
         .sort((a, b) => ["URGENT", "HIGH", "MEDIUM", "LOW"].indexOf(a.priority) - ["URGENT", "HIGH", "MEDIUM", "LOW"].indexOf(b.priority) || +new Date(b.postedAt) - +new Date(a.postedAt));
     return NextResponse.json(list);

@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { workspacesFor, WORKSPACE_LABEL, type Workspace } from "@/lib/access";
 import { COMMANDS, type Command } from "@/lib/commands";
+import { canCreateRequisition } from "@/lib/access";
 import type { UserRole } from "@/lib/types";
 
 interface Hit { id: string; title: string; type: string; href: string }
@@ -69,7 +70,7 @@ export function CommandPalette({ open, onClose, role }: { open: boolean; onClose
         const spaces: Workspace[] = role ? workspacesFor(role) : [];
         const audience = role === "AGENT" ? "AGENT" : "STAFF";
         const commands = spaces.flatMap((ws) =>
-            COMMANDS[ws].filter((c) => !c.audience || c.audience === audience).map((c) => ({ c, ws })));
+            COMMANDS[ws].filter((c) => (!c.audience || c.audience === audience) && (!c.managerOnly || canCreateRequisition(role))).map((c) => ({ c, ws })));
         const toItem = ({ c, ws }: { c: Command; ws: Workspace }): Item => ({
             key: `${c.kind}:${c.href}`, label: c.label, sub: spaces.length > 1 ? WORKSPACE_LABEL[ws] : undefined, href: c.href,
             group: c.kind === "action" ? "Quick actions" : "Go to", icon: c.kind === "action" ? Zap : LayoutGrid,
