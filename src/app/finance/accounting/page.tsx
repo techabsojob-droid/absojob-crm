@@ -33,7 +33,7 @@ export default function AccountingPage() {
                 action={<div className="flex gap-2">
                     <a href={`/api/finance/accounting?export=tally&${qs}`} className={`${btn.ghost} inline-flex items-center gap-1`}><Download size={13} /> Tally XML</a>
                     <a href={`/api/finance/accounting?export=zoho&${qs}`} className={`${btn.ghost} inline-flex items-center gap-1`}><Download size={13} /> Zoho CSV</a>
-                    <button onClick={() => setJOpen(true)} className="px-4 py-2.5 rounded-xl bg-primary text-white font-bold text-xs flex items-center gap-2"><Plus size={15} /> Journal entry</button>
+                    <button onClick={() => setJOpen(true)} className="px-4 py-2.5 rounded-md bg-primary text-white font-medium text-xs flex items-center gap-2"><Plus size={15} /> Journal entry</button>
                 </div>} />
             <div className="flex flex-wrap items-center gap-2">
                 <Tabs tabs={[{ id: "trial", label: "Trial balance" }, { id: "pnl", label: "Profit & loss" }, { id: "balance", label: "Balance sheet" }, { id: "journal", label: "Day book" }, { id: "ledger", label: "Account ledger" }]} value={view} onChange={setView} />
@@ -92,7 +92,7 @@ export default function AccountingPage() {
                         </div>
                     ))}
                     <div className="flex justify-between items-center"><button type="button" onClick={() => setJ({ ...j, lines: [...j.lines, { account: "", debit: "", credit: "" }] })} className="text-xs font-bold text-primary">+ Line</button><span className={`text-xs font-bold ${Math.abs(dr - cr) < 0.005 ? "text-emerald-700" : "text-rose-600"}`}>Dr {money(dr)} · Cr {money(cr)}</span></div>
-                    <button disabled={post.isPending || Math.abs(dr - cr) >= 0.005 || dr === 0} className="w-full py-2.5 rounded-xl bg-primary text-white font-bold disabled:opacity-50">Post journal</button>
+                    <button disabled={post.isPending || Math.abs(dr - cr) >= 0.005 || dr === 0} className="w-full py-2.5 rounded-md bg-primary text-white font-medium disabled:opacity-50">Post journal</button>
                 </form>
             </ModalShell>
         </div>

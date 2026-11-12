@@ -119,7 +119,7 @@ export default function HREmployeeLifecyclePage() {
                         {activeTab === "PROMOTIONS" && (
                             <button
                                 onClick={() => setPromoModalOpen(true)}
-                                className="px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs transition-colors flex items-center gap-1.5 shadow-xs"
+                                className="px-4 py-2 rounded-md bg-primary hover:bg-primary/90 text-white font-medium text-xs transition-colors flex items-center gap-1.5 shadow-xs"
                             >
                                 <Plus size={15} /> Propose Promotion
                             </button>
@@ -127,7 +127,7 @@ export default function HREmployeeLifecyclePage() {
                         {activeTab === "TRANSFERS" && (
                             <button
                                 onClick={() => setTransferModalOpen(true)}
-                                className="px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs transition-colors flex items-center gap-1.5 shadow-xs"
+                                className="px-4 py-2 rounded-md bg-primary hover:bg-primary/90 text-white font-medium text-xs transition-colors flex items-center gap-1.5 shadow-xs"
                             >
                                 <Plus size={15} /> Request Transfer
                             </button>
@@ -135,7 +135,7 @@ export default function HREmployeeLifecyclePage() {
                         {activeTab === "REVISIONS" && (
                             <button
                                 onClick={() => setRevisionModalOpen(true)}
-                                className="px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs transition-colors flex items-center gap-1.5 shadow-xs"
+                                className="px-4 py-2 rounded-md bg-primary hover:bg-primary/90 text-white font-medium text-xs transition-colors flex items-center gap-1.5 shadow-xs"
                             >
                                 <Plus size={15} /> Propose Revision
                             </button>
@@ -321,7 +321,7 @@ export default function HREmployeeLifecyclePage() {
                                             {p.status === "PENDING" && (
                                                 <button
                                                     onClick={() => patchMutation.mutate({ kind: "PROMOTION", id: p.id, action: "APPLY" })}
-                                                    className="px-3 py-1 rounded-lg bg-primary text-white font-bold text-xs hover:bg-primary/90"
+                                                    className="px-3 py-1 rounded-md bg-primary text-white font-medium text-xs hover:bg-primary/90"
                                                 >
                                                     Approve & Apply
                                                 </button>
@@ -428,7 +428,7 @@ export default function HREmployeeLifecyclePage() {
 
             {/* Promotion Modal */}
             {promoModalOpen && (
-                <div className="fixed inset-0 z-50 bg-neutral-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-50 bg-navy-deep/40 backdrop-blur-xs flex items-center justify-center p-4">
                     <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-neutral-100 p-6 space-y-4 animate-scale-in">
                         <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
                             <h3 className="font-bold text-base text-neutral-900">Propose Employee Promotion</h3>
@@ -513,7 +513,7 @@ export default function HREmployeeLifecyclePage() {
                                         reason,
                                     });
                                 }}
-                                className="px-5 py-2 rounded-xl bg-primary text-white text-sm font-bold shadow-xs hover:bg-primary/90"
+                                className="px-5 py-2 rounded-md bg-primary text-white text-sm font-medium shadow-xs hover:bg-primary/90"
                             >
                                 Submit Proposal
                             </button>
@@ -524,7 +524,7 @@ export default function HREmployeeLifecyclePage() {
 
             {/* Transfer Modal */}
             {transferModalOpen && (
-                <div className="fixed inset-0 z-50 bg-neutral-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-50 bg-navy-deep/40 backdrop-blur-xs flex items-center justify-center p-4">
                     <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-neutral-100 p-6 space-y-4 animate-scale-in">
                         <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
                             <h3 className="font-bold text-base text-neutral-900">Request Employee Transfer</h3>
@@ -603,7 +603,7 @@ export default function HREmployeeLifecyclePage() {
                                         reason,
                                     });
                                 }}
-                                className="px-5 py-2 rounded-xl bg-primary text-white text-sm font-bold shadow-xs hover:bg-primary/90"
+                                className="px-5 py-2 rounded-md bg-primary text-white text-sm font-medium shadow-xs hover:bg-primary/90"
                             >
                                 Submit Transfer
                             </button>

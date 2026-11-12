@@ -79,7 +79,7 @@ export default function HRDocumentsPage() {
                 title="HR Document & Compliance Vault"
                 subtitle="Manage employee identification files, offer letters, employment contracts, and company policies."
                 action={
-                    <button onClick={() => setAddOpen(true)} className="px-4 py-2.5 rounded-xl bg-primary text-white font-bold text-xs flex items-center gap-2">
+                    <button onClick={() => setAddOpen(true)} className="px-4 py-2.5 rounded-md bg-primary text-white font-medium text-xs flex items-center gap-2">
                         <Plus size={15} /> Add Document
                     </button>
                 }
@@ -230,7 +230,7 @@ export default function HRDocumentsPage() {
                     <label className="block text-xs font-bold text-neutral-500">Expiry date (optional)</label>
                     <input type="date" value={form.expiryDate} onChange={(e) => setForm({ ...form, expiryDate: e.target.value })} className={inputCls} />
                     <p className="text-[11px] text-neutral-400">Documents added by HR are verified immediately and the employee is notified.</p>
-                    <button disabled={mutate.isPending} className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">Save Document</button>
+                    <button disabled={mutate.isPending} className="w-full py-2.5 rounded-md bg-primary text-white text-sm font-medium disabled:opacity-50">Save Document</button>
                 </form>
             </ModalShell>
         </div>

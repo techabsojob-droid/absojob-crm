@@ -99,7 +99,7 @@ export function RelatedTasks({ relatedType, relatedId, recordName }: { relatedTy
                     <h3 className="text-sm font-bold text-neutral-900">Linked tasks</h3>
                     <p className="text-[11px] text-neutral-500">{tasks.length ? `${open} open of ${tasks.length}` : `Track follow-ups${recordName ? ` for ${recordName}` : ""} as tasks`}</p>
                 </div>
-                <button onClick={() => setCreating(true)} disabled={!meta} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-bold bg-primary text-white hover:bg-primary/95 disabled:opacity-60"><Plus size={13} /> New task</button>
+                <button onClick={() => setCreating(true)} disabled={!meta} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-[11px] font-medium bg-primary text-white hover:bg-primary/95 disabled:opacity-60"><Plus size={13} /> New task</button>
             </div>
             <div className="px-2 pb-3">
                 {isLoading && <p className="px-3 py-4 text-xs text-neutral-400">Loading…</p>}

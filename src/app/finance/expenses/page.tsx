@@ -26,7 +26,7 @@ export default function ExpensesPage() {
 
     return (
         <div className="space-y-6">
-            <PageHeader title="Expenses & Reimbursements" subtitle="Employee claims (manager → Finance) and company bills paid directly. Policy limits, GST input credit and client re-billing." action={<button onClick={() => setOpen(true)} className="px-4 py-2.5 rounded-xl bg-primary text-white font-bold text-xs flex items-center gap-2"><Plus size={15} /> Record company expense</button>} />
+            <PageHeader title="Expenses & Reimbursements" subtitle="Employee claims (manager → Finance) and company bills paid directly. Policy limits, GST input credit and client re-billing." action={<button onClick={() => setOpen(true)} className="px-4 py-2.5 rounded-md bg-primary text-white font-medium text-xs flex items-center gap-2"><Plus size={15} /> Record company expense</button>} />
             <div className="flex gap-1.5">{["PENDING_MANAGER", "PENDING", "APPROVED", "PAID", "REJECTED", "ALL"].map((s) => <button key={s} onClick={() => setStatus(s)} className={`px-3 py-1.5 rounded-xl text-xs font-bold ${status === s ? "bg-primary text-white" : "bg-neutral-100 text-neutral-600"}`}>{s === "PENDING_MANAGER" ? "WITH MANAGER" : s}</button>)}</div>
             <SectionCard title={`${data.length} expense(s) · ${money(data.reduce((s, e) => s + e.amount, 0))}`}>
                 {data.length === 0 ? <EmptyState icon={CreditCard} message="Nothing here." /> : (
@@ -69,7 +69,7 @@ export default function ExpensesPage() {
                     <label className="col-span-2 flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={form.billable} onChange={(e) => setForm({ ...form, billable: e.target.checked })} /> Re-bill to client</label>
                     {form.billable && <select required value={form.clientId} onChange={(e) => setForm({ ...form, clientId: e.target.value })} className={`${inputCls} col-span-2`}><option value="">Client</option>{clients.map((c) => <option key={c.id} value={c.id}>{c.companyName}</option>)}</select>}
                     <p className="col-span-2 text-[11px] text-neutral-400">Another Finance admin or the Super Admin approves it. Vendor invoices with credit terms belong in Vendors & Bills.</p>
-                    <button disabled={add.isPending} className="col-span-2 py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">Save</button>
+                    <button disabled={add.isPending} className="col-span-2 py-2.5 rounded-md bg-primary text-white text-sm font-medium disabled:opacity-50">Save</button>
                 </form>
             </ModalShell>
         </div>

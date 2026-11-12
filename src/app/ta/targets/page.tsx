@@ -181,7 +181,7 @@ export default function TargetsPage() {
                                 <input type="number" min="0" step="1" value={edit.vals[f.key]} onChange={(e) => setEdit({ ...edit, vals: { ...edit.vals, [f.key]: e.target.value } })} className={inputCls} />
                             </label>
                         ))}
-                        <button disabled={save.isPending} className="w-full py-2.5 rounded-xl bg-primary text-white font-bold text-sm disabled:opacity-50">{save.isPending ? "Saving…" : "Save target"}</button>
+                        <button disabled={save.isPending} className="w-full py-2.5 rounded-md bg-primary text-white font-medium text-sm disabled:opacity-50">{save.isPending ? "Saving…" : "Save target"}</button>
                     </form>
                 </ModalShell>
             )}

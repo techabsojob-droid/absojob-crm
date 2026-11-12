@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Eye, EyeOff, Briefcase, Lock } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { roleHome } from "@/lib/types";
 
@@ -48,118 +48,66 @@ export default function LoginPage() {
         }
     };
 
+    const field = "w-full h-10 px-3 rounded-md border border-neutral-300 bg-white text-[14px] text-neutral-800 outline-none focus:border-navy placeholder:text-neutral-400";
     return (
-        <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2 bg-neutral-50 animate-fade-in">
-
-            {/* Left: Branding */}
-            <div className="hidden lg:flex flex-col justify-between p-12 relative overflow-hidden bg-primary text-white">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.08),transparent_50%),radial-gradient(circle_at_80%_80%,rgba(16,185,129,0.15),transparent_50%)]" />
-
-                <div className="relative z-10">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center">
-                            <Briefcase className="text-primary" size={20} />
-                        </div>
-                        <span className="text-2xl font-bold tracking-tight">Abso<span className="text-white/70">Job</span></span>
-                    </div>
+        <div className="min-h-screen grid grid-cols-1 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] bg-background">
+            {/* Brand panel */}
+            <aside className="hidden lg:flex flex-col justify-between bg-navy text-white px-14 py-12">
+                <div className="flex items-center gap-3">
+                    <span className="w-9 h-9 rounded-md bg-accent flex items-center justify-center text-[14px] font-bold">AJ</span>
+                    <span className="text-[18px] font-semibold tracking-tight">AbsoJob</span>
                 </div>
-
-                <div className="relative z-10 max-w-lg">
-                    <h1 className="text-5xl font-bold leading-tight mb-6">Hire Faster.<br />Place Smarter.</h1>
-                    <p className="text-lg text-white/80 leading-relaxed">
-                        The recruitment operating system for staffing teams — requisitions, pipelines, interviews & referral incentives, all in one place.
-                    </p>
-                    <div className="mt-8 flex gap-8 text-sm">
-                        {[["3 Portals", "Admin · TA · Partners"], ["End-to-end", "Sourcing → Joining"], ["Transparent", "Incentive ledger"]].map(([t, s]) => (
-                            <div key={t}>
-                                <p className="font-extrabold">{t}</p>
-                                <p className="text-xs text-white/60 mt-0.5">{s}</p>
-                            </div>
+                <div className="max-w-md">
+                    <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[#94A6C3] mb-4">Recruitment CRM</p>
+                    <h1 className="text-[34px] leading-[1.15] font-semibold tracking-tight text-white">Every requisition, candidate and placement in one system.</h1>
+                    <ul className="mt-8 space-y-3 text-[14px] text-[#BDC9DC]">
+                        {["Requisitions, pipeline and interviews for client hiring", "Team attendance, targets and recruiter KPIs", "HR, payroll and finance on the same records"].map((t) => (
+                            <li key={t} className="flex gap-3"><span className="mt-2 w-1.5 h-1.5 rounded-full bg-accent shrink-0" />{t}</li>
                         ))}
-                    </div>
+                    </ul>
                 </div>
+                <p className="text-[12px] text-[#6A82A6]">© {new Date().getFullYear()} AbsoJob</p>
+            </aside>
 
-                <div className="relative z-10 flex gap-4 text-xs font-medium text-white/60">
-                    <span>© 2026 AbsoJob Inc.</span>
-                    <span>Privacy Policy</span>
-                    <span>Terms of Service</span>
-                </div>
-            </div>
-
-            {/* Right: Login Form */}
-            <div className="flex flex-col justify-center items-center p-6 lg:p-24">
-                <div className="w-full max-w-md space-y-8">
-
-                    <div className="text-center lg:text-left">
-                        <div className="lg:hidden flex justify-center mb-6">
-                            <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center">
-                                <Briefcase className="text-white" size={24} />
-                            </div>
-                        </div>
-                        <h2 className="text-3xl font-bold text-neutral-900">Welcome Back</h2>
-                        <p className="text-neutral-500 mt-2">Sign in to your AbsoJob workspace</p>
+            {/* Sign-in */}
+            <main className="flex flex-col justify-center items-center px-5 py-12">
+                <div className="w-full max-w-[380px]">
+                    <div className="lg:hidden flex items-center gap-2.5 mb-8">
+                        <span className="w-8 h-8 rounded-md bg-accent text-white flex items-center justify-center text-[13px] font-bold">AJ</span>
+                        <span className="text-[17px] font-semibold text-navy">AbsoJob</span>
                     </div>
+                    <h2 className="text-[24px] font-semibold text-neutral-900 tracking-tight">Sign in</h2>
+                    <p className="text-[14px] text-neutral-500 mt-1">Use your AbsoJob work account.</p>
 
-                    <form onSubmit={handleLogin} className="space-y-6">
+                    <form onSubmit={handleLogin} className="mt-7 space-y-4" noValidate={false}>
                         {error && (
-                            <div className="p-3 bg-red-50 text-red-600 text-sm rounded-xl font-medium text-center animate-fade-in">
-                                {error}
-                            </div>
+                            <div role="alert" className="px-3 py-2.5 rounded-md border border-red-200 bg-danger-light text-[13px] text-red-700">{error}</div>
                         )}
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-2">Email Address</label>
-                                <input
-                                    type="email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full px-4 py-3.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm font-medium focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none placeholder:text-neutral-400"
-                                    placeholder="name@absojob.com"
-                                    required
-                                />
-                            </div>
+                        <div>
+                            <label htmlFor="email" className="block text-[13px] font-medium text-neutral-700 mb-1.5">Work email</label>
+                            <input id="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={field} placeholder="name@company.com" required />
+                        </div>
+                        <div>
+                            <label htmlFor="password" className="block text-[13px] font-medium text-neutral-700 mb-1.5">Password</label>
                             <div className="relative">
-                                <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-2">Password</label>
-                                <input
-                                    type={showPassword ? "text" : "password"}
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full px-4 py-3.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm font-medium focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none placeholder:text-neutral-400"
-                                    placeholder="••••••••"
-                                    required
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-4 top-[38px] text-neutral-400 hover:text-neutral-600"
-                                >
-                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                <input id="password" type={showPassword ? "text" : "password"} autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className={`${field} pr-10`} placeholder="Enter your password" required />
+                                <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? "Hide password" : "Show password"}
+                                    className="absolute right-1 top-1 h-8 w-8 rounded flex items-center justify-center text-neutral-400 hover:text-neutral-700">
+                                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                                 </button>
                             </div>
                         </div>
-
-                        <button
-                            type="submit"
-                            disabled={isLoading}
-                            className="w-full py-4 bg-primary text-white rounded-xl text-sm font-bold shadow-lg shadow-primary/25 hover:bg-primary-dark hover:shadow-xl hover:shadow-primary/30 transition-all transform active:scale-[0.99] flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
-                        >
-                            {isLoading ? (
-                                <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            ) : (
-                                <>
-                                    <Lock size={16} /> Sign In
-                                </>
-                            )}
+                        <button type="submit" disabled={isLoading}
+                            className="w-full h-10 rounded-md bg-accent text-white text-[14px] font-medium hover:bg-accent-dark flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed">
+                            {isLoading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : "Sign in"}
                         </button>
                     </form>
 
-                    <p className="text-center text-sm text-neutral-500">
-                        Recruiter or placement agency? <a href="/register" className="font-bold text-primary hover:underline">Become a recruitment partner</a>
+                    <p className="mt-8 pt-6 border-t border-neutral-200 text-[13px] text-neutral-500">
+                        Recruiter or placement agency? <a href="/register" className="font-medium text-navy hover:underline">Apply to become a partner</a>
                     </p>
-
-
                 </div>
-            </div>
+            </main>
         </div>
     );
 }

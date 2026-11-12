@@ -19,7 +19,7 @@ const greeting = () => { const h = new Date().getHours(); return h < 12 ? "morni
 function KpiRow({ title, children }: { title: string; children: React.ReactNode }) {
     return (
         <div className="flex flex-col lg:flex-row lg:items-stretch">
-            <p className="lg:w-36 shrink-0 px-4 pt-3 lg:py-4 text-[10px] font-bold uppercase tracking-widest text-neutral-400 lg:border-r lg:border-neutral-100 flex items-center">{title}</p>
+            <p className="lg:w-36 shrink-0 px-4 pt-3 lg:py-4 text-[12px] font-semibold text-neutral-700 lg:border-r lg:border-neutral-100 flex items-center">{title}</p>
             <div className="flex-1 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6">{children}</div>
         </div>
     );
@@ -27,11 +27,11 @@ function KpiRow({ title, children }: { title: string; children: React.ReactNode 
 
 /** Compact, clickable KPI tile. Tone colours the number only; the label always names it. */
 function Kpi({ label, value, hint, href, tone }: { label: string; value: string | number; hint?: string; href: string; tone?: "good" | "warn" | "bad" }) {
-    const colour = tone === "bad" ? "text-red-600" : tone === "warn" ? "text-amber-600" : tone === "good" ? "text-emerald-700" : "text-neutral-900";
+    const colour = tone === "bad" ? "text-danger" : tone === "warn" ? "text-warning" : "text-neutral-900";
     return (
         <Link href={href} className="group px-4 py-3 hover:bg-neutral-50 transition-colors min-w-0">
             <p className="text-[11px] font-semibold text-neutral-500 truncate">{label}</p>
-            <p className={`text-xl font-extrabold tabular-nums leading-tight mt-0.5 ${colour}`}>{value}</p>
+            <p className={`text-[20px] font-semibold tabular-nums leading-tight mt-1 ${colour}`}>{value}</p>
             {hint && <p className="text-[10px] text-neutral-400 truncate group-hover:text-neutral-600">{hint}</p>}
         </Link>
     );
@@ -240,9 +240,9 @@ export default function TaCommandCenterDashboard() {
             {/* 1. Global Header & Controls (Matching SuperAdmin & HRMIS styling) */}
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-neutral-900 flex items-center gap-2.5">
+                    <h1 className="text-[22px] font-semibold text-neutral-900 flex items-center gap-2.5">
                         Good {greeting()}, {data.user?.name?.split(" ")[0] || "there"}
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />Live</span>
+                        <span className="inline-flex items-center gap-1.5 text-[11px] font-medium px-1.5 h-5 rounded bg-success-light text-emerald-700"><span className="w-1.5 h-1.5 rounded-full bg-success" />Live</span>
                     </h1>
                     <p className="text-sm text-neutral-500 mt-0.5">Your recruitment at a glance — today, pipeline, interviews, jobs and joinings.</p>
                 </div>
@@ -253,7 +253,7 @@ export default function TaCommandCenterDashboard() {
                     <button
                         onClick={() => refetch()}
                         disabled={isFetching}
-                        className="px-3 py-2 bg-white border border-neutral-200 text-neutral-700 hover:bg-neutral-50 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 shadow-xs"
+                        className="px-3 py-2 bg-white border border-neutral-200 text-neutral-700 hover:bg-neutral-50 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 shadow-xs"
                     >
                         <RefreshCw size={13} className={isFetching ? "animate-spin text-primary" : "text-neutral-400"} />
                         <span>Refresh</span>
@@ -263,20 +263,20 @@ export default function TaCommandCenterDashboard() {
                     {canCreateRequisition(user?.role) && (
                         <Link
                             href="/ta/requisitions/new"
-                            className="px-3.5 py-2 bg-primary text-white hover:bg-primary-dark rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors"
+                            className="px-3.5 py-2 bg-primary text-white hover:bg-primary-dark rounded-md text-xs font-medium flex items-center gap-1.5 shadow-sm transition-colors"
                         >
                             <Plus size={13} /> Requisition
                         </Link>
                     )}
                     <button
                         onClick={() => setAddCandOpen(true)}
-                        className="px-3 py-2 bg-white border border-neutral-200 text-neutral-700 hover:bg-neutral-50 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+                        className="px-3 py-2 bg-white border border-neutral-200 text-neutral-700 hover:bg-neutral-50 rounded-md text-xs font-medium flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
                     >
                         <Plus size={13} /> Candidate
                     </button>
                     <button
                         onClick={() => setScheduleInterviewOpen(true)}
-                        className="px-3 py-2 bg-white border border-neutral-200 text-neutral-700 hover:bg-neutral-50 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+                        className="px-3 py-2 bg-white border border-neutral-200 text-neutral-700 hover:bg-neutral-50 rounded-md text-xs font-medium flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
                     >
                         <CalendarClock size={13} /> Interview
                     </button>
@@ -284,34 +284,34 @@ export default function TaCommandCenterDashboard() {
             </div>
 
             {/* 2. Today's Operational Snapshot Pulse Bar (The signature black bar from SuperAdmin) */}
-            <div className="bg-neutral-900 text-white rounded-2xl px-5 py-3 shadow-sm flex flex-wrap items-center justify-between gap-4">
+            <div className="bg-navy text-white rounded-md px-5 py-3 shadow-sm flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-2.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <span className="text-xs font-black uppercase tracking-wider text-emerald-400">Today&apos;s Pulse</span>
+                    <span className="w-2 h-2 rounded-full bg-accent" />
+                    <span className="text-[13px] font-semibold text-white">Today</span>
                 </div>
                 <div className="flex items-center gap-6 sm:gap-8 flex-wrap text-xs">
                     <div>
-                        <span className="text-neutral-400 font-bold block text-[10px] uppercase">Interviews Today</span>
-                        <span className="text-lg font-black text-white">{k.interviewsToday}</span>
+                        <span className="text-[#94A6C3] font-medium block text-[11px]">Interviews Today</span>
+                        <span className="text-lg font-semibold text-white tabular-nums">{k.interviewsToday}</span>
                     </div>
                     <div>
-                        <span className="text-neutral-400 font-bold block text-[10px] uppercase">Pending Feedback</span>
-                        <span className="text-lg font-black text-amber-400">{k.pendingFeedbackCount}</span>
+                        <span className="text-[#94A6C3] font-medium block text-[11px]">Pending Feedback</span>
+                        <span className="text-lg font-semibold text-white tabular-nums">{k.pendingFeedbackCount}</span>
                     </div>
                     <div>
-                        <span className="text-neutral-400 font-bold block text-[10px] uppercase">Client Rounds</span>
-                        <span className="text-lg font-black text-blue-400">{k.clientRoundTodayCount}</span>
+                        <span className="text-[#94A6C3] font-medium block text-[11px]">Client Rounds</span>
+                        <span className="text-lg font-semibold text-white tabular-nums">{k.clientRoundTodayCount}</span>
                     </div>
                     <div>
-                        <span className="text-neutral-400 font-bold block text-[10px] uppercase">Tasks Due Today</span>
-                        <span className="text-lg font-black text-purple-400">{k.tasksDueToday}</span>
+                        <span className="text-[#94A6C3] font-medium block text-[11px]">Tasks Due Today</span>
+                        <span className="text-lg font-semibold text-white tabular-nums">{k.tasksDueToday}</span>
                     </div>
                     <div>
-                        <span className="text-neutral-400 font-bold block text-[10px] uppercase">SLA Escalations</span>
-                        <span className="text-lg font-black text-red-400">{k.slaRiskCount}</span>
+                        <span className="text-[#94A6C3] font-medium block text-[11px]">SLA Escalations</span>
+                        <span className={`text-lg font-semibold tabular-nums ${k.slaRiskCount > 0 ? "text-[#F2B5B5]" : "text-white"}`}>{k.slaRiskCount}</span>
                     </div>
                 </div>
-                <Link href="/ta/interviews" className="text-xs font-bold text-neutral-300 hover:text-white flex items-center gap-1 transition-colors">
+                <Link href="/ta/interviews" className="text-[13px] font-medium text-[#BDC9DC] hover:text-white flex items-center gap-1 transition-colors">
                     Interview Monitor <ChevronRight size={14} />
                 </Link>
             </div>
@@ -420,13 +420,14 @@ export default function TaCommandCenterDashboard() {
             </div>
 
             {/* Sections — grouped into tabs so the overview stays short; nothing is hidden for good */}
-            <div className="sticky z-20 -mx-1 px-1 py-2 bg-background/95 backdrop-blur-sm" style={{ top: "var(--topbar-height)" }}>
-                <div className="flex items-center gap-1 overflow-x-auto bg-white border border-neutral-200/80 rounded-2xl p-1 shadow-xs">
+            <div className="sticky z-20 bg-background pt-1" style={{ top: "var(--topbar-height)" }}>
+                <div role="tablist" className="flex items-center gap-1 overflow-x-auto no-scrollbar border-b border-neutral-200">
                     {tabs.map((t) => (
-                        <button key={t.id} type="button" onClick={() => setTab(t.id)} aria-pressed={tab === t.id}
-                            className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition-colors ${tab === t.id ? "bg-primary text-white shadow-xs" : "text-neutral-600 hover:bg-neutral-100"}`}>
+                        <button key={t.id} type="button" role="tab" onClick={() => setTab(t.id)} aria-selected={tab === t.id}
+                            className={`relative h-10 px-3 text-[13px] whitespace-nowrap flex items-center gap-1.5 transition-colors ${tab === t.id ? "text-navy font-semibold" : "text-neutral-500 hover:text-neutral-800"}`}>
                             {t.label}
-                            {t.count ? <span className={`text-[10px] font-black px-1.5 rounded-md ${tab === t.id ? "bg-white/20 text-white" : t.alert ? "bg-red-100 text-red-700" : "bg-neutral-100 text-neutral-600"}`}>{t.count}</span> : null}
+                            {t.count ? <span className={`min-w-5 h-5 px-1.5 rounded text-[11px] font-medium tabular-nums flex items-center justify-center ${t.alert ? "bg-danger-light text-red-700" : "bg-neutral-100 text-neutral-600"}`}>{t.count}</span> : null}
+                            {tab === t.id && <span className="absolute left-2 right-2 -bottom-px h-0.5 rounded-full bg-accent" />}
                         </button>
                     ))}
                 </div>
@@ -549,7 +550,7 @@ export default function TaCommandCenterDashboard() {
 
                     <Link
                         href="/ta/pipeline"
-                        className="mt-5 w-full py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                        className="mt-5 w-full py-2.5 bg-navy hover:bg-neutral-800 text-white rounded-md text-xs font-medium flex items-center justify-center gap-1.5 transition-colors shadow-xs"
                     >
                         View Stuck Candidates <ArrowRight size={13} />
                     </Link>
@@ -1081,7 +1082,7 @@ export default function TaCommandCenterDashboard() {
                         <button
                             type="submit"
                             disabled={scheduleInterviewMutation.isPending}
-                            className="px-5 py-2 rounded-xl bg-primary text-white font-bold hover:bg-primary/95 disabled:opacity-50"
+                            className="px-5 py-2 rounded-md bg-primary text-white font-medium hover:bg-primary/95 disabled:opacity-50"
                         >
                             {scheduleInterviewMutation.isPending ? "Scheduling..." : "Schedule Interview"}
                         </button>
@@ -1175,7 +1176,7 @@ export default function TaCommandCenterDashboard() {
                         <button
                             type="submit"
                             disabled={createTaskMutation.isPending}
-                            className="px-5 py-2 rounded-xl bg-primary text-white font-bold hover:bg-primary/95 disabled:opacity-50"
+                            className="px-5 py-2 rounded-md bg-primary text-white font-medium hover:bg-primary/95 disabled:opacity-50"
                         >
                             {createTaskMutation.isPending ? "Saving..." : "Create Task"}
                         </button>

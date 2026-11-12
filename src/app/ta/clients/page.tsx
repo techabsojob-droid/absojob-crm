@@ -42,7 +42,7 @@ export default function MyClientsPage() {
 
     return (
         <div className="space-y-6">
-            <PageHeader title="My Clients" subtitle="Clients assigned to you: requisitions, recruiters, candidate progress, CV feedback and every interaction" action={canCreateRequisition(user?.role) ? <Link href="/ta/requisitions/new" className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold">New requisition</Link> : undefined} />
+            <PageHeader title="My Clients" subtitle="Clients assigned to you: requisitions, recruiters, candidate progress, CV feedback and every interaction" action={canCreateRequisition(user?.role) ? <Link href="/ta/requisitions/new" className="px-3 py-1.5 rounded-md bg-primary text-white text-xs font-medium">New requisition</Link> : undefined} />
             <Tabs tabs={[{ id: "clients", label: `Clients (${data.length})` }, { id: "submissions", label: `CV submissions${pending ? ` · ${pending} awaiting feedback` : ""}` }]} value={tab} onChange={setTab} />
 
             {tab === "clients" && data.length > 0 && (
@@ -181,7 +181,7 @@ function ClientLogModal({ client, onClose }: { client: ClientRow; onClose: () =>
                     <label className="text-xs font-bold text-neutral-600 flex items-center gap-2">Follow up on <input type="date" value={f.nextFollowUpDate} onChange={(e) => setF({ ...f, nextFollowUpDate: e.target.value })} className={`${inputCls} w-40`} /></label>
                     {f.channel === "EMAIL" && f.direction === "OUTGOING" && <label className="text-xs font-semibold flex items-center gap-1.5"><input type="checkbox" checked={f.send} onChange={(e) => setF({ ...f, send: e.target.checked })} /> Send email to {client.contactEmail}</label>}
                 </div>
-                <button disabled={act.isPending} className="w-full py-2.5 rounded-xl bg-primary text-white font-bold disabled:opacity-50">{f.channel === "EMAIL" && f.direction === "OUTGOING" && f.send ? "Send & log" : f.channel === "WHATSAPP" && f.direction === "OUTGOING" ? "Open WhatsApp & log" : "Log interaction"}</button>
+                <button disabled={act.isPending} className="w-full py-2.5 rounded-md bg-primary text-white font-medium disabled:opacity-50">{f.channel === "EMAIL" && f.direction === "OUTGOING" && f.send ? "Send & log" : f.channel === "WHATSAPP" && f.direction === "OUTGOING" ? "Open WhatsApp & log" : "Log interaction"}</button>
             </form>
             <div className="mt-5 border-t border-neutral-100 pt-4">
                 <p className="text-xs font-bold text-neutral-500 mb-2">History</p>
@@ -206,7 +206,7 @@ function FeedbackModal({ sub, onClose }: { sub: Sub; onClose: () => void }) {
                 </select>
                 <textarea rows={3} value={f.clientFeedback} onChange={(e) => setF({ ...f, clientFeedback: e.target.value })} placeholder="Client's comments" className={inputCls} />
                 {f.status === "REJECTED" && <input required value={f.rejectionReason} onChange={(e) => setF({ ...f, rejectionReason: e.target.value })} placeholder="Rejection reason *" className={inputCls} />}
-                <button disabled={act.isPending} className="w-full py-2.5 rounded-xl bg-primary text-white font-bold disabled:opacity-50">Save</button>
+                <button disabled={act.isPending} className="w-full py-2.5 rounded-md bg-primary text-white font-medium disabled:opacity-50">Save</button>
             </form>
         </ModalShell>
     );

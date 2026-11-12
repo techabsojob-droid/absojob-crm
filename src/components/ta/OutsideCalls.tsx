@@ -207,7 +207,7 @@ export function AddToDatabaseDialog({ call, onClose }: { call: OutsideCall; onCl
                         <button type="button" disabled={busy} onClick={async () => { setBusy(true); try { await finish(existing); } catch (err) { toast.error((err as Error).message); } finally { setBusy(false); } }} className="px-2.5 py-1.5 bg-amber-600 text-white rounded-lg font-bold shrink-0 disabled:opacity-50">Link to existing profile</button>
                     </div>
                 )}
-                <button disabled={busy} className="w-full py-2.5 rounded-xl bg-primary text-white font-bold disabled:opacity-50 flex items-center justify-center gap-1.5"><UserPlus size={14} /> {busy ? "Saving…" : "Create candidate"}</button>
+                <button disabled={busy} className="w-full py-2.5 rounded-md bg-primary text-white font-medium disabled:opacity-50 flex items-center justify-center gap-1.5"><UserPlus size={14} /> {busy ? "Saving…" : "Create candidate"}</button>
             </form>
         </ModalShell>
     );
@@ -262,7 +262,7 @@ export function OutsideCallsLog({ manager, range, onLog, onUseDatabase }: {
                     <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, phone, email, company or outcome" className={`${sel} w-full pl-8`} />
                 </div>
                 {filtersOn && <button type="button" onClick={() => { setStatus(""); setInterest(""); setSource(""); setConverted(""); setRecruiterId(""); setSearch(""); }} className="text-xs font-bold text-primary px-2">Clear</button>}
-                <a href={`/api/ta/external-calls?${params}&format=csv`} className="px-3 py-1.5 rounded-lg border border-neutral-200 bg-white text-xs font-bold text-neutral-700 hover:bg-neutral-50">Export CSV</a>
+                <a href={`/api/ta/external-calls?${params}&format=csv`} className="px-3 py-1.5 rounded-md border border-neutral-200 bg-white text-xs font-medium text-neutral-700 hover:bg-neutral-50">Export CSV</a>
             </div>
 
             {isLoading || !s ? (
@@ -282,7 +282,7 @@ export function OutsideCallsLog({ manager, range, onLog, onUseDatabase }: {
                     : isLoading ? <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <SkeletonPulse key={i} className="h-12 rounded-xl" />)}</div>
                         : !data?.items.length ? (
                             <EmptyState icon={PhoneCall} message={filtersOn ? "No outside calls match these filters." : "No outside-data calls yet. Log calls to numbers from Naukri, LinkedIn, sheets or references here."}
-                                action={<button type="button" onClick={() => onLog()} className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold">Log an outside call</button>} />
+                                action={<button type="button" onClick={() => onLog()} className="px-3 py-1.5 rounded-md bg-primary text-white text-xs font-medium">Log an outside call</button>} />
                         ) : (
                             <div className="overflow-x-auto -mx-2">
                                 <table className="w-full text-xs">
@@ -354,13 +354,13 @@ export function OutsideCallsLog({ manager, range, onLog, onUseDatabase }: {
                         <div className="flex flex-wrap gap-2 pt-3 border-t border-neutral-100">
                             {detail.convertedCandidateId ? (
                                 <>
-                                    <Link href={`/ta/candidates/${detail.convertedCandidateId}`} className="px-3 py-2 rounded-xl border border-neutral-200 text-xs font-bold text-neutral-700 hover:bg-neutral-50 flex items-center gap-1.5"><ExternalLink size={13} /> {detail.convertedCandidateName ?? "Candidate"} profile</Link>
-                                    <button type="button" onClick={() => { const id = detail.convertedCandidateId!; setDetail(null); onUseDatabase(id); }} className="px-3 py-2 rounded-xl bg-primary text-white text-xs font-bold flex items-center gap-1.5"><Phone size={13} /> Log next call (database)</button>
+                                    <Link href={`/ta/candidates/${detail.convertedCandidateId}`} className="px-3 py-2 rounded-md border border-neutral-200 text-xs font-medium text-neutral-700 hover:bg-neutral-50 flex items-center gap-1.5"><ExternalLink size={13} /> {detail.convertedCandidateName ?? "Candidate"} profile</Link>
+                                    <button type="button" onClick={() => { const id = detail.convertedCandidateId!; setDetail(null); onUseDatabase(id); }} className="px-3 py-2 rounded-md bg-primary text-white text-xs font-medium flex items-center gap-1.5"><Phone size={13} /> Log next call (database)</button>
                                 </>
                             ) : (
                                 <>
                                     <button type="button" onClick={() => { setAdding(detail); setDetail(null); }} className="px-3 py-2 rounded-xl border border-primary/30 text-primary text-xs font-bold hover:bg-primary/5 flex items-center gap-1.5"><UserPlus size={13} /> Add to database</button>
-                                    <button type="button" onClick={() => { const d = detail; setDetail(null); onLog({ phone: d.phone }); }} className="px-3 py-2 rounded-xl bg-primary text-white text-xs font-bold flex items-center gap-1.5"><Clock size={13} /> Log another call</button>
+                                    <button type="button" onClick={() => { const d = detail; setDetail(null); onLog({ phone: d.phone }); }} className="px-3 py-2 rounded-md bg-primary text-white text-xs font-medium flex items-center gap-1.5"><Clock size={13} /> Log another call</button>
                                 </>
                             )}
                         </div>

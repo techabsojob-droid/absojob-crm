@@ -150,12 +150,12 @@ export default function TaRequisitionsPage() {
         <div className="space-y-5 pb-16 max-w-[1600px] mx-auto">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-neutral-900">All Openings</h1>
-                    <p className="text-sm text-neutral-500 mt-0.5">Every opening you can work on — by industry, client and location, with ownership, approval and hiring progress.</p>
+                    <h1 className="text-[22px] leading-tight font-semibold tracking-tight text-neutral-900">All Openings</h1>
+                    <p className="text-[13px] text-neutral-500 mt-1">Every opening you can work on — by industry, client and location, with ownership, approval and hiring progress.</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <button type="button" onClick={exportCsv} className="h-10 px-3.5 rounded-xl border border-neutral-200 bg-white text-sm font-semibold text-neutral-700 hover:bg-neutral-50 flex items-center gap-1.5"><Download size={15} /> Export</button>
-                    {canCreateRequisition(user?.role) && <Link href="/ta/requisitions/new" className="h-10 px-4 rounded-xl bg-primary text-white text-sm font-semibold shadow-sm shadow-primary/20 hover:bg-primary-dark flex items-center gap-1.5"><Plus size={15} /> New Requisition</Link>}
+                    {canCreateRequisition(user?.role) && <Link href="/ta/requisitions/new" className="h-10 px-4 rounded-xl bg-primary text-white text-sm font-semibold shadow-sm hover:bg-primary-dark flex items-center gap-1.5"><Plus size={15} /> New Requisition</Link>}
                 </div>
             </div>
 

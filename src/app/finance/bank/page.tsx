@@ -27,7 +27,7 @@ export default function BankRecPage() {
             <PageHeader title="Bank Reconciliation" subtitle="Import the bank statement (CSV: date, description, reference, debit, credit) and match it to receipts and payments in the books"
                 action={<div className="flex gap-2 items-center">
                     <select value={account} onChange={(e) => setBankId(e.target.value)} className="px-3 py-2 rounded-xl border border-neutral-200 text-xs font-semibold">{data?.accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select>
-                    <label className="px-4 py-2.5 rounded-xl bg-primary text-white font-bold text-xs flex items-center gap-2 cursor-pointer"><Upload size={14} /> Import CSV
+                    <label className="px-4 py-2.5 rounded-md bg-primary text-white font-medium text-xs flex items-center gap-2 cursor-pointer"><Upload size={14} /> Import CSV
                         <input type="file" accept=".csv,text/csv" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; const lines = parseStatementCsv(await f.text()); if (!lines.length) return toast.error("No rows found — check the CSV header"); imp.mutate({ bankAccountId: account, lines }); e.target.value = ""; }} />
                     </label>
                     <button onClick={() => act.mutate({ action: "auto" })} className={btn.ghost}>Auto-match</button>

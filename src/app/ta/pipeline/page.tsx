@@ -303,14 +303,8 @@ export default function TaPipelinePage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-1">
                 <div>
-                    <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
-                            Hiring Execution
-                        </span>
-                        <span className="text-xs text-neutral-400 font-bold">Recruitment Pipeline</span>
-                    </div>
-                    <h1 className="text-2xl font-black text-neutral-900 mt-0.5">Candidate Pipeline</h1>
-                    <p className="text-xs text-neutral-500 font-medium">
+                    <h1 className="text-[22px] leading-tight font-semibold tracking-tight text-neutral-900">Candidate Pipeline</h1>
+                    <p className="text-[13px] text-neutral-500 mt-1">
                         Track candidate movement across active hiring stages, SLAs, and interview rounds.
                     </p>
                 </div>
@@ -318,15 +312,15 @@ export default function TaPipelinePage() {
                 <div className="flex items-center gap-2.5 flex-wrap">
                     <button
                         onClick={() => exportCsv()}
-                        className="px-3.5 py-2 bg-white hover:bg-neutral-50 border border-neutral-200 text-neutral-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-2xs"
+                        className="px-3.5 py-2 bg-white hover:bg-neutral-50 border border-neutral-200 text-neutral-700 rounded-md text-xs font-medium flex items-center gap-1.5 transition-colors shadow-2xs"
                     >
                         <Download size={14} /> Export
                     </button>
                     <button
                         onClick={() => setAddModalOpen(true)}
-                        className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-primary/20 transition-all hover:scale-[1.02]"
+                        className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-md text-xs font-medium flex items-center gap-1.5 shadow-md transition-all hover:scale-[1.02]"
                     >
-                        <Plus size={15} /> + Add Candidate
+                        <Plus size={15} /> Add Candidate
                     </button>
                 </div>
             </div>
@@ -392,7 +386,7 @@ export default function TaPipelinePage() {
                         <select
                             value={jobFilter}
                             onChange={(e) => setJobFilter(e.target.value)}
-                            className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold text-neutral-700 outline-none hover:bg-neutral-100 cursor-pointer max-w-[200px] truncate"
+                            className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-md text-xs font-semibold text-neutral-700 outline-none hover:bg-neutral-100 cursor-pointer max-w-[200px] truncate"
                         >
                             <option value="ALL">All Jobs ({rawList.length})</option>
                             {jobList.map((j: any) => (
@@ -404,7 +398,7 @@ export default function TaPipelinePage() {
                         <select
                             value={stageFilter}
                             onChange={(e) => setStageFilter(e.target.value)}
-                            className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold text-neutral-700 outline-none hover:bg-neutral-100 cursor-pointer"
+                            className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-md text-xs font-semibold text-neutral-700 outline-none hover:bg-neutral-100 cursor-pointer"
                         >
                             <option value="ALL">All Stages</option>
                             {COLUMNS.map((s) => (
@@ -416,7 +410,7 @@ export default function TaPipelinePage() {
                         <select
                             value={agingFilter}
                             onChange={(e) => setAgingFilter(e.target.value)}
-                            className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold text-neutral-700 outline-none hover:bg-neutral-100 cursor-pointer"
+                            className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-md text-xs font-semibold text-neutral-700 outline-none hover:bg-neutral-100 cursor-pointer"
                         >
                             <option value="ALL">All Ages</option>
                             <option value="FRESH">Fresh (≤ 3d)</option>
@@ -510,7 +504,7 @@ export default function TaPipelinePage() {
                                     setAgingFilter("ALL");
                                     setSearchQuery("");
                                 }}
-                                className="mt-2 px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold"
+                                className="mt-2 px-4 py-2 bg-primary text-white rounded-md text-xs font-medium"
                             >
                                 Clear All Filters
                             </button>
@@ -716,7 +710,7 @@ export default function TaPipelinePage() {
                                                         <button
                                                             disabled={moveMutation.isPending}
                                                             onClick={() => moveMutation.mutate({ id: a.id, stage: a.stageBeforeHold || "SCREENING" })}
-                                                            className="px-2 py-0.5 rounded-md bg-primary/10 text-primary text-[9px] font-bold hover:bg-primary hover:text-white disabled:opacity-40"
+                                                            className="px-2 py-0.5 rounded-md bg-primary/10 text-primary text-[9px] font-medium hover:bg-primary hover:text-white disabled:opacity-40"
                                                         >
                                                             Resume → {stageLabel(a.stageBeforeHold || "SCREENING")}
                                                         </button>
@@ -917,7 +911,7 @@ export default function TaPipelinePage() {
                                                     </button>
                                                     <Link
                                                         href={`/ta/candidates/${a.candidateId}`}
-                                                        className="px-2.5 py-1 bg-neutral-100 hover:bg-primary hover:text-white rounded-lg text-[11px] font-bold transition-colors"
+                                                        className="px-2.5 py-1 bg-neutral-100 hover:bg-primary hover:text-white rounded-md text-[11px] font-medium transition-colors"
                                                     >
                                                         360° Profile
                                                     </Link>
@@ -1056,7 +1050,7 @@ export default function TaPipelinePage() {
                             </Link>
                             <Link
                                 href={`/ta/candidates/${previewApp.candidateId}`}
-                                className="w-full py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-xs"
+                                className="w-full py-2.5 bg-primary hover:bg-primary-dark text-white rounded-md text-xs font-medium flex items-center justify-center gap-2 transition-colors shadow-xs"
                             >
                                 <ArrowRight size={14} /> Open 360° Candidate Profile
                             </Link>
@@ -1100,7 +1094,7 @@ export default function TaPipelinePage() {
                                 type="button"
                                 disabled={bulkMoveMutation.isPending}
                                 onClick={() => bulkMoveMutation.mutate({ ids: selectedIds, stage: bulkTargetStage })}
-                                className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-xl text-xs font-bold disabled:opacity-50"
+                                className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-md text-xs font-medium disabled:opacity-50"
                             >
                                 {bulkMoveMutation.isPending ? "Moving…" : "Apply Stage Movement"}
                             </button>
@@ -1134,7 +1128,7 @@ export default function TaPipelinePage() {
                                 <input type="date" value={offerForm.expiryDate} onChange={(e) => setOfferForm({ ...offerForm, expiryDate: e.target.value })} className="mt-1 w-full px-3 py-2 rounded-xl border border-neutral-200 text-sm" />
                             </label>
                         </div>
-                        <button disabled={offerMutation.isPending} className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">Release Offer</button>
+                        <button disabled={offerMutation.isPending} className="w-full py-2.5 rounded-md bg-primary text-white text-sm font-medium disabled:opacity-50">Release Offer</button>
                     </form>
                 </ModalShell>
             )}

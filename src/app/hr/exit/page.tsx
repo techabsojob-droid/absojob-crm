@@ -83,7 +83,7 @@ export default function HRExitPage() {
                 title="Employee Offboarding & Exit Management"
                 subtitle="Manage resignations, notice periods, departmental clearances, exit interviews, and F&F settlements."
                 action={
-                    <button onClick={() => setRecordOpen(true)} className="px-4 py-2.5 rounded-xl bg-primary text-white font-bold text-xs flex items-center gap-2">
+                    <button onClick={() => setRecordOpen(true)} className="px-4 py-2.5 rounded-md bg-primary text-white font-medium text-xs flex items-center gap-2">
                         <UserMinus size={15} /> Record Resignation
                     </button>
                 }
@@ -243,7 +243,7 @@ export default function HRExitPage() {
                         <input type="number" min="0" placeholder="Notice days" value={form.noticePeriodDays} onChange={(e) => setForm({ ...form, noticePeriodDays: e.target.value })} className={inputCls} />
                     </div>
                     <textarea required placeholder="Reason" rows={3} value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} className={inputCls} />
-                    <button disabled={act.isPending} className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">Save</button>
+                    <button disabled={act.isPending} className="w-full py-2.5 rounded-md bg-primary text-white text-sm font-medium disabled:opacity-50">Save</button>
                 </form>
             </ModalShell>
 

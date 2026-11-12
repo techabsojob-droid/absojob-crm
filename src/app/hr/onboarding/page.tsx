@@ -302,7 +302,7 @@ export default function HrOnboardingPage() {
                             ) : (
                                 <button
                                     onClick={() => openConvertModal(record)}
-                                    className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold shadow-md shadow-primary/20 hover:bg-primary-dark transition-all"
+                                    className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-md text-xs font-medium shadow-xs hover:bg-primary-dark transition-all"
                                 >
                                     <Sparkles size={14} /> Create Employee Profile
                                 </button>
@@ -398,7 +398,7 @@ export default function HrOnboardingPage() {
                                 type="button"
                                 onClick={() => convertToEmployeeMutation.mutate({})}
                                 disabled={convertToEmployeeMutation.isPending}
-                                className="px-6 py-2.5 bg-primary text-white rounded-xl text-xs font-bold shadow-md shadow-primary/25 hover:bg-primary-dark transition-all flex items-center gap-2"
+                                className="px-6 py-2.5 bg-primary text-white rounded-md text-xs font-medium shadow-xs hover:bg-primary-dark transition-all flex items-center gap-2"
                             >
                                 {convertToEmployeeMutation.isPending ? "Provisioning..." : "Confirm & Create Employee"}
                             </button>

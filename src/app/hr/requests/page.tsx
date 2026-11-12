@@ -100,7 +100,7 @@ export default function HREmployeeRequestsPage() {
                 action={
                     <button
                         onClick={() => setCreateModalOpen(true)}
-                        className="px-4 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-sm transition-all flex items-center gap-2 shadow-xs"
+                        className="px-4 py-2.5 rounded-md bg-primary hover:bg-primary/90 text-white font-medium text-sm transition-all flex items-center gap-2 shadow-xs"
                     >
                         <Plus size={16} /> New Request
                     </button>
@@ -258,7 +258,7 @@ export default function HREmployeeRequestsPage() {
 
             {/* Create Request Modal */}
             {createModalOpen && (
-                <div className="fixed inset-0 z-50 bg-neutral-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-50 bg-navy-deep/40 backdrop-blur-xs flex items-center justify-center p-4">
                     <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-neutral-100 p-6 space-y-4 animate-scale-in">
                         <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
                             <h3 className="font-bold text-base text-neutral-900">Raise HR Request</h3>
@@ -330,7 +330,7 @@ export default function HREmployeeRequestsPage() {
                                     createMutation.mutate({ type: newType, description: newDesc, priority: newPriority });
                                 }}
                                 disabled={createMutation.isPending}
-                                className="px-5 py-2 rounded-xl bg-primary text-white text-sm font-bold shadow-xs hover:bg-primary/90 transition-colors"
+                                className="px-5 py-2 rounded-md bg-primary text-white text-sm font-medium shadow-xs hover:bg-primary/90 transition-colors"
                             >
                                 {createMutation.isPending ? "Submitting..." : "Submit to HR"}
                             </button>

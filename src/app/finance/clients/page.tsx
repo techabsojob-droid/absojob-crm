@@ -86,7 +86,7 @@ export default function ClientBillingPage() {
                     {field("creditDays", "Credit period (days)", { type: "number" })}
                     {field("creditLimit", "Credit limit (₹, blank = none)", { type: "number" })}
                     <p className="col-span-2 text-[11px] text-neutral-400">Same-state GSTIN → CGST+SGST; other state → IGST; foreign country or non-INR currency → zero-rated export under LUT. Clients over their credit limit or with invoices overdue beyond the configured days go on credit hold (new requisitions blocked).</p>
-                    <button disabled={save.isPending} className="col-span-2 py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">Save profile</button>
+                    <button disabled={save.isPending} className="col-span-2 py-2.5 rounded-md bg-primary text-white text-sm font-medium disabled:opacity-50">Save profile</button>
                 </form>
             </ModalShell>
         </div>

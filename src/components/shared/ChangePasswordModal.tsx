@@ -22,7 +22,7 @@ export default function ChangePasswordModal({ open, onClose }: { open: boolean; 
                 <input required type="password" autoComplete="new-password" minLength={8} value={f.newPassword} onChange={(e) => setF({ ...f, newPassword: e.target.value })} placeholder="New password" className={inputCls} />
                 <input required type="password" autoComplete="new-password" value={f.confirm} onChange={(e) => setF({ ...f, confirm: e.target.value })} placeholder="Confirm new password" className={inputCls} />
                 <p className="text-[11px] text-neutral-400">At least 8 characters, with a letter and a number.</p>
-                <button disabled={act.isPending} className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">Update password</button>
+                <button disabled={act.isPending} className="w-full py-2.5 rounded-md bg-primary text-white text-sm font-medium disabled:opacity-50">Update password</button>
             </form>
         </ModalShell>
     );

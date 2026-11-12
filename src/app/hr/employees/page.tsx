@@ -118,7 +118,7 @@ function HrEmployeesPage() {
                 action={
                     <button
                         onClick={() => setAddModalOpen(true)}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl text-sm font-bold shadow-md shadow-primary/20 hover:bg-primary-dark transition-all"
+                        className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-md text-sm font-medium shadow-xs hover:bg-primary-dark transition-all"
                     >
                         <Plus size={16} /> Add Employee
                     </button>
@@ -249,7 +249,7 @@ function HrEmployeesPage() {
                         {/* Header snippet */}
                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-neutral-50 border border-neutral-200/80">
                             <div className="flex items-center gap-4">
-                                <div className="w-14 h-14 rounded-2xl bg-primary text-white font-black text-xl flex items-center justify-center shadow-md shadow-primary/20">
+                                <div className="w-14 h-14 rounded-2xl bg-primary text-white font-black text-xl flex items-center justify-center shadow-md">
                                     {selectedEmployee.name.charAt(0)}
                                 </div>
                                 <div>
@@ -546,7 +546,7 @@ function HrEmployeesPage() {
                         <button
                             type="submit"
                             disabled={addEmployeeMutation.isPending}
-                            className="px-5 py-2 bg-primary text-white rounded-xl text-xs font-bold shadow-md shadow-primary/25 hover:bg-primary-dark"
+                            className="px-5 py-2 bg-primary text-white rounded-md text-xs font-medium shadow-xs hover:bg-primary-dark"
                         >
                             {addEmployeeMutation.isPending ? "Adding..." : "Register Employee"}
                         </button>

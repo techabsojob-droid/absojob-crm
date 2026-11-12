@@ -3,10 +3,10 @@
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 // Same validated slots as the finance charts (src/components/finance/Charts.tsx)
-const SERIES_1 = "#2a78d6";
-const GRID = "#e7e6e1";
-const AXIS = "#6b6a66";
-const TARGET = "#52514e";
+const SERIES_1 = "#2F6AA8";
+const GRID = "#E2E7EF";
+const AXIS = "#718096";
+const TARGET = "#3F4C63";
 
 const compactInr = (v: number) => (v >= 1e7 ? `₹${(v / 1e7).toFixed(1)}Cr` : v >= 1e5 ? `₹${(v / 1e5).toFixed(1)}L` : v >= 1e3 ? `₹${Math.round(v / 1e3)}k` : `₹${v}`);
 

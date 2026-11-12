@@ -234,13 +234,13 @@ export default function AdminSettingsControlCenter() {
             {/* Header with Search and Unsaved Changes Indicator (Part 63 & 64) */}
             <div className="flex items-start justify-between gap-4 flex-wrap pb-2 border-b border-neutral-200">
                 <div>
-                    <h1 className="text-2xl font-black text-neutral-900 tracking-tight flex items-center gap-2">
+                    <h1 className="text-[22px] leading-tight font-semibold tracking-tight text-neutral-900 flex items-center gap-2">
                         Settings & Administration
                         <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-primary/10 text-primary">
                             {form.plan || "ENTERPRISE"}
                         </span>
                     </h1>
-                    <p className="text-xs text-neutral-500 mt-1">
+                    <p className="text-[13px] text-neutral-500 mt-1">
                         Configure your agency profile, hiring workflows, SLA governance, regional branches, and system integrations.
                     </p>
                 </div>
@@ -256,7 +256,7 @@ export default function AdminSettingsControlCenter() {
                     <button
                         disabled={saveMutation.isPending || !isDirty}
                         onClick={() => saveMutation.mutate(form)}
-                        className="px-5 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-all disabled:opacity-50 shadow-md shadow-primary/20 cursor-pointer"
+                        className="px-5 py-2 bg-primary text-white rounded-md text-xs font-medium hover:bg-primary-dark transition-all disabled:opacity-50 shadow-md cursor-pointer"
                     >
                         {saveMutation.isPending ? "Saving Changes..." : "Save All Changes"}
                     </button>
@@ -280,7 +280,7 @@ export default function AdminSettingsControlCenter() {
                                 onClick={() => setActiveCategory(item.id as any)}
                                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                                     isCurrent
-                                        ? "bg-primary text-white shadow-md shadow-primary/20"
+                                        ? "bg-primary text-white shadow-md"
                                         : item.id === "danger"
                                         ? "text-red-600 hover:bg-red-50"
                                         : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900"
@@ -453,7 +453,7 @@ export default function AdminSettingsControlCenter() {
                                 </div>
                                 <button
                                     onClick={() => setBranchModalOpen(true)}
-                                    className="px-3.5 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-colors flex items-center gap-1.5 shadow-md shadow-primary/20"
+                                    className="px-3.5 py-2 bg-primary text-white rounded-md text-xs font-medium hover:bg-primary-dark transition-colors flex items-center gap-1.5 shadow-md"
                                 >
                                     <Plus size={14} /> Add Regional Branch
                                 </button>
@@ -501,7 +501,7 @@ export default function AdminSettingsControlCenter() {
                                 <div className="p-4 bg-neutral-50 rounded-xl border border-neutral-200 space-y-3">
                                     <span className="font-bold text-neutral-700 block">Brand Palette</span>
                                     <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center text-white font-bold text-xs shadow-md shadow-primary/30">
+                                        <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center text-white font-bold text-xs shadow-md">
                                             Primary
                                         </div>
                                         <div>
@@ -727,7 +727,7 @@ export default function AdminSettingsControlCenter() {
                                 </div>
                                 <button
                                     onClick={() => setCommRuleModalOpen(true)}
-                                    className="px-3.5 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-colors flex items-center gap-1.5 shadow-md shadow-primary/20"
+                                    className="px-3.5 py-2 bg-primary text-white rounded-md text-xs font-medium hover:bg-primary-dark transition-colors flex items-center gap-1.5 shadow-md"
                                 >
                                     <Plus size={14} /> Add Commission Rule
                                 </button>
@@ -878,7 +878,7 @@ export default function AdminSettingsControlCenter() {
                                 </div>
                                 <Link
                                     href="/admin/integrations"
-                                    className="px-3.5 py-1.5 bg-primary/10 text-primary rounded-xl text-xs font-bold hover:bg-primary hover:text-white transition-colors flex items-center gap-1"
+                                    className="px-3.5 py-1.5 bg-primary/10 text-primary rounded-md text-xs font-medium hover:bg-primary hover:text-white transition-colors flex items-center gap-1"
                                 >
                                     Global Integrations Hub <ExternalLink size={12} />
                                 </Link>
@@ -917,7 +917,7 @@ export default function AdminSettingsControlCenter() {
                                     <button
                                         onClick={fetchDbStatus}
                                         disabled={loadingStatus}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-neutral-200 text-xs font-bold text-neutral-700 hover:bg-neutral-50 transition-colors"
+                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-neutral-200 text-xs font-medium text-neutral-700 hover:bg-neutral-50 transition-colors"
                                     >
                                         <RefreshCw size={13} className={loadingStatus ? "animate-spin" : ""} />
                                         Refresh
@@ -951,7 +951,7 @@ export default function AdminSettingsControlCenter() {
                             </div>
 
                             {/* Guarded Developer SQL Console (Part 37) */}
-                            <div className="bg-neutral-900 rounded-2xl p-6 shadow-xl text-white space-y-4">
+                            <div className="bg-navy rounded-2xl p-6 shadow-xl text-white space-y-4">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
                                         <Terminal size={18} className="text-emerald-400" />
@@ -1115,7 +1115,7 @@ export default function AdminSettingsControlCenter() {
                         </button>
                         <button
                             onClick={handleAddBranch}
-                            className="px-4 py-2 bg-primary text-white rounded-xl font-bold hover:bg-primary-dark transition-all"
+                            className="px-4 py-2 bg-primary text-white rounded-md font-medium hover:bg-primary-dark transition-all"
                         >
                             Add Branch
                         </button>
@@ -1181,7 +1181,7 @@ export default function AdminSettingsControlCenter() {
                         </button>
                         <button
                             onClick={handleAddCommRule}
-                            className="px-4 py-2 bg-primary text-white rounded-xl font-bold hover:bg-primary-dark transition-all"
+                            className="px-4 py-2 bg-primary text-white rounded-md font-medium hover:bg-primary-dark transition-all"
                         >
                             Add Rule
                         </button>

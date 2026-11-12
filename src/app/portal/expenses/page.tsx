@@ -27,7 +27,7 @@ export default function MyExpensesPage() {
 
     return (
         <div className="space-y-6 max-w-4xl">
-            <PageHeader title="My Expenses" subtitle="Claim work expenses — your manager approves, then Finance reimburses" action={<button onClick={() => setOpen(true)} className="px-4 py-2.5 rounded-xl bg-primary text-white font-bold text-xs flex items-center gap-2"><Plus size={15} /> New Claim</button>} />
+            <PageHeader title="My Expenses" subtitle="Claim work expenses — your manager approves, then Finance reimburses" action={<button onClick={() => setOpen(true)} className="px-4 py-2.5 rounded-md bg-primary text-white font-medium text-xs flex items-center gap-2"><Plus size={15} /> New Claim</button>} />
             <div className="grid grid-cols-3 gap-4">
                 <StatCard label="In approval" value={money(sum(["PENDING_MANAGER", "PENDING"]))} icon={Receipt} tone="amber" />
                 <StatCard label="Approved" value={money(sum(["APPROVED"]))} icon={Receipt} tone="blue" />
@@ -85,7 +85,7 @@ export default function MyExpensesPage() {
                         <label className="col-span-2 flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={form.billable} onChange={(e) => setForm({ ...form, billable: e.target.checked })} /> <Users size={14} /> Client should reimburse this</label>
                         {form.billable && <select required value={form.clientId} onChange={(e) => setForm({ ...form, clientId: e.target.value })} className={`${inputCls} col-span-2`}><option value="">Client</option>{clients.map((c) => <option key={c.id} value={c.id}>{c.companyName}</option>)}</select>}
                     </>}
-                    <button disabled={claim.isPending || uploading} className="col-span-2 py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">Submit Claim</button>
+                    <button disabled={claim.isPending || uploading} className="col-span-2 py-2.5 rounded-md bg-primary text-white text-sm font-medium disabled:opacity-50">Submit Claim</button>
                 </form>
             </ModalShell>
         </div>

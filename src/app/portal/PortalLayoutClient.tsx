@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import Sidebar, { NavGroup, NavItem } from "@/components/shared/Sidebar";
-import TopBar from "@/components/shared/TopBar";
+import type { NavGroup, NavItem } from "@/components/shared/Sidebar";
+import AppShell from "@/components/shared/AppShell";
 import {
     LayoutDashboard, UserPlus, Wallet, CalendarCheck, CalendarOff, CheckSquare, User, FileText, TrendingUp, Laptop,
     GraduationCap, CalendarClock, ClipboardList, Receipt, Briefcase, PartyPopper, Landmark, Users, Contact,
@@ -74,27 +73,13 @@ const AGENT_ITEMS: NavItem[] = [
 ];
 
 export default function PortalLayoutClient({ children }: { children: React.ReactNode }) {
-    const [collapsed, setCollapsed] = useState(true);
     const { user } = useAuth();
     const isAgent = user?.role === "AGENT";
     // Manager-only and new-joiner entries appear only when relevant
     const { data: me } = useQuery<{ directReports: unknown[] }>({ queryKey: ["portal-me"], queryFn: async () => (await fetch("/api/portal/me")).json(), enabled: !!user && !isAgent, staleTime: 60000 });
     const { data: onb } = useQuery<{ onboarding: { status: string } | null }>({ queryKey: ["my-onboarding"], queryFn: async () => (await fetch("/api/portal/onboarding")).json(), enabled: !!user && !isAgent, staleTime: 60000 });
 
-    return (
-        <div className="min-h-screen bg-background text-foreground flex">
-            {isAgent
-                ? <Sidebar items={AGENT_ITEMS} collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
-                : <Sidebar groups={STAFF_GROUPS((me?.directReports?.length ?? 0) > 0, !!onb?.onboarding && onb.onboarding.status !== "COMPLETED")} collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />}
-            <div
-                className="flex-1 flex flex-col min-w-0"
-                style={{ marginLeft: collapsed ? 80 : 250, transition: "all 250ms cubic-bezier(0.4, 0, 0.2, 1)" }}
-            >
-                <TopBar />
-                <main className="flex-1 p-8 w-full animate-fade-in">
-                    {children}
-                </main>
-            </div>
-        </div>
-    );
+    return isAgent
+        ? <AppShell items={AGENT_ITEMS}>{children}</AppShell>
+        : <AppShell groups={STAFF_GROUPS((me?.directReports?.length ?? 0) > 0, !!onb?.onboarding && onb.onboarding.status !== "COMPLETED")}>{children}</AppShell>;
 }

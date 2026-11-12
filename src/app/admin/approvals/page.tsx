@@ -137,7 +137,7 @@ export default function ApprovalsPage() {
                                     <>
                                         <button
                                             onClick={() => actionMutation.mutate({ id: a.id, action: "APPROVE" })}
-                                            className="px-3 py-1.5 text-xs font-bold bg-primary text-white rounded-xl hover:bg-primary/95 shadow-sm shadow-primary/20 flex items-center gap-1"
+                                            className="px-3 py-1.5 text-xs font-medium bg-primary text-white rounded-md hover:bg-primary/95 shadow-sm flex items-center gap-1"
                                         >
                                             <CheckCircle2 size={14} /> Approve
                                         </button>
@@ -194,7 +194,7 @@ export default function ApprovalsPage() {
                             </button>
                             <button
                                 onClick={() => actionMutation.mutate({ id: selectedApproval.id, action: "APPROVE", comment: reviewComment })}
-                                className="px-4 py-1.5 text-xs font-bold bg-primary text-white rounded-xl shadow hover:bg-primary/95"
+                                className="px-4 py-1.5 text-xs font-medium bg-primary text-white rounded-md shadow hover:bg-primary/95"
                             >
                                 Approve Request
                             </button>

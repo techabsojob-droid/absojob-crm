@@ -114,7 +114,7 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ client
         return (
             <div className="space-y-6">
                 <SkeletonPulse className="h-10 w-48" />
-                <SkeletonPulse className="h-44 rounded-3xl" />
+                <SkeletonPulse className="h-44 rounded-xl" />
                 <div className="grid grid-cols-4 gap-4">
                     {Array.from({ length: 4 }).map((_, i) => <SkeletonPulse key={i} className="h-24 rounded-2xl" />)}
                 </div>
@@ -165,13 +165,13 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ client
                             });
                             setEditModalOpen(true);
                         }}
-                        className="px-3.5 py-2 bg-white border border-neutral-200 text-neutral-700 rounded-xl text-xs font-bold hover:bg-neutral-50 transition-all flex items-center gap-1.5 shadow-xs"
+                        className="px-3.5 py-2 bg-white border border-neutral-200 text-neutral-700 rounded-md text-xs font-medium hover:bg-neutral-50 transition-all flex items-center gap-1.5 shadow-xs"
                     >
                         <Edit3 size={14} /> Edit Client
                     </button>
                     <button
                         onClick={() => setJobModalOpen(true)}
-                        className="px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-all shadow-md shadow-primary/20 flex items-center gap-1.5"
+                        className="px-4 py-2 bg-primary text-white rounded-md text-xs font-medium hover:bg-primary-dark transition-all shadow-md flex items-center gap-1.5"
                     >
                         <Plus size={14} /> Post Job Requisition
                     </button>
@@ -179,7 +179,7 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ client
             </div>
 
             {/* Client Profile Header Card */}
-            <div className="bg-white border border-neutral-200/80 rounded-3xl p-6 shadow-sm">
+            <div className="bg-white border border-neutral-200/80 rounded-xl p-6 shadow-sm">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div className="flex items-start gap-4">
                         <div className="w-16 h-16 bg-primary/10 text-primary rounded-2xl flex items-center justify-center text-2xl font-black shrink-0 shadow-inner">
@@ -187,7 +187,7 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ client
                         </div>
                         <div className="space-y-1.5">
                             <div className="flex items-center gap-3 flex-wrap">
-                                <h1 className="text-2xl font-black text-neutral-900">{client.companyName}</h1>
+                                <h1 className="text-[22px] leading-tight font-semibold tracking-tight text-neutral-900">{client.companyName}</h1>
                                 <Badge value={client.status} />
                                 <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-neutral-100 text-neutral-600">
                                     {client.industry}
@@ -260,13 +260,13 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ client
                 <div className="flex items-center gap-2 self-end sm:self-center">
                     <button
                         onClick={() => setActiveTab("candidates")}
-                        className="px-3 py-1.5 text-xs font-bold bg-white text-neutral-800 rounded-xl border border-neutral-200 shadow-xs hover:bg-neutral-50"
+                        className="px-3 py-1.5 text-xs font-medium bg-white text-neutral-800 rounded-md border border-neutral-200 shadow-xs hover:bg-neutral-50"
                     >
                         Review Pipeline
                     </button>
                     <button
                         onClick={() => setActiveTab("finance")}
-                        className="px-3 py-1.5 text-xs font-bold bg-primary text-white rounded-xl shadow-xs hover:bg-primary-dark"
+                        className="px-3 py-1.5 text-xs font-medium bg-primary text-white rounded-md shadow-xs hover:bg-primary-dark"
                     >
                         View Invoices
                     </button>
@@ -377,7 +377,7 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ client
                     title="All Job Requisitions"
                     subtitle="Open and historical mandates for this corporate account"
                     action={
-                        <button onClick={() => setJobModalOpen(true)} className="px-3 py-1.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark">
+                        <button onClick={() => setJobModalOpen(true)} className="px-3 py-1.5 bg-primary text-white rounded-md text-xs font-medium hover:bg-primary-dark">
                             + Add Job Requisition
                         </button>
                     }
@@ -616,7 +616,7 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ client
                                 <div className="flex items-center justify-between">
                                     <h4 className="font-bold text-neutral-900 text-xs">{cnt.name}</h4>
                                     {cnt.isPrimary && (
-                                        <span className="px-2 py-0.5 text-[9px] font-bold bg-primary text-white rounded">
+                                        <span className="px-2 py-0.5 text-[9px] font-medium bg-primary text-white rounded">
                                             Primary POC
                                         </span>
                                     )}
@@ -839,7 +839,7 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ client
                         <button
                             type="submit"
                             disabled={createJobMutation.isPending}
-                            className="px-4 py-2 text-xs font-bold bg-primary text-white rounded-xl shadow hover:bg-primary-dark"
+                            className="px-4 py-2 text-xs font-medium bg-primary text-white rounded-md shadow hover:bg-primary-dark"
                         >
                             {createJobMutation.isPending ? "Creating..." : "Create Requisition"}
                         </button>
@@ -937,7 +937,7 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ client
                             <button
                                 type="submit"
                                 disabled={editMutation.isPending}
-                                className="px-4 py-2 text-xs font-bold bg-primary text-white rounded-xl shadow hover:bg-primary-dark"
+                                className="px-4 py-2 text-xs font-medium bg-primary text-white rounded-md shadow hover:bg-primary-dark"
                             >
                                 {editMutation.isPending ? "Updating..." : "Save Changes"}
                             </button>
@@ -975,7 +975,7 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ client
                                     setNoteModalOpen(false);
                                     setNewNote("");
                                 }}
-                                className="px-4 py-2 text-xs font-bold bg-primary text-white rounded-xl shadow hover:bg-primary-dark"
+                                className="px-4 py-2 text-xs font-medium bg-primary text-white rounded-md shadow hover:bg-primary-dark"
                             >
                                 Save Note
                             </button>

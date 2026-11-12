@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -27,6 +27,7 @@ function LeaveInner() {
     const { data, isLoading } = useQuery<Data>({ queryKey: ["my-leaves"], queryFn: () => api("/api/portal/leave"), refetchInterval: 30000 });
     // ?apply=YYYY-MM-DD (e.g. from an Absent day on the attendance calendar) opens the form for that date
     const applyFor = useSearchParams().get("apply");
+    const inTa = usePathname()?.startsWith("/ta") ?? false;
     const preset = applyFor && /^\d{4}-\d{2}-\d{2}$/.test(applyFor) ? applyFor : null;
     const [open, setOpen] = useState(!!preset);
     const [form, setForm] = useState(preset ? { ...EMPTY, fromDate: preset, toDate: preset } : EMPTY);
@@ -54,8 +55,10 @@ function LeaveInner() {
 
     return (
         <div className="space-y-6">
-            <PageHeader title="My Leave" subtitle="Balances follow the company leave policy — week-offs and holidays are never counted"
-                action={<button onClick={() => { setForm(EMPTY); setOpen(true); }} className="px-4 py-2.5 bg-primary text-white rounded-xl text-sm font-bold flex items-center gap-2"><Plane size={15} /> Apply leave</button>} />
+            {inTa
+                ? <div className="flex items-center justify-between gap-3"><p className="text-[13px] text-neutral-500">Balances follow the company leave policy — week-offs and holidays are never counted.</p><button onClick={() => { setForm(EMPTY); setOpen(true); }} className="px-4 py-2.5 bg-primary text-white rounded-md text-sm font-medium flex items-center gap-2"><Plane size={15} /> Apply leave</button></div>
+                : <PageHeader title="My Leave" subtitle="Balances follow the company leave policy — week-offs and holidays are never counted"
+                action={<button onClick={() => { setForm(EMPTY); setOpen(true); }} className="px-4 py-2.5 bg-primary text-white rounded-md text-sm font-medium flex items-center gap-2"><Plane size={15} /> Apply leave</button>} />}
 
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
                 {bal.filter((b) => b.type !== "UNPAID").map((b) => (
@@ -147,7 +150,7 @@ function LeaveInner() {
                         <input type="file" accept="application/pdf,image/*" disabled={uploading} className="text-xs font-normal" onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; setUploading(true); try { const up = await uploadFile(f, "leave"); setForm((x) => ({ ...x, attachmentFileId: up.id })); } catch (err) { toast.error((err as Error).message); } finally { setUploading(false); } }} />
                         {form.attachmentFileId && <span className="text-emerald-700">✓</span>}
                     </label>
-                    <button disabled={apply.isPending || uploading} className="w-full py-2.5 bg-primary text-white rounded-xl text-sm font-bold disabled:opacity-50">Submit request</button>
+                    <button disabled={apply.isPending || uploading} className="w-full py-2.5 bg-primary text-white rounded-md text-sm font-medium disabled:opacity-50">Submit request</button>
                 </form>
             </ModalShell>
         </div>

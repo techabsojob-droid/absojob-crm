@@ -239,12 +239,11 @@ export default function Employee360ProfilePage({
 
             {/* Employee 360 Header Profile Card */}
             <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-full blur-3xl -z-0 opacity-70 pointer-events-none" />
-
+                
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
                     <div className="flex items-start md:items-center gap-5">
                         <div className="relative">
-                            <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-emerald-700 text-white flex items-center justify-center font-bold text-2xl shadow-md border-2 border-white ring-2 ring-emerald-100">
+                            <div className="w-20 h-20 rounded-2xl bg-navy text-white flex items-center justify-center font-bold text-2xl shadow-md border-2 border-white ring-2 ring-emerald-100">
                                 {user.name.slice(0, 2).toUpperCase()}
                             </div>
                             <span
@@ -258,7 +257,7 @@ export default function Employee360ProfilePage({
 
                         <div>
                             <div className="flex items-center gap-2.5 flex-wrap">
-                                <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{user.name}</h1>
+                                <h1 className="text-[22px] leading-tight font-semibold tracking-tight text-gray-900">{user.name}</h1>
                                 <Badge value={user.role} />
                                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border bg-purple-50 text-purple-700 border-purple-200">
                                     {user.department || "—"}

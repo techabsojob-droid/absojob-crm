@@ -174,7 +174,7 @@ export default function Job360Page({ params }: { params: Promise<{ id: string }>
                         </Link>
                         <div>
                             <div className="flex items-center gap-2 flex-wrap">
-                                <h1 className="text-2xl font-black text-neutral-900 tracking-tight">{job.title}</h1>
+                                <h1 className="text-[22px] leading-tight font-semibold tracking-tight text-neutral-900">{job.title}</h1>
                                 <span className="font-mono text-xs font-bold text-neutral-400 bg-neutral-100 px-2 py-0.5 rounded-md">
                                     {job.id}
                                 </span>
@@ -214,20 +214,20 @@ export default function Job360Page({ params }: { params: Promise<{ id: string }>
                             <button
                                 onClick={() => patchMutation.mutate({ action: "approve" })}
                                 disabled={patchMutation.isPending}
-                                className="px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-colors shadow-md shadow-primary/20 flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                                className="px-4 py-2 bg-primary text-white rounded-md text-xs font-medium hover:bg-primary-dark transition-colors shadow-md flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
                             >
                                 <CheckCircle2 size={14} /> Approve Mandate
                             </button>
                         )}
                         <button
                             onClick={() => setAssignModalOpen(true)}
-                            className="px-3.5 py-2 border border-neutral-200 rounded-xl text-xs font-bold text-neutral-700 hover:bg-neutral-50 transition-colors flex items-center gap-1.5 cursor-pointer"
+                            className="px-3.5 py-2 border border-neutral-200 rounded-md text-xs font-medium text-neutral-700 hover:bg-neutral-50 transition-colors flex items-center gap-1.5 cursor-pointer"
                         >
                             <Users size={14} /> Assign Recruiter
                         </button>
                         <button
                             onClick={openRequirementsModal}
-                            className="px-3.5 py-2 border border-neutral-200 rounded-xl text-xs font-bold text-neutral-700 hover:bg-neutral-50 transition-colors flex items-center gap-1.5 cursor-pointer"
+                            className="px-3.5 py-2 border border-neutral-200 rounded-md text-xs font-medium text-neutral-700 hover:bg-neutral-50 transition-colors flex items-center gap-1.5 cursor-pointer"
                         >
                             <Edit2 size={14} /> Edit Requirements
                         </button>
@@ -247,7 +247,7 @@ export default function Job360Page({ params }: { params: Promise<{ id: string }>
                                 setStatusReason("");
                                 setStatusModalOpen(true);
                             }}
-                            className="px-3.5 py-2 border border-neutral-200 rounded-xl text-xs font-bold text-neutral-600 hover:bg-neutral-100 transition-colors flex items-center gap-1.5 cursor-pointer"
+                            className="px-3.5 py-2 border border-neutral-200 rounded-md text-xs font-medium text-neutral-600 hover:bg-neutral-100 transition-colors flex items-center gap-1.5 cursor-pointer"
                         >
                             <X size={14} /> Close Mandate
                         </button>
@@ -681,7 +681,7 @@ export default function Job360Page({ params }: { params: Promise<{ id: string }>
                                             href={itr.meetingLink}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="px-3 py-1.5 bg-primary text-white rounded-xl font-bold hover:bg-primary-dark transition-colors flex items-center gap-1"
+                                            className="px-3 py-1.5 bg-primary text-white rounded-md font-medium hover:bg-primary-dark transition-colors flex items-center gap-1"
                                         >
                                             Join Video Call <ExternalLink size={12} />
                                         </a>
@@ -765,7 +765,7 @@ export default function Job360Page({ params }: { params: Promise<{ id: string }>
                         </div>
                         <button
                             onClick={() => setAssignModalOpen(true)}
-                            className="px-3.5 py-1.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-colors"
+                            className="px-3.5 py-1.5 bg-primary text-white rounded-md text-xs font-medium hover:bg-primary-dark transition-colors"
                         >
                             + Assign Recruiter
                         </button>
@@ -818,7 +818,7 @@ export default function Job360Page({ params }: { params: Promise<{ id: string }>
                         </div>
                         <Link
                             href={`/admin/clients/${job.clientId}`}
-                            className="px-3.5 py-1.5 bg-primary/10 text-primary rounded-xl text-xs font-bold hover:bg-primary hover:text-white transition-colors flex items-center gap-1"
+                            className="px-3.5 py-1.5 bg-primary/10 text-primary rounded-md text-xs font-medium hover:bg-primary hover:text-white transition-colors flex items-center gap-1"
                         >
                             Open Client 360° Profile <ArrowRight size={13} />
                         </Link>
@@ -852,7 +852,7 @@ export default function Job360Page({ params }: { params: Promise<{ id: string }>
                             </div>
                             <button
                                 onClick={openRequirementsModal}
-                                className="px-3.5 py-1.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-colors"
+                                className="px-3.5 py-1.5 bg-primary text-white rounded-md text-xs font-medium hover:bg-primary-dark transition-colors"
                             >
                                 Update Specification
                             </button>
@@ -1132,7 +1132,7 @@ export default function Job360Page({ params }: { params: Promise<{ id: string }>
                     <div className="flex items-center justify-end gap-3 pt-2">
                         <button
                             onClick={() => setAssignModalOpen(false)}
-                            className="px-4 py-2 border border-neutral-200 rounded-xl text-xs font-bold text-neutral-700 hover:bg-neutral-50"
+                            className="px-4 py-2 border border-neutral-200 rounded-md text-xs font-medium text-neutral-700 hover:bg-neutral-50"
                         >
                             Cancel
                         </button>
@@ -1144,7 +1144,7 @@ export default function Job360Page({ params }: { params: Promise<{ id: string }>
                                     changeSummary: `Reassigned primary recruiter to ${teamMembers?.find((u: any) => u.id === selectedRecruiterId)?.name}`
                                 });
                             }}
-                            className="px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-all disabled:opacity-50"
+                            className="px-4 py-2 bg-primary text-white rounded-md text-xs font-medium hover:bg-primary-dark transition-all disabled:opacity-50"
                         >
                             {patchMutation.isPending ? "Assigning..." : "Confirm Assignment"}
                         </button>
@@ -1227,14 +1227,14 @@ export default function Job360Page({ params }: { params: Promise<{ id: string }>
                         <button
                             type="button"
                             onClick={() => setReqModalOpen(false)}
-                            className="px-4 py-2 border border-neutral-200 rounded-xl text-xs font-bold text-neutral-700 hover:bg-neutral-50"
+                            className="px-4 py-2 border border-neutral-200 rounded-md text-xs font-medium text-neutral-700 hover:bg-neutral-50"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={patchMutation.isPending}
-                            className="px-5 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-all disabled:opacity-50"
+                            className="px-5 py-2 bg-primary text-white rounded-md text-xs font-medium hover:bg-primary-dark transition-all disabled:opacity-50"
                         >
                             {patchMutation.isPending ? "Saving..." : "Save & Create New Version"}
                         </button>
@@ -1258,7 +1258,7 @@ export default function Job360Page({ params }: { params: Promise<{ id: string }>
                     <div className="flex items-center justify-end gap-3 pt-2">
                         <button
                             onClick={() => setStatusModalOpen(false)}
-                            className="px-4 py-2 border border-neutral-200 rounded-xl text-xs font-bold text-neutral-700 hover:bg-neutral-50"
+                            className="px-4 py-2 border border-neutral-200 rounded-md text-xs font-medium text-neutral-700 hover:bg-neutral-50"
                         >
                             Cancel
                         </button>
@@ -1271,7 +1271,7 @@ export default function Job360Page({ params }: { params: Promise<{ id: string }>
                                     reason: statusReason,
                                 });
                             }}
-                            className="px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-all disabled:opacity-50"
+                            className="px-4 py-2 bg-primary text-white rounded-md text-xs font-medium hover:bg-primary-dark transition-all disabled:opacity-50"
                         >
                             {patchMutation.isPending ? "Updating..." : "Confirm Status"}
                         </button>

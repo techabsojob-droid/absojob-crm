@@ -63,7 +63,7 @@ export default function ManagerReviewModal({ review, onClose, onSubmit, pending 
                         <input required placeholder="New designation" value={newDesignation} onChange={(e) => setNewDesignation(e.target.value)} className={inputCls} />
                     )}
                     <p className="text-[11px] text-neutral-400">A recommended promotion goes to HR Approvals; it is applied to the employee once approved.</p>
-                    <button disabled={pending} className="w-full py-2.5 rounded-xl bg-primary text-white font-bold disabled:opacity-50">Complete Review</button>
+                    <button disabled={pending} className="w-full py-2.5 rounded-md bg-primary text-white font-medium disabled:opacity-50">Complete Review</button>
                 </form>
             )}
         </ModalShell>

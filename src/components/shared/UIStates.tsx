@@ -10,7 +10,7 @@ export function SkeletonPulse({ className = "", style }: { className?: string; s
 // ─── Card Skeleton ──────────────────────────────
 export function CardSkeleton() {
     return (
-        <div className="bg-white border border-neutral-100 rounded-3xl p-6 shadow-sm space-y-4">
+        <div className="bg-white border border-neutral-100 rounded-xl p-6 shadow-sm space-y-4">
             <div className="flex items-center gap-3">
                 <SkeletonPulse className="w-12 h-12 rounded-2xl" />
                 <div className="flex-1 space-y-2">
@@ -30,7 +30,7 @@ export function CardSkeleton() {
 // ─── Property Card Skeleton ──────────────────────────────
 export function PropertyCardSkeleton() {
     return (
-        <div className="bg-white border border-neutral-100 rounded-3xl overflow-hidden shadow-sm">
+        <div className="bg-white border border-neutral-100 rounded-xl overflow-hidden shadow-sm">
             <SkeletonPulse className="h-44 w-full rounded-none" />
             <div className="p-5 space-y-3">
                 <SkeletonPulse className="h-5 w-3/4" />
@@ -75,7 +75,7 @@ export function StatCardSkeleton() {
 // ─── Chart Skeleton ──────────────────────────────
 export function ChartSkeleton({ height = "h-[300px]" }: { height?: string }) {
     return (
-        <div className="bg-white border border-neutral-100 rounded-3xl p-6 shadow-sm">
+        <div className="bg-white border border-neutral-100 rounded-xl p-6 shadow-sm">
             <SkeletonPulse className="h-5 w-40 mb-6" />
             <div className={`${height} w-full flex items-end gap-2 px-4`}>
                 {[40, 65, 35, 80, 55, 70, 45, 90, 50, 75, 60, 85].map((h, i) => (
@@ -169,7 +169,7 @@ export function EmptyState({ type = "default", title = "Nothing here yet", descr
     const Icon = emptyIcons[type] || emptyIcons.default;
     return (
         <div className="flex flex-col items-center justify-center py-16 text-center animate-fade-in">
-            <div className="w-20 h-20 bg-neutral-100 rounded-3xl flex items-center justify-center mb-5 relative">
+            <div className="w-20 h-20 bg-neutral-100 rounded-xl flex items-center justify-center mb-5 relative">
                 <Icon size={32} className="text-neutral-300" />
                 <div className="absolute -top-1 -right-1 w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center">
                     <span className="text-primary text-xs font-bold">0</span>
@@ -178,7 +178,7 @@ export function EmptyState({ type = "default", title = "Nothing here yet", descr
             <h3 className="text-lg font-bold text-neutral-900 mb-1">{title}</h3>
             <p className="text-sm text-neutral-400 max-w-[320px] mb-5">{description}</p>
             {actionLabel && onAction && (
-                <button onClick={onAction} className="px-5 py-2.5 bg-primary text-white rounded-xl text-sm font-semibold hover:bg-primary-dark transition-colors shadow-lg shadow-primary/25">{actionLabel}</button>
+                <button onClick={onAction} className="px-5 py-2.5 bg-primary text-white rounded-md text-sm font-semibold hover:bg-primary-dark transition-colors shadow-lg">{actionLabel}</button>
             )}
         </div>
     );
@@ -194,13 +194,13 @@ interface ErrorStateProps {
 export function ErrorState({ title = "Something went wrong", description = "We couldn't load this data. Please try again.", onRetry }: ErrorStateProps) {
     return (
         <div className="flex flex-col items-center justify-center py-16 text-center animate-fade-in">
-            <div className="w-20 h-20 bg-red-50 rounded-3xl flex items-center justify-center mb-5">
+            <div className="w-20 h-20 bg-red-50 rounded-xl flex items-center justify-center mb-5">
                 <AlertTriangle size={32} className="text-red-400" />
             </div>
             <h3 className="text-lg font-bold text-neutral-900 mb-1">{title}</h3>
             <p className="text-sm text-neutral-400 max-w-[320px] mb-5">{description}</p>
             {onRetry && (
-                <button onClick={onRetry} className="flex items-center gap-2 px-5 py-2.5 bg-neutral-900 text-white rounded-xl text-sm font-semibold hover:bg-neutral-800 transition-colors">
+                <button onClick={onRetry} className="flex items-center gap-2 px-5 py-2.5 bg-navy text-white rounded-md text-sm font-semibold hover:bg-neutral-800 transition-colors">
                     <RefreshCw size={16} /> Try Again
                 </button>
             )}
@@ -212,7 +212,7 @@ export function ErrorState({ title = "Something went wrong", description = "We c
 export function NoSearchResults({ query = "" }: { query?: string }) {
     return (
         <div className="flex flex-col items-center justify-center py-16 text-center animate-fade-in">
-            <div className="w-20 h-20 bg-blue-50 rounded-3xl flex items-center justify-center mb-5">
+            <div className="w-20 h-20 bg-blue-50 rounded-xl flex items-center justify-center mb-5">
                 <Search size={32} className="text-blue-300" />
             </div>
             <h3 className="text-lg font-bold text-neutral-900 mb-1">No results found</h3>

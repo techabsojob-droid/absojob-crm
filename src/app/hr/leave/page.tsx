@@ -376,7 +376,7 @@ function LeaveContent() {
 
             {/* Adjust Balance Modal */}
             {adjustModalOpen && selectedBalanceEmp && (
-                <div className="fixed inset-0 z-50 bg-neutral-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-50 bg-navy-deep/40 backdrop-blur-xs flex items-center justify-center p-4">
                     <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl border border-neutral-100 p-6 space-y-4 animate-scale-in">
                         <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
                             <h3 className="font-bold text-base text-neutral-900">Adjust Leave Quota</h3>
@@ -416,7 +416,7 @@ function LeaveContent() {
                             </button>
                             <button
                                 onClick={handleAdjustBalance}
-                                className="px-5 py-2 rounded-xl bg-primary text-white text-sm font-bold shadow-xs hover:bg-primary/90"
+                                className="px-5 py-2 rounded-md bg-primary text-white text-sm font-medium shadow-xs hover:bg-primary/90"
                             >
                                 Apply Adjustment
                             </button>

@@ -335,7 +335,7 @@ export default function CandidateProfilePage() {
                             <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-neutral-100 text-neutral-600 border border-neutral-200">
                                 {candidate.candidateCode || "CAN-8901"}
                             </span>
-                            <h1 className="text-2xl font-black text-neutral-900 leading-tight">
+                            <h1 className="text-[22px] leading-tight font-semibold tracking-tight text-neutral-900 leading-tight">
                                 {candidate.name}
                             </h1>
                             <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
@@ -388,21 +388,21 @@ export default function CandidateProfilePage() {
 
                     <button
                         onClick={() => setNoteModalOpen(true)}
-                        className="px-3.5 py-2 bg-white border border-neutral-200 text-neutral-700 hover:bg-neutral-50 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs"
+                        className="px-3.5 py-2 bg-white border border-neutral-200 text-neutral-700 hover:bg-neutral-50 rounded-md text-xs font-medium flex items-center gap-1.5 transition-all shadow-xs"
                     >
                         <MessageSquare size={14} className="text-neutral-500" /> Add Note
                     </button>
 
                     <button
                         onClick={() => setCommModalOpen(true)}
-                        className="px-3.5 py-2 bg-white border border-neutral-200 text-neutral-700 hover:bg-neutral-50 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs"
+                        className="px-3.5 py-2 bg-white border border-neutral-200 text-neutral-700 hover:bg-neutral-50 rounded-md text-xs font-medium flex items-center gap-1.5 transition-all shadow-xs"
                     >
                         <PhoneCall size={14} className="text-neutral-500" /> Log Comm
                     </button>
 
                     <button
                         onClick={openEditModal}
-                        className="px-3.5 py-2 bg-primary text-white hover:bg-primary-dark rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm"
+                        className="px-3.5 py-2 bg-primary text-white hover:bg-primary-dark rounded-md text-xs font-medium flex items-center gap-1.5 transition-all shadow-sm"
                     >
                         <Edit3 size={14} /> Edit Profile
                     </button>
@@ -539,7 +539,7 @@ export default function CandidateProfilePage() {
                                         </a>
                                     )}
                                     {candidate.githubUrl && (
-                                        <a href={candidate.githubUrl} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border border-neutral-200 hover:border-neutral-400 hover:bg-neutral-100 text-neutral-700 text-xs font-bold transition-colors">
+                                        <a href={candidate.githubUrl} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-md border border-neutral-200 hover:border-neutral-400 hover:bg-neutral-100 text-neutral-700 text-xs font-medium transition-colors">
                                             <Github size={14} /> GitHub
                                         </a>
                                     )}
@@ -945,7 +945,7 @@ export default function CandidateProfilePage() {
                                                         </div>
                                                     </div>
 
-                                                    <Link href={`/admin/jobs?id=${app.jobId}`} className="mt-5 text-[11px] font-bold text-white bg-neutral-900 hover:bg-neutral-800 rounded-lg py-2 w-full flex items-center justify-center gap-1.5 transition-colors shadow-sm">
+                                                    <Link href={`/admin/jobs?id=${app.jobId}`} className="mt-5 text-[11px] font-medium text-white bg-navy hover:bg-neutral-800 rounded-md py-2 w-full flex items-center justify-center gap-1.5 transition-colors shadow-sm">
                                                         View Job Requisition <Link2 size={12} />
                                                     </Link>
                                                 </div>
@@ -1298,7 +1298,7 @@ export default function CandidateProfilePage() {
                                         </div>
                                         <button
                                             onClick={() => setOfferModalOpen(true)}
-                                            className="px-3 py-1.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-all flex items-center gap-1.5 shadow-xs"
+                                            className="px-3 py-1.5 bg-primary text-white rounded-md text-xs font-medium hover:bg-primary-dark transition-all flex items-center gap-1.5 shadow-xs"
                                         >
                                             <Plus size={14} /> Log Offer Release
                                         </button>
@@ -1393,7 +1393,7 @@ export default function CandidateProfilePage() {
                                         </div>
                                         <button
                                             onClick={() => setTaskModalOpen(true)}
-                                            className="px-3 py-1.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-all flex items-center gap-1.5 shadow-xs"
+                                            className="px-3 py-1.5 bg-primary text-white rounded-md text-xs font-medium hover:bg-primary-dark transition-all flex items-center gap-1.5 shadow-xs"
                                         >
                                             <Plus size={14} /> Add Task
                                         </button>
@@ -1454,7 +1454,7 @@ export default function CandidateProfilePage() {
                                         </div>
                                         <button
                                             onClick={() => setSubmissionModalOpen(true)}
-                                            className="px-3 py-1.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-all flex items-center gap-1.5 shadow-xs"
+                                            className="px-3 py-1.5 bg-primary text-white rounded-md text-xs font-medium hover:bg-primary-dark transition-all flex items-center gap-1.5 shadow-xs"
                                         >
                                             <Plus size={14} /> Log Client Submission
                                         </button>
@@ -1578,7 +1578,7 @@ export default function CandidateProfilePage() {
                     <button
                         type="submit"
                         disabled={updateCandidate.isPending}
-                        className="w-full py-2.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-all disabled:opacity-50 shadow-sm"
+                        className="w-full py-2.5 bg-primary text-white rounded-md text-xs font-medium hover:bg-primary-dark transition-all disabled:opacity-50 shadow-sm"
                     >
                         {updateCandidate.isPending ? "Saving Note..." : "Save Note"}
                     </button>
@@ -1672,7 +1672,7 @@ export default function CandidateProfilePage() {
                     <button
                         type="submit"
                         disabled={updateCandidate.isPending}
-                        className="w-full py-2.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-all disabled:opacity-50 shadow-sm"
+                        className="w-full py-2.5 bg-primary text-white rounded-md text-xs font-medium hover:bg-primary-dark transition-all disabled:opacity-50 shadow-sm"
                     >
                         {updateCandidate.isPending ? "Logging Interaction..." : "Log Interaction"}
                     </button>
@@ -1777,7 +1777,7 @@ export default function CandidateProfilePage() {
                     <button
                         type="submit"
                         disabled={updateCandidate.isPending}
-                        className="w-full py-3 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primary-dark transition-all disabled:opacity-50 shadow-md shadow-primary/20"
+                        className="w-full py-3 bg-primary text-white rounded-md text-sm font-medium hover:bg-primary-dark transition-all disabled:opacity-50 shadow-md"
                     >
                         {updateCandidate.isPending ? "Saving..." : "Save Candidate Profile"}
                     </button>
@@ -1831,7 +1831,7 @@ export default function CandidateProfilePage() {
                     <button
                         type="submit"
                         disabled={updateCandidate.isPending}
-                        className="w-full py-2.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-all disabled:opacity-50 shadow-sm"
+                        className="w-full py-2.5 bg-primary text-white rounded-md text-xs font-medium hover:bg-primary-dark transition-all disabled:opacity-50 shadow-sm"
                     >
                         {updateCandidate.isPending ? "Creating..." : "Create Task"}
                     </button>
@@ -1895,7 +1895,7 @@ export default function CandidateProfilePage() {
                     <button
                         type="submit"
                         disabled={updateCandidate.isPending}
-                        className="w-full py-2.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-all disabled:opacity-50 shadow-sm"
+                        className="w-full py-2.5 bg-primary text-white rounded-md text-xs font-medium hover:bg-primary-dark transition-all disabled:opacity-50 shadow-sm"
                     >
                         {updateCandidate.isPending ? "Saving..." : "Release Offer"}
                     </button>
@@ -1965,7 +1965,7 @@ export default function CandidateProfilePage() {
                     <button
                         type="submit"
                         disabled={updateCandidate.isPending}
-                        className="w-full py-2.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-all disabled:opacity-50 shadow-sm"
+                        className="w-full py-2.5 bg-primary text-white rounded-md text-xs font-medium hover:bg-primary-dark transition-all disabled:opacity-50 shadow-sm"
                     >
                         {updateCandidate.isPending ? "Logging..." : "Log Submission"}
                     </button>

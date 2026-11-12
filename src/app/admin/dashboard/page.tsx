@@ -75,14 +75,8 @@ export default function AdminDashboard() {
             {/* 1. Global Header & Controls */}
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pt-2">
                 <div>
-                    <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
-                            Command Center
-                        </span>
-                        <span className="text-xs text-neutral-400 font-bold">AbsoJob Super Admin</span>
-                    </div>
-                    <h1 className="text-2xl font-black text-neutral-900 mt-1">Agency Operations & Revenue Monitor</h1>
-                    <p className="text-xs text-neutral-500 font-medium">360° Real-time visibility across pipeline, team capacity, collections & client SLA.</p>
+                    <h1 className="text-[22px] leading-tight font-semibold tracking-tight text-neutral-900 mt-1">Agency Operations & Revenue Monitor</h1>
+                    <p className="text-[13px] text-neutral-500 mt-1">360° Real-time visibility across pipeline, team capacity, collections & client SLA.</p>
                 </div>
 
                 <div className="flex items-center gap-2.5 flex-wrap">
@@ -106,13 +100,13 @@ export default function AdminDashboard() {
                     <div className="flex items-center gap-2">
                         <Link 
                             href="/admin/candidates" 
-                            className="px-3 py-2 bg-white border border-neutral-200 text-neutral-700 hover:bg-neutral-50 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors"
+                            className="px-3 py-2 bg-white border border-neutral-200 text-neutral-700 hover:bg-neutral-50 rounded-md text-xs font-medium flex items-center gap-1.5 shadow-xs transition-colors"
                         >
                             <Plus size={13} /> Candidate
                         </Link>
                         <Link 
                             href="/admin/jobs" 
-                            className="px-3.5 py-2 bg-primary text-white hover:bg-primary-dark rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors"
+                            className="px-3.5 py-2 bg-primary text-white hover:bg-primary-dark rounded-md text-xs font-medium flex items-center gap-1.5 shadow-sm transition-colors"
                         >
                             <Plus size={13} /> Requisition
                         </Link>
@@ -121,31 +115,31 @@ export default function AdminDashboard() {
             </div>
 
             {/* 2. Today's Operational Snapshot Bar */}
-            <div className="bg-neutral-900 text-white rounded-2xl p-4 shadow-md flex flex-wrap items-center justify-between gap-4">
+            <div className="bg-navy text-white rounded-2xl p-4 shadow-md flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-2.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <span className="text-xs font-black uppercase tracking-wider text-emerald-400">Today's Pulse</span>
+                    <span className="w-2 h-2 rounded-full bg-accent" />
+                    <span className="text-[13px] font-semibold text-white">Today</span>
                 </div>
                 <div className="flex items-center gap-6 sm:gap-8 flex-wrap text-xs">
                     <div>
-                        <span className="text-neutral-400 font-bold block text-[10px] uppercase">Interviews Today</span>
-                        <span className="text-lg font-black text-white">{today?.interviewsCount ?? 3}</span>
+                        <span className="text-[#94A6C3] font-medium block text-[11px]">Interviews Today</span>
+                        <span className="text-lg font-semibold text-white tabular-nums">{today?.interviewsCount ?? 0}</span>
                     </div>
                     <div>
-                        <span className="text-neutral-400 font-bold block text-[10px] uppercase">Follow-ups Due</span>
-                        <span className="text-lg font-black text-amber-400">{today?.followUpsDue ?? 5}</span>
+                        <span className="text-[#94A6C3] font-medium block text-[11px]">Follow-ups Due</span>
+                        <span className="text-lg font-semibold text-white tabular-nums">{today?.followUpsDue ?? 0}</span>
                     </div>
                     <div>
-                        <span className="text-neutral-400 font-bold block text-[10px] uppercase">Offers Pending</span>
-                        <span className="text-lg font-black text-blue-400">{today?.offersPending ?? 2}</span>
+                        <span className="text-[#94A6C3] font-medium block text-[11px]">Offers Pending</span>
+                        <span className="text-lg font-semibold text-white tabular-nums">{today?.offersPending ?? 0}</span>
                     </div>
                     <div>
-                        <span className="text-neutral-400 font-bold block text-[10px] uppercase">Joining Pending</span>
-                        <span className="text-lg font-black text-emerald-400">{today?.joiningPending ?? k.joiningPending}</span>
+                        <span className="text-[#94A6C3] font-medium block text-[11px]">Joining Pending</span>
+                        <span className="text-lg font-semibold text-white tabular-nums">{today?.joiningPending ?? k.joiningPending}</span>
                     </div>
                     <div>
-                        <span className="text-neutral-400 font-bold block text-[10px] uppercase">Approvals Waiting</span>
-                        <span className="text-lg font-black text-red-400">{today?.approvalsPending ?? k.pendingApprovals}</span>
+                        <span className="text-[#94A6C3] font-medium block text-[11px]">Approvals Waiting</span>
+                        <span className="text-lg font-semibold tabular-nums text-[#F2B5B5]">{today?.approvalsPending ?? k.pendingApprovals}</span>
                     </div>
                 </div>
                 <Link href="/admin/interviews" className="text-xs font-bold text-neutral-300 hover:text-white flex items-center gap-1 transition-colors">
@@ -272,22 +266,22 @@ export default function AdminDashboard() {
                         <AreaChart data={revenueTrend}>
                             <defs>
                                 <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stopColor="#1B4332" stopOpacity={0.25} />
-                                    <stop offset="100%" stopColor="#1B4332" stopOpacity={0} />
+                                    <stop offset="0%" stopColor="#2F6AA8" stopOpacity={0.25} />
+                                    <stop offset="100%" stopColor="#2F6AA8" stopOpacity={0} />
                                 </linearGradient>
                                 <linearGradient id="colGrad" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stopColor="#2563EB" stopOpacity={0.25} />
-                                    <stop offset="100%" stopColor="#2563EB" stopOpacity={0} />
+                                    <stop offset="0%" stopColor="#2F6AA8" stopOpacity={0.25} />
+                                    <stop offset="100%" stopColor="#2F6AA8" stopOpacity={0} />
                                 </linearGradient>
                             </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                            <XAxis dataKey="month" tick={{ fontSize: 12, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false}
+                            <CartesianGrid strokeDasharray="3 3" stroke="#E2E7EF" vertical={false} />
+                            <XAxis dataKey="month" tick={{ fontSize: 12, fill: "#A0AABA" }} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fontSize: 11, fill: "#A0AABA" }} axisLine={false} tickLine={false}
                                 tickFormatter={(v: number) => `₹${Math.round(v / 1000)}k`} />
                             <Tooltip formatter={(v) => [inr(Number(v)), "Amount"]} contentStyle={{ borderRadius: 12, border: "1px solid #E5E7EB", fontSize: 12 }} />
                             <Legend verticalAlign="top" height={36} iconType="circle" />
-                            <Area name="Billed Revenue" type="monotone" dataKey="revenue" stroke="#1B4332" strokeWidth={2.5} fill="url(#revGrad)" />
-                            <Area name="Collections" type="monotone" dataKey="collections" stroke="#2563EB" strokeWidth={2} fill="url(#colGrad)" />
+                            <Area name="Billed Revenue" type="monotone" dataKey="revenue" stroke="#2F6AA8" strokeWidth={2.5} fill="url(#revGrad)" />
+                            <Area name="Collections" type="monotone" dataKey="collections" stroke="#2F6AA8" strokeWidth={2} fill="url(#colGrad)" />
                         </AreaChart>
                     </ResponsiveContainer>
                 </SectionCard>
@@ -298,11 +292,11 @@ export default function AdminDashboard() {
                 >
                     <ResponsiveContainer width="100%" height={260}>
                         <BarChart data={agingChartData}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                            <XAxis dataKey="bucket" tick={{ fontSize: 10, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fontSize: 10, fill: "#9CA3AF" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `₹${Math.round(v / 1000)}k`} />
+                            <CartesianGrid strokeDasharray="3 3" stroke="#E2E7EF" vertical={false} />
+                            <XAxis dataKey="bucket" tick={{ fontSize: 10, fill: "#A0AABA" }} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fontSize: 10, fill: "#A0AABA" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `₹${Math.round(v / 1000)}k`} />
                             <Tooltip formatter={(v) => [inr(Number(v)), "Outstanding"]} contentStyle={{ borderRadius: 12, border: "1px solid #E5E7EB", fontSize: 12 }} />
-                            <Bar dataKey="amount" fill="#D97706" radius={[6, 6, 0, 0]} maxBarSize={36} />
+                            <Bar dataKey="amount" fill="#E0952A" radius={[6, 6, 0, 0]} maxBarSize={36} />
                         </BarChart>
                     </ResponsiveContainer>
                 </SectionCard>
@@ -365,7 +359,7 @@ export default function AdminDashboard() {
 
                     <Link 
                         href="/admin/candidates" 
-                        className="mt-5 w-full py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                        className="mt-5 w-full py-2.5 bg-navy hover:bg-neutral-800 text-white rounded-md text-xs font-medium flex items-center justify-center gap-1.5 transition-colors shadow-xs"
                     >
                         View Stuck Candidates <ArrowRight size={13} />
                     </Link>

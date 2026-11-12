@@ -168,7 +168,7 @@ export function CreateTaskModal({ meta, onClose, onCreated, initial }: { meta: T
 
                 <div className="px-6 py-4 border-t border-neutral-100 flex justify-end gap-2">
                     <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-semibold text-neutral-600 hover:bg-neutral-100 rounded-xl">Cancel</button>
-                    <button type="submit" disabled={create.isPending} className="px-5 py-2 text-xs font-bold bg-primary text-white rounded-xl shadow hover:bg-primary/95 disabled:opacity-60 inline-flex items-center gap-2">
+                    <button type="submit" disabled={create.isPending} className="px-5 py-2 text-xs font-medium bg-primary text-white rounded-md shadow hover:bg-primary/95 disabled:opacity-60 inline-flex items-center gap-2">
                         {create.isPending && <Loader2 size={14} className="animate-spin" />} Create
                     </button>
                 </div>

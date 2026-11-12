@@ -33,11 +33,11 @@ export function AdminDashboardCharts({
                         <AreaChart data={momData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                             <defs>
                                 <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#1B4332" stopOpacity={0.1} />
-                                    <stop offset="95%" stopColor="#1B4332" stopOpacity={0} />
+                                    <stop offset="5%" stopColor="#2F6AA8" stopOpacity={0.1} />
+                                    <stop offset="95%" stopColor="#2F6AA8" stopOpacity={0} />
                                 </linearGradient>
                             </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F0F3F7" />
                             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9CA3AF' }} dy={10} />
                             <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9CA3AF' }} />
                             <Tooltip
@@ -46,7 +46,7 @@ export function AdminDashboardCharts({
                                 labelStyle={{ display: 'none' }}
                                 cursor={{ stroke: '#1B4332', strokeWidth: 1, strokeDasharray: '4 4' }}
                             />
-                            <Area type="monotone" dataKey="value" stroke="#1B4332" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
+                            <Area type="monotone" dataKey="value" stroke="#2F6AA8" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
                         </AreaChart>
                     </ResponsiveContainer>
                 </div>

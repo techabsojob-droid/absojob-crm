@@ -59,7 +59,7 @@ function InvoicesContent() {
                 action={
                     <div className="flex gap-2">
                         <button onClick={() => downloadText(toCsv([["Number", "Type", "Client", "GSTIN", "Issue", "Due", "Currency", "Taxable", "CGST", "SGST", "IGST", "Total", "Paid", "Balance", "Status"], ...list.map((i) => [i.invoiceNumber, i.kind, i.clientName, i.clientGstin, i.issueDate, i.dueDate, i.currency, i.subtotal, i.tax.cgst, i.tax.sgst, i.tax.igst, i.total, i.amountPaid, i.balanceDue, i.status])]), "invoices.csv")} className="px-4 py-2.5 rounded-xl bg-neutral-100 font-bold text-xs flex items-center gap-2"><Download size={14} /> Export</button>
-                        <button onClick={() => setCreateOpen(true)} className="px-4 py-2.5 rounded-xl bg-primary text-white font-bold text-xs flex items-center gap-2"><Plus size={15} /> Manual invoice</button>
+                        <button onClick={() => setCreateOpen(true)} className="px-4 py-2.5 rounded-md bg-primary text-white font-medium text-xs flex items-center gap-2"><Plus size={15} /> Manual invoice</button>
                     </div>
                 }
             />
@@ -122,7 +122,7 @@ function InvoicesContent() {
                         <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={form.send} onChange={(e) => setForm({ ...form, send: e.target.checked })} /> Send to client now</label>
                         <span className="text-sm">Taxable <strong className="font-mono">{money(subtotal, formClient?.billing.currency)}</strong> + GST</span>
                     </div>
-                    <button disabled={create.isPending} className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">{form.send ? "Create & send" : "Save draft"}</button>
+                    <button disabled={create.isPending} className="w-full py-2.5 rounded-md bg-primary text-white text-sm font-medium disabled:opacity-50">{form.send ? "Create & send" : "Save draft"}</button>
                 </form>
             </ModalShell>
 

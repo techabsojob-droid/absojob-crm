@@ -97,7 +97,7 @@ function TaCallsPage() {
                         <button type="button" onClick={() => setOutsideOpen({})} className="px-4 py-2 rounded-xl border border-primary/30 bg-white text-primary text-xs font-bold hover:bg-primary/5 flex items-center gap-1.5">
                             <Globe size={14} /> Log call · Outside data
                         </button>
-                        <button type="button" onClick={() => { setLogFor(null); setLogOpen(true); }} className="px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold shadow-md shadow-primary/20 flex items-center gap-1.5">
+                        <button type="button" onClick={() => { setLogFor(null); setLogOpen(true); }} className="px-4 py-2 rounded-md bg-primary text-white text-xs font-medium shadow-md flex items-center gap-1.5">
                             <Plus size={14} /> Log call · Database candidate
                         </button>
                     </div>
@@ -166,7 +166,7 @@ function TaCallsPage() {
                 {filtersOn && (
                     <button type="button" onClick={() => { setStatus(""); setInterest(""); setPurpose(""); setRecruiterId(""); setSearch(""); }} className="text-xs font-bold text-primary px-2">Clear</button>
                 )}
-                <a href={`/api/ta/calls?${params}&format=csv`} className="px-3 py-1.5 rounded-lg border border-neutral-200 bg-white text-xs font-bold text-neutral-700 hover:bg-neutral-50 flex items-center gap-1.5">
+                <a href={`/api/ta/calls?${params}&format=csv`} className="px-3 py-1.5 rounded-md border border-neutral-200 bg-white text-xs font-medium text-neutral-700 hover:bg-neutral-50 flex items-center gap-1.5">
                     <Download size={13} /> Export CSV
                 </a>
             </div>
@@ -192,7 +192,7 @@ function TaCallsPage() {
                     <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <SkeletonPulse key={i} className="h-12 rounded-xl" />)}</div>
                 ) : !data?.items.length ? (
                     <EmptyState icon={PhoneCall} message={filtersOn || period !== "all" ? "No calls match these filters." : "No calls logged yet."}
-                        action={<button type="button" onClick={() => { setLogFor(null); setLogOpen(true); }} className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold">Log your first call</button>} />
+                        action={<button type="button" onClick={() => { setLogFor(null); setLogOpen(true); }} className="px-3 py-1.5 rounded-md bg-primary text-white text-xs font-medium">Log your first call</button>} />
                 ) : (
                     <div className="overflow-x-auto -mx-2">
                         <table className="w-full text-xs">
@@ -267,8 +267,8 @@ function TaCallsPage() {
                         </p>
                         <CallDetails c={detail} />
                         <div className="flex flex-wrap gap-2 pt-3 border-t border-neutral-100">
-                            <Link href={`/ta/candidates/${detail.candidateId}`} className="px-3 py-2 rounded-xl border border-neutral-200 text-xs font-bold text-neutral-700 hover:bg-neutral-50 flex items-center gap-1.5"><ExternalLink size={13} /> Candidate profile</Link>
-                            <button type="button" onClick={() => { setLogFor(detail.candidateId); setDetail(null); setLogOpen(true); }} className="px-3 py-2 rounded-xl bg-primary text-white text-xs font-bold flex items-center gap-1.5"><Phone size={13} /> Log another call</button>
+                            <Link href={`/ta/candidates/${detail.candidateId}`} className="px-3 py-2 rounded-md border border-neutral-200 text-xs font-medium text-neutral-700 hover:bg-neutral-50 flex items-center gap-1.5"><ExternalLink size={13} /> Candidate profile</Link>
+                            <button type="button" onClick={() => { setLogFor(detail.candidateId); setDetail(null); setLogOpen(true); }} className="px-3 py-2 rounded-md bg-primary text-white text-xs font-medium flex items-center gap-1.5"><Phone size={13} /> Log another call</button>
                         </div>
                     </div>
                 </ModalShell>
@@ -348,7 +348,7 @@ function LogCallDialog({ initialCandidateId, onClose }: { initialCandidateId: st
                                 <p className="text-neutral-500 truncate">{cand.phone} · {cand.email}</p>
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0">
-                                {cand.phone && <a href={`tel:${cand.phone.replace(/\s/g, "")}`} className="px-2.5 py-1.5 rounded-lg bg-primary text-white font-bold flex items-center gap-1"><Phone size={12} /> Dial</a>}
+                                {cand.phone && <a href={`tel:${cand.phone.replace(/\s/g, "")}`} className="px-2.5 py-1.5 rounded-md bg-primary text-white font-medium flex items-center gap-1"><Phone size={12} /> Dial</a>}
                                 {!initialCandidateId && <button type="button" onClick={() => setCandidateId(null)} className="px-2.5 py-1.5 rounded-lg border border-neutral-200 font-bold text-neutral-600">Change</button>}
                             </div>
                         </div>

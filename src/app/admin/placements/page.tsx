@@ -88,7 +88,7 @@ export default function PlacementsPage() {
                 action={
                     <button
                         onClick={() => setCreateOpen(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-xs font-bold rounded-xl shadow-md shadow-primary/20 hover:bg-primary/95 transition-all"
+                        className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-xs font-medium rounded-md shadow-xs hover:bg-primary/95 transition-all"
                     >
                         <Plus size={16} /> Record Placement
                     </button>
@@ -402,7 +402,7 @@ export default function PlacementsPage() {
                             <button
                                 type="submit"
                                 disabled={createMutation.isPending}
-                                className="px-4 py-2 text-xs font-bold bg-primary text-white rounded-xl shadow-md hover:bg-primary/95"
+                                className="px-4 py-2 text-xs font-medium bg-primary text-white rounded-md shadow-xs hover:bg-primary/95"
                             >
                                 {createMutation.isPending ? "Saving..." : "Save Placement"}
                             </button>

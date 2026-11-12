@@ -65,7 +65,7 @@ export default function ReferralForm({ open, onClose, jobId: initialJob }: { ope
                     <input type="checkbox" required checked={f.consent} onChange={set("consent")} className="mt-0.5" />
                     <span>The candidate has agreed to be referred to AbsoJob for this opportunity and to share their details with our clients.</span>
                 </label>
-                <button disabled={submit.isPending || (resumeRequired && !resume)} className="w-full py-2.5 rounded-xl bg-primary text-white font-bold disabled:opacity-50">{submit.isPending ? "Submitting…" : "Submit referral"}</button>
+                <button disabled={submit.isPending || (resumeRequired && !resume)} className="w-full py-2.5 rounded-md bg-primary text-white font-medium disabled:opacity-50">{submit.isPending ? "Submitting…" : "Submit referral"}</button>
             </form>
         </ModalShell>
     );

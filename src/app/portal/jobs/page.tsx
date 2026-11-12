@@ -66,7 +66,7 @@ export default function PortalJobsPage() {
                     <div className="space-y-4 text-sm">
                         <JobOverview job={view.overview} />
                         <p className="rounded-xl bg-emerald-50 border border-emerald-100 px-4 py-3 text-sm text-emerald-800">Your referral incentive: <b>{money(view.incentiveEstimate)}</b> (estimate at the mid salary){view.myReferrals ? ` · you've referred ${view.myReferrals} so far` : ""}</p>
-                        <button onClick={() => { setReferFor(view.id); setView(null); }} className="w-full py-2.5 rounded-xl bg-primary text-white font-bold">Refer a candidate for this job</button>
+                        <button onClick={() => { setReferFor(view.id); setView(null); }} className="w-full py-2.5 rounded-md bg-primary text-white font-medium">Refer a candidate for this job</button>
                     </div>
                 </ModalShell>
             )}

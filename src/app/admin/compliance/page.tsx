@@ -187,7 +187,7 @@ export default function CompliancePage() {
                             </button>
                             <button
                                 onClick={() => patchMutation.mutate({ id: selectedItem.id, status: "RESOLVED" })}
-                                className="px-4 py-2 text-xs font-bold bg-primary text-white rounded-xl shadow hover:bg-primary/95"
+                                className="px-4 py-2 text-xs font-medium bg-primary text-white rounded-md shadow hover:bg-primary/95"
                             >
                                 Confirm Rectification
                             </button>

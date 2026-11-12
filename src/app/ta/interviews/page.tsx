@@ -325,14 +325,8 @@ export default function TaInterviewsPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-1">
                 <div>
-                    <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
-                            Evaluations
-                        </span>
-                        <span className="text-xs text-neutral-400 font-bold">Interview Operations Center</span>
-                    </div>
-                    <h1 className="text-2xl font-black text-neutral-900 mt-0.5">Interviews</h1>
-                    <p className="text-xs text-neutral-500 font-medium">
+                    <h1 className="text-[22px] leading-tight font-semibold tracking-tight text-neutral-900">Interviews</h1>
+                    <p className="text-[13px] text-neutral-500 mt-1">
                         Schedule rounds, track scorecard feedback, resolve calendar conflicts, and monitor interview SLAs.
                     </p>
                 </div>
@@ -340,15 +334,15 @@ export default function TaInterviewsPage() {
                 <div className="flex items-center gap-2.5 flex-wrap">
                     <button
                         onClick={exportCsv}
-                        className="px-3.5 py-2 bg-white hover:bg-neutral-50 border border-neutral-200 text-neutral-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-2xs"
+                        className="px-3.5 py-2 bg-white hover:bg-neutral-50 border border-neutral-200 text-neutral-700 rounded-md text-xs font-medium flex items-center gap-1.5 transition-colors shadow-2xs"
                     >
                         <Download size={14} /> Export
                     </button>
                     <button
                         onClick={() => setScheduleOpen(true)}
-                        className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-primary/20 transition-all hover:scale-[1.02]"
+                        className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-md text-xs font-medium flex items-center gap-1.5 shadow-md transition-all hover:scale-[1.02]"
                     >
-                        <Plus size={15} /> + Schedule Interview
+                        <Plus size={15} /> Schedule Interview
                     </button>
                 </div>
             </div>
@@ -421,7 +415,7 @@ export default function TaInterviewsPage() {
                         <select
                             value={roundFilter}
                             onChange={(e) => setRoundFilter(e.target.value)}
-                            className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold text-neutral-700 outline-none hover:bg-neutral-100 cursor-pointer"
+                            className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-md text-xs font-semibold text-neutral-700 outline-none hover:bg-neutral-100 cursor-pointer"
                         >
                             <option value="ALL">All Rounds</option>
                             {ROUNDS.map((r) => (
@@ -433,7 +427,7 @@ export default function TaInterviewsPage() {
                         <select
                             value={modeFilter}
                             onChange={(e) => setModeFilter(e.target.value)}
-                            className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold text-neutral-700 outline-none hover:bg-neutral-100 cursor-pointer"
+                            className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-md text-xs font-semibold text-neutral-700 outline-none hover:bg-neutral-100 cursor-pointer"
                         >
                             <option value="ALL">All Modes</option>
                             <option value="VIDEO">Video Call</option>
@@ -482,7 +476,7 @@ export default function TaInterviewsPage() {
                         action={
                             <button
                                 onClick={() => setScheduleOpen(true)}
-                                className="mt-2 px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold"
+                                className="mt-2 px-4 py-2 bg-primary text-white rounded-md text-xs font-medium"
                             >
                                 Schedule Round
                             </button>
@@ -600,7 +594,7 @@ export default function TaInterviewsPage() {
                                                     setSelectedInterview(inv);
                                                     setRescheduleOpen(true);
                                                 }}
-                                                className="px-3 py-1.5 border border-neutral-200 hover:bg-neutral-50 text-neutral-700 rounded-xl text-xs font-bold transition-colors"
+                                                className="px-3 py-1.5 border border-neutral-200 hover:bg-neutral-50 text-neutral-700 rounded-md text-xs font-medium transition-colors"
                                             >
                                                 Reschedule
                                             </button>
@@ -775,7 +769,7 @@ export default function TaInterviewsPage() {
                             <button
                                 type="submit"
                                 disabled={scheduleMutation.isPending}
-                                className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-xl text-xs font-bold shadow-md shadow-primary/20 disabled:opacity-50"
+                                className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-md text-xs font-medium shadow-md disabled:opacity-50"
                             >
                                 {scheduleMutation.isPending ? "Scheduling…" : "Confirm & Schedule"}
                             </button>
@@ -931,7 +925,7 @@ export default function TaInterviewsPage() {
                             <button
                                 type="submit"
                                 disabled={rescheduleMutation.isPending}
-                                className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-xl text-xs font-bold shadow-md disabled:opacity-50"
+                                className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-md text-xs font-medium shadow-md disabled:opacity-50"
                             >
                                 {rescheduleMutation.isPending ? "Rescheduling…" : "Confirm Reschedule"}
                             </button>

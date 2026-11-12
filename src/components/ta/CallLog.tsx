@@ -198,7 +198,7 @@ export function CallForm({ candidateId, applications = [], defaultApplicationId,
                 </div>
                 <label className={lbl}>Call recording link<input type="url" pattern="https://.*" value={f.recordingUrl} onChange={set("recordingUrl")} className={inputCls} placeholder="https://… (optional)" /></label>
             </div>
-            <button disabled={save.isPending} className="w-full py-2.5 rounded-xl bg-primary text-white font-bold disabled:opacity-50 flex items-center justify-center gap-1.5"><Phone size={14} /> {save.isPending ? "Saving…" : "Save call"}</button>
+            <button disabled={save.isPending} className="w-full py-2.5 rounded-md bg-primary text-white font-medium disabled:opacity-50 flex items-center justify-center gap-1.5"><Phone size={14} /> {save.isPending ? "Saving…" : "Save call"}</button>
         </form>
     );
 }

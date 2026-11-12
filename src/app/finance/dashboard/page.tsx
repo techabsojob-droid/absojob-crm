@@ -69,7 +69,7 @@ export default function FinanceDashboard() {
                     </ul>
                 </SectionCard>
                 <SectionCard title="Overdue invoices" action={<Link href="/finance/invoices?status=OVERDUE" className="text-xs font-bold text-primary">View all</Link>}>
-                    {data.overdueInvoices.length === 0 ? <EmptyState icon={AlertTriangle} message="Nothing overdue 🎉" /> : (
+                    {data.overdueInvoices.length === 0 ? <EmptyState icon={AlertTriangle} message="Nothing overdue." /> : (
                         <ul className="divide-y divide-neutral-100 text-sm">
                             {data.overdueInvoices.map((i) => (
                                 <li key={i.id} className="py-2.5 flex justify-between gap-3">

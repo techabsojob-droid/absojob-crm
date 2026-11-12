@@ -213,7 +213,7 @@ export function TaskDrawer({ taskKey, meta, onClose }: { taskKey: string; meta: 
                                     <div className="space-y-2">
                                         <textarea autoFocus rows={7} value={desc} onChange={(e) => setDesc(e.target.value)} className="w-full px-3 py-2 text-sm bg-white border border-neutral-200 rounded-xl outline-none focus:ring-2 focus:ring-primary/20" />
                                         <div className="flex gap-2">
-                                            <button onClick={() => { update.mutate({ description: desc }); setEditingDesc(false); }} className="px-3 py-1.5 text-xs font-bold bg-primary text-white rounded-lg">Save</button>
+                                            <button onClick={() => { update.mutate({ description: desc }); setEditingDesc(false); }} className="px-3 py-1.5 text-xs font-medium bg-primary text-white rounded-md">Save</button>
                                             <button onClick={() => setEditingDesc(false)} className="px-3 py-1.5 text-xs font-semibold text-neutral-600 hover:bg-neutral-100 rounded-lg">Cancel</button>
                                         </div>
                                     </div>
@@ -244,7 +244,7 @@ export function TaskDrawer({ taskKey, meta, onClose }: { taskKey: string; meta: 
                                             <MentionBox value={draft} onChange={setDraft} people={meta.people.filter((p) => p.id !== meta.me.id)} placeholder="Add a comment… type @ to mention someone" />
                                             {draft.trim() && (
                                                 <div className="flex gap-2">
-                                                    <button onClick={() => comment.mutate({ method: "POST", payload: { body: draft } })} disabled={comment.isPending} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-primary text-white rounded-lg disabled:opacity-60">
+                                                    <button onClick={() => comment.mutate({ method: "POST", payload: { body: draft } })} disabled={comment.isPending} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary text-white rounded-md disabled:opacity-60">
                                                         {comment.isPending ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />} Comment
                                                     </button>
                                                     <button onClick={() => setDraft("")} className="px-3 py-1.5 text-xs font-semibold text-neutral-600 hover:bg-neutral-100 rounded-lg">Cancel</button>
@@ -269,7 +269,7 @@ export function TaskDrawer({ taskKey, meta, onClose }: { taskKey: string; meta: 
                                                     <div className="mt-1.5 space-y-2">
                                                         <MentionBox autoFocus value={editingComment.body} onChange={(v) => setEditingComment({ id: item.c.id, body: v })} people={meta.people} placeholder="" />
                                                         <div className="flex gap-2">
-                                                            <button onClick={() => comment.mutate({ method: "PATCH", payload: { commentId: item.c.id, body: editingComment.body } })} className="px-3 py-1.5 text-xs font-bold bg-primary text-white rounded-lg">Save</button>
+                                                            <button onClick={() => comment.mutate({ method: "PATCH", payload: { commentId: item.c.id, body: editingComment.body } })} className="px-3 py-1.5 text-xs font-medium bg-primary text-white rounded-md">Save</button>
                                                             <button onClick={() => setEditingComment(null)} className="px-3 py-1.5 text-xs font-semibold text-neutral-600 hover:bg-neutral-100 rounded-lg">Cancel</button>
                                                         </div>
                                                     </div>

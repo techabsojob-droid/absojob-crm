@@ -92,7 +92,7 @@ export default function PayablesPage() {
                         <input name="bankAccountNumber" defaultValue={payee.bankAccountNumber ?? ""} placeholder="Account number" className={inputCls} />
                         <input name="bankIfsc" defaultValue={payee.bankIfsc ?? ""} placeholder="IFSC" className={inputCls} />
                         <p className="col-span-2 text-[11px] text-neutral-400">Without a PAN, TDS u/s 206AA applies at 20% — collect it before paying.</p>
-                        <button disabled={saveProfile.isPending} className="col-span-2 py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">Save</button>
+                        <button disabled={saveProfile.isPending} className="col-span-2 py-2.5 rounded-md bg-primary text-white text-sm font-medium disabled:opacity-50">Save</button>
                     </form>
                 )}
             </ModalShell>

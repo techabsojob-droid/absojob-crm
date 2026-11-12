@@ -17,7 +17,7 @@ import {
 } from "recharts";
 import { toast } from "sonner";
 
-const COLORS = ["#1B4332", "#2D6A4F", "#40916C", "#52B788", "#74C69D", "#95D5B2", "#D8F3DC"];
+const COLORS = ["#2F6AA8", "#8A6FB0", "#5AA9E6", "#E0952A", "#B42332", "#1E9367", "#E8EDF4"];
 
 export default function TaReportsPage() {
     // Report tab state
@@ -157,14 +157,8 @@ export default function TaReportsPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-1">
                 <div>
-                    <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
-                            Analytics & Insights
-                        </span>
-                        <span className="text-xs text-neutral-400 font-bold">Talent Acquisition Intelligence</span>
-                    </div>
-                    <h1 className="text-2xl font-black text-neutral-900 mt-0.5">Reports & Analytics</h1>
-                    <p className="text-xs text-neutral-500 font-medium">
+                    <h1 className="text-[22px] leading-tight font-semibold tracking-tight text-neutral-900">Reports & Analytics</h1>
+                    <p className="text-[13px] text-neutral-500 mt-1">
                         Deep-dive performance analytics across hiring funnels, sourcing channels, recruiter conversions, and SLAs.
                     </p>
                 </div>
@@ -193,13 +187,13 @@ export default function TaReportsPage() {
 
                     <button
                         onClick={exportCsv}
-                        className="px-3.5 py-2 bg-white hover:bg-neutral-50 border border-neutral-200 text-neutral-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-2xs"
+                        className="px-3.5 py-2 bg-white hover:bg-neutral-50 border border-neutral-200 text-neutral-700 rounded-md text-xs font-medium flex items-center gap-1.5 transition-colors shadow-2xs"
                     >
                         <Download size={14} /> Export CSV
                     </button>
                     <Link
                         href="/ta/dashboard"
-                        className="px-3.5 py-2 bg-primary text-white hover:bg-primary-dark rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors"
+                        className="px-3.5 py-2 bg-primary text-white hover:bg-primary-dark rounded-md text-xs font-medium flex items-center gap-1.5 shadow-sm transition-colors"
                     >
                         Command Center <ArrowRight size={13} />
                     </Link>
@@ -295,7 +289,7 @@ export default function TaReportsPage() {
                                         </div>
                                         <div className="h-3 bg-neutral-100 rounded-full overflow-hidden">
                                             <div
-                                                className="h-full rounded-full transition-all bg-gradient-to-r from-primary to-emerald-600"
+                                                className="h-full rounded-full transition-all bg-navy"
                                                 style={{ width: `${widthPct}%` }}
                                             />
                                         </div>
@@ -357,11 +351,11 @@ export default function TaReportsPage() {
                     >
                         <ResponsiveContainer width="100%" height={280}>
                             <BarChart data={sourceData}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                                <XAxis dataKey="source" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-                                <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
+                                <CartesianGrid strokeDasharray="3 3" stroke="#E2E7EF" vertical={false} />
+                                <XAxis dataKey="source" tick={{ fontSize: 11, fill: "#A0AABA" }} axisLine={false} tickLine={false} />
+                                <YAxis tick={{ fontSize: 11, fill: "#A0AABA" }} axisLine={false} tickLine={false} />
                                 <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #E5E7EB", fontSize: 12 }} />
-                                <Bar dataKey="candidates" fill="#1B4332" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                                <Bar dataKey="candidates" fill="#2F6AA8" radius={[6, 6, 0, 0]} maxBarSize={40} />
                             </BarChart>
                         </ResponsiveContainer>
                     </SectionCard>

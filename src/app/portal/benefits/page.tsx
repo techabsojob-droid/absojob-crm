@@ -56,7 +56,7 @@ export default function BenefitsPage() {
                                 {deps.length < 6 && <button type="button" onClick={() => setDeps([...deps, { name: "", relation: "Spouse" }])} className={`${btn.ghost} flex items-center gap-1`}><Plus size={12} /> Add dependent</button>}
                             </>
                         ) : <p className="text-xs text-neutral-600">Confirm your enrolment in {sel.title}.</p>}
-                        <button disabled={act.isPending} className="w-full py-2.5 rounded-xl bg-primary text-white font-bold disabled:opacity-50">Confirm enrolment</button>
+                        <button disabled={act.isPending} className="w-full py-2.5 rounded-md bg-primary text-white font-medium disabled:opacity-50">Confirm enrolment</button>
                     </form>
                 )}
             </ModalShell>

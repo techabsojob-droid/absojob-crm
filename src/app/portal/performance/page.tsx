@@ -62,7 +62,7 @@ export default function MyPerformancePage() {
     return (
         <div className="space-y-6 max-w-4xl">
             <PageHeader title="My Performance" subtitle="Goals, self review and your manager's feedback" />
-            <SectionCard title={`Goals & OKRs (${goals.length})`} action={<button onClick={() => setGoalOpen(true)} className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold">Add goal</button>}>
+            <SectionCard title={`Goals & OKRs (${goals.length})`} action={<button onClick={() => setGoalOpen(true)} className="px-3 py-1.5 rounded-md bg-primary text-white text-xs font-medium">Add goal</button>}>
                 {goals.length === 0 ? <EmptyState icon={Target} message="No goals yet — add what you plan to achieve this cycle." /> : (
                     <ul className="space-y-3">
                         {goals.map((g) => (
@@ -87,7 +87,7 @@ export default function MyPerformancePage() {
                         <input required type="date" min={goalForm.startDate} value={goalForm.endDate} onChange={(e) => setGoalForm({ ...goalForm, endDate: e.target.value })} className={inputCls} aria-label="End" />
                         <input type="number" min="1" max="100" value={goalForm.weight} onChange={(e) => setGoalForm({ ...goalForm, weight: e.target.value })} className={inputCls} aria-label="Weight %" />
                     </div>
-                    <button disabled={goalAct.isPending} className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">Save goal</button>
+                    <button disabled={goalAct.isPending} className="w-full py-2.5 rounded-md bg-primary text-white text-sm font-medium disabled:opacity-50">Save goal</button>
                 </form>
             </ModalShell>
 
@@ -95,7 +95,7 @@ export default function MyPerformancePage() {
                 {mine.length === 0 ? <EmptyState icon={Target} message="No review cycles yet." /> : (
                     <div className="grid gap-3">
                         {mine.map((r) => card(r, ["GOALS_SET", "SELF_REVIEW"].includes(r.status) ? (
-                            <button onClick={() => { setSelfFor(r); setSelfText(r.employeeFeedback ?? ""); setProgress(Object.fromEntries(r.goals.map((g) => [g.id, g.progress]))); }} className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold">Submit self review</button>
+                            <button onClick={() => { setSelfFor(r); setSelfText(r.employeeFeedback ?? ""); setProgress(Object.fromEntries(r.goals.map((g) => [g.id, g.progress]))); }} className="px-3 py-1.5 rounded-md bg-primary text-white text-xs font-medium">Submit self review</button>
                         ) : undefined))}
                     </div>
                 )}
@@ -104,7 +104,7 @@ export default function MyPerformancePage() {
                 <SectionCard title="My Team's Reviews">
                     <div className="grid gap-3">
                         {team.map((r) => card(r, r.status === "MANAGER_REVIEW" ? (
-                            <button onClick={() => setManaging(r)} className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold">Give manager review</button>
+                            <button onClick={() => setManaging(r)} className="px-3 py-1.5 rounded-md bg-primary text-white text-xs font-medium">Give manager review</button>
                         ) : undefined))}
                     </div>
                 </SectionCard>
@@ -120,7 +120,7 @@ export default function MyPerformancePage() {
                             </label>
                         ))}
                         <textarea required rows={4} placeholder="Achievements, challenges, what you need" value={selfText} onChange={(e) => setSelfText(e.target.value)} className={inputCls} />
-                        <button disabled={act.isPending} className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">Submit to Manager</button>
+                        <button disabled={act.isPending} className="w-full py-2.5 rounded-md bg-primary text-white text-sm font-medium disabled:opacity-50">Submit to Manager</button>
                     </form>
                 )}
             </ModalShell>

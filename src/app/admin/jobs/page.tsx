@@ -304,7 +304,7 @@ export default function AdminJobsPage() {
                         </button>
                         <button
                             onClick={openCreate}
-                            className="px-4 py-2 bg-primary text-white rounded-xl text-sm font-semibold hover:bg-primary-dark transition-colors shadow-lg shadow-primary/25 flex items-center gap-2 cursor-pointer"
+                            className="px-4 py-2 bg-primary text-white rounded-md text-sm font-semibold hover:bg-primary-dark transition-colors shadow-lg flex items-center gap-2 cursor-pointer"
                         >
                             <Plus size={16} /> New Requisition
                         </button>
@@ -530,7 +530,7 @@ export default function AdminJobsPage() {
                         onClick={() => setStatusFilter(s)}
                         className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-colors ${
                             statusFilter === s
-                                ? "bg-primary text-white shadow-md shadow-primary/20"
+                                ? "bg-primary text-white shadow-md"
                                 : "bg-white border border-neutral-200 text-neutral-500 hover:border-neutral-300"
                         }`}
                     >
@@ -618,7 +618,7 @@ export default function AdminJobsPage() {
                                     <div className="flex items-center gap-2 shrink-0">
                                         <Link
                                             href={`/admin/jobs/${j.id}`}
-                                            className="px-3 py-1.5 rounded-xl bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all text-xs font-bold flex items-center gap-1"
+                                            className="px-3 py-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all text-xs font-medium flex items-center gap-1"
                                         >
                                             View 360° <ArrowRight size={13} />
                                         </Link>
@@ -736,7 +736,7 @@ export default function AdminJobsPage() {
                                                 <button
                                                     onClick={() => patchStatusMutation.mutate({ id: j.id, action: "approve" })}
                                                     disabled={patchStatusMutation.isPending}
-                                                    className="px-4 py-1.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-colors flex items-center gap-1.5 shadow-md shadow-primary/20 disabled:opacity-50 cursor-pointer"
+                                                    className="px-4 py-1.5 bg-primary text-white rounded-md text-xs font-medium hover:bg-primary-dark transition-colors flex items-center gap-1.5 shadow-md disabled:opacity-50 cursor-pointer"
                                                 >
                                                     <CheckCircle2 size={14} /> Approve Mandate
                                                 </button>
@@ -810,7 +810,7 @@ export default function AdminJobsPage() {
                     <div className="flex items-center justify-end gap-3 pt-2">
                         <button
                             onClick={() => setStatusChangeModalOpen(false)}
-                            className="px-4 py-2 border border-neutral-200 rounded-xl text-xs font-bold text-neutral-700 hover:bg-neutral-50"
+                            className="px-4 py-2 border border-neutral-200 rounded-md text-xs font-medium text-neutral-700 hover:bg-neutral-50"
                         >
                             Cancel
                         </button>
@@ -825,7 +825,7 @@ export default function AdminJobsPage() {
                                     });
                                 }
                             }}
-                            className="px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-all disabled:opacity-50 shadow-md shadow-primary/20"
+                            className="px-4 py-2 bg-primary text-white rounded-md text-xs font-medium hover:bg-primary-dark transition-all disabled:opacity-50 shadow-md"
                         >
                             {patchStatusMutation.isPending ? "Updating..." : "Confirm Status Change"}
                         </button>
@@ -1116,7 +1116,7 @@ export default function AdminJobsPage() {
                                 <button
                                     type="button"
                                     onClick={() => setFormStep((formStep - 1) as any)}
-                                    className="px-4 py-2 border border-neutral-200 rounded-xl text-xs font-bold text-neutral-700 hover:bg-neutral-50"
+                                    className="px-4 py-2 border border-neutral-200 rounded-md text-xs font-medium text-neutral-700 hover:bg-neutral-50"
                                 >
                                     Back
                                 </button>
@@ -1125,7 +1125,7 @@ export default function AdminJobsPage() {
                             <button
                                 type="submit"
                                 disabled={createMutation.isPending}
-                                className="px-5 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-all disabled:opacity-50 shadow-md shadow-primary/20"
+                                className="px-5 py-2 bg-primary text-white rounded-md text-xs font-medium hover:bg-primary-dark transition-all disabled:opacity-50 shadow-md"
                             >
                                 {createMutation.isPending
                                     ? "Submitting..."
@@ -1264,7 +1264,7 @@ export default function AdminJobsPage() {
 
                     <button
                         disabled={updateMutation.isPending}
-                        className="w-full py-2.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-all disabled:opacity-50 shadow-md shadow-primary/25 cursor-pointer"
+                        className="w-full py-2.5 bg-primary text-white rounded-md text-xs font-medium hover:bg-primary-dark transition-all disabled:opacity-50 shadow-md cursor-pointer"
                     >
                         {updateMutation.isPending ? "Saving..." : "Save Changes"}
                     </button>
@@ -1281,14 +1281,14 @@ export default function AdminJobsPage() {
                     <div className="flex items-center justify-end gap-3 pt-2">
                         <button
                             onClick={() => setDeleteModalOpen(false)}
-                            className="px-4 py-2 border border-neutral-200 rounded-xl text-xs font-bold text-neutral-700 hover:bg-neutral-50"
+                            className="px-4 py-2 border border-neutral-200 rounded-md text-xs font-medium text-neutral-700 hover:bg-neutral-50"
                         >
                             Cancel
                         </button>
                         <button
                             onClick={() => selectedJob?.id && deleteMutation.mutate(selectedJob.id)}
                             disabled={deleteMutation.isPending}
-                            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-md shadow-red-900/20 disabled:opacity-50 cursor-pointer"
+                            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-md disabled:opacity-50 cursor-pointer"
                         >
                             {deleteMutation.isPending ? "Deleting..." : "Yes, Delete Job"}
                         </button>

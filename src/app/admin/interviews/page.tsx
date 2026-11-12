@@ -69,7 +69,7 @@ export default function AdminInterviewsMonitorPage() {
                 title="Interview Monitor"
                 subtitle="Organization-wide live tracking of all candidate rounds, interviewer schedules & outcomes"
                 action={
-                    <button onClick={() => setScheduleOpen(true)} className="px-4 py-2 bg-primary text-white rounded-xl text-sm font-semibold hover:bg-primary-dark transition-colors shadow-lg shadow-primary/25 flex items-center gap-2">
+                    <button onClick={() => setScheduleOpen(true)} className="px-4 py-2 bg-primary text-white rounded-md text-sm font-semibold hover:bg-primary-dark transition-colors shadow-lg flex items-center gap-2">
                         <Plus size={16} /> Schedule Interview
                     </button>
                 }
@@ -85,7 +85,7 @@ export default function AdminInterviewsMonitorPage() {
             <div className="flex gap-2">
                 {(["upcoming", "completed"] as const).map((t) => (
                     <button key={t} onClick={() => setTab(t)}
-                        className={`px-4 py-2 rounded-xl text-sm font-bold capitalize transition-colors ${tab === t ? "bg-primary text-white shadow-md shadow-primary/20" : "bg-white border border-neutral-200 text-neutral-500 hover:border-neutral-300"}`}>
+                        className={`px-4 py-2 rounded-xl text-sm font-bold capitalize transition-colors ${tab === t ? "bg-primary text-white shadow-md" : "bg-white border border-neutral-200 text-neutral-500 hover:border-neutral-300"}`}>
                         {t} Interviews
                     </button>
                 ))}
@@ -242,7 +242,7 @@ export default function AdminInterviewsMonitorPage() {
                     </label>
                     <button
                         disabled={scheduleMutation.isPending}
-                        className="w-full py-3 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primary-dark transition-all disabled:opacity-50 shadow-lg shadow-primary/25"
+                        className="w-full py-3 bg-primary text-white rounded-md text-sm font-medium hover:bg-primary-dark transition-all disabled:opacity-50 shadow-lg"
                     >
                         {scheduleMutation.isPending ? "Scheduling..." : "Schedule Interview"}
                     </button>

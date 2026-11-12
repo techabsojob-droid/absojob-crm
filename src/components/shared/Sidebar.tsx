@@ -1,18 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-    LayoutDashboard, Briefcase, GitBranch, Users, CalendarClock, CheckSquare,
-    BarChart3, LogOut, ChevronLeft, ChevronRight, AlertCircle, Sparkles
-} from "lucide-react";
+import { ChevronsLeft, ChevronsRight, LogOut, X } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { roleHome } from "@/lib/types";
 
 export interface NavItem {
     label: string;
-    icon: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- lucide icons and a few custom svg components
+    icon: LucideIcon | any;
     href: string;
     badge?: number | string;
     badgeKey?: "requisitions" | "pipeline" | "candidates" | "interviews" | "tasks" | "approvals" | "dataQuality" | "overdueInvoices" | "toBill" | "expensesPending" | "payrollAwaiting";
@@ -30,249 +29,135 @@ interface SidebarProps {
     groups?: NavGroup[];
     collapsed: boolean;
     onToggle: () => void;
+    /** Mobile drawer state (below lg the sidebar is off-canvas). */
+    mobileOpen?: boolean;
+    onCloseMobile?: () => void;
 }
 
-const COLLAPSED_W = 80;
-const EXPANDED_W = 250;
-const TRANSITION = "all 250ms cubic-bezier(0.4, 0, 0.2, 1)";
+type Badges = Partial<Record<NonNullable<NavItem["badgeKey"]>, number>> & { hasOverdueTasks?: boolean; hasSlaBreach?: boolean };
 
-export default function Sidebar({ items, groups, collapsed, onToggle }: SidebarProps) {
-    const pathname = usePathname();
+export const ROLE_LABEL: Record<string, string> = {
+    SUPER_ADMIN: "Super Admin", TA_MANAGER: "TA Manager", TA_RECRUITER: "Recruiter", HR_ADMIN: "HR Admin",
+    FINANCE_ADMIN: "Finance", AGENT: "Partner", EMPLOYEE: "Employee",
+};
+
+/** Most specific nav entry for the current path (e.g. /ta/requisitions/new beats /ta/requisitions). */
+export function activeHref(pathname: string, groups: NavGroup[]): string | null {
+    const matches = (href: string) => pathname === href || (pathname.startsWith(href + "/") && !href.endsWith("/dashboard"));
+    let best: string | null = null;
+    for (const g of groups) for (const i of g.items) if (matches(i.href) && (!best || i.href.length > best.length)) best = i.href;
+    return best;
+}
+
+export default function Sidebar({ items, groups, collapsed, onToggle, mobileOpen = false, onCloseMobile }: SidebarProps) {
+    const pathname = usePathname() ?? "";
     const { user, logout } = useAuth();
-
-    const sidebarWidth = collapsed ? COLLAPSED_W : EXPANDED_W;
     const resolvedGroups: NavGroup[] = groups || (items ? [{ items }] : []);
+    const current = activeHref(pathname, resolvedGroups);
+    const [badges, setBadges] = useState<Badges>({});
 
-    // Live Badges State
-    const [badgeData, setBadgeData] = useState<{
-        requisitions?: number;
-        pipeline?: number;
-        candidates?: number;
-        interviews?: number;
-        tasks?: number;
-        approvals?: number;
-        dataQuality?: number;
-        overdueInvoices?: number;
-        toBill?: number;
-        expensesPending?: number;
-        payrollAwaiting?: number;
-        hasOverdueTasks?: boolean;
-        hasSlaBreach?: boolean;
-    }>({});
-
-    // Fetch dynamic badge counts in background without blocking sidebar render
+    // Live counts, refreshed in the background; the sidebar never waits on them
     useEffect(() => {
-        let isMounted = true;
-        async function fetchBadges() {
+        let alive = true;
+        const load = async () => {
             try {
                 const res = await fetch("/api/ta/sidebar-badges");
-                if (res.ok) {
-                    const data = await res.json();
-                    if (isMounted) setBadgeData(data);
-                }
-            } catch {
-                // Keep UI fully functional even if badge API fails
-            }
-        }
-        fetchBadges();
-        const interval = setInterval(fetchBadges, 30000);
-        return () => {
-            isMounted = false;
-            clearInterval(interval);
+                if (res.ok && alive) setBadges(await res.json());
+            } catch { /* counts are optional */ }
         };
+        load();
+        const t = setInterval(load, 30000);
+        return () => { alive = false; clearInterval(t); };
     }, []);
+
+    const narrow = collapsed && !mobileOpen; // icon-only rail (desktop collapsed)
 
     return (
         <>
-            {/* Sidebar */}
+            {mobileOpen && <div className="fixed inset-0 z-40 bg-navy-deep/50 lg:hidden" onClick={onCloseMobile} aria-hidden />}
             <aside
-                className="fixed top-0 left-0 h-screen z-50 flex flex-col bg-white border-r border-neutral-200 py-6 overflow-hidden"
-                style={{ width: sidebarWidth, transition: TRANSITION }}
+                aria-label="Main navigation"
+                className={`fixed top-0 left-0 z-50 h-screen flex flex-col bg-navy text-[#BDC9DC] transition-[width,transform] duration-200 ease-out
+                    ${mobileOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}
+                style={{ width: narrow ? "var(--sidebar-collapsed)" : "var(--sidebar-expanded)" }}
             >
-                {/* Brand / Logo Area */}
-                <Link
-                    href={user?.role ? roleHome(user.role) : "/login"}
-                    className={`mb-6 flex items-center shrink-0 hover:opacity-90 transition-opacity ${collapsed ? "justify-center px-1" : "px-6 gap-3"}`}
-                >
-                    <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white text-sm font-black tracking-tight shadow-md shadow-primary/20 shrink-0">
-                        AJ
-                    </div>
-                    <div
-                        className="flex flex-col whitespace-nowrap overflow-hidden"
-                        style={{
-                            width: collapsed ? 0 : "auto",
-                            opacity: collapsed ? 0 : 1,
-                            transition: TRANSITION,
-                        }}
-                    >
-                        <span className="text-lg font-bold text-neutral-900 tracking-tight leading-none">
-                            AbsoJob
-                        </span>
-                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-neutral-400 mt-1">
-                            {user?.role === "TA_MANAGER" ? "TA Manager" : user?.role === "TA_RECRUITER" ? "Recruitment" : user?.role === "FINANCE_ADMIN" ? "Finance" : "ATS Platform"}
-                        </span>
-                    </div>
-                </Link>
+                {/* Brand */}
+                <div className={`h-[var(--topbar-height)] shrink-0 flex items-center border-b border-white/[0.07] ${narrow ? "justify-center" : "px-5 gap-3"}`}>
+                    <Link href={user?.role ? roleHome(user.role) : "/login"} className="flex items-center gap-3 min-w-0" aria-label="AbsoJob home">
+                        <span className="w-8 h-8 rounded-md bg-accent text-white flex items-center justify-center text-[13px] font-bold tracking-tight shrink-0">AJ</span>
+                        {!narrow && (
+                            <span className="min-w-0 leading-tight">
+                                <span className="block text-[15px] font-semibold text-white tracking-tight">AbsoJob</span>
+                                <span className="block text-[11px] text-[#94A6C3] truncate">{user ? ROLE_LABEL[user.role] ?? "Workspace" : "Recruitment CRM"}</span>
+                            </span>
+                        )}
+                    </Link>
+                    {mobileOpen && <button onClick={onCloseMobile} className="ml-auto p-1.5 rounded-md text-[#94A6C3] hover:text-white hover:bg-white/10 lg:hidden" aria-label="Close menu"><X size={18} /></button>}
+                </div>
 
-                {/* Navigation Groups */}
-                <nav className="flex-1 flex flex-col gap-5 w-full px-3 overflow-y-auto overflow-x-hidden no-scrollbar">
-                    {resolvedGroups.map((grp, gIdx) => (
-                        <div key={gIdx} className="space-y-1">
-                            {grp.groupTitle && !collapsed && (
-                                <p className="px-3 pb-1 text-[10px] font-extrabold uppercase tracking-wider text-neutral-400">
-                                    {grp.groupTitle}
-                                </p>
-                            )}
-                            {grp.groupTitle && collapsed && (
-                                <div className="h-px bg-neutral-100 my-2 mx-2" />
-                            )}
-                            {grp.items.map((item) => {
-                                const Icon = item.icon;
-                                const matches = (href: string) => pathname === href || (pathname.startsWith(href + "/") && !href.endsWith("/dashboard"));
-                                // Only the most specific matching entry is highlighted (e.g. /ta/requisitions/new)
-                                const isActive = matches(item.href) && !resolvedGroups.some((g) => g.items.some((o) => o.href.length > item.href.length && matches(o.href)));
-
-                                // Compute dynamic badge count if badgeKey is provided, or use static badge
-                                const rawBadge = item.badgeKey ? badgeData[item.badgeKey] : item.badge;
-                                const displayBadge = rawBadge !== undefined && rawBadge !== null && (typeof rawBadge === "string" || rawBadge > 0) ? rawBadge : undefined;
-
-                                const isOverdueAlert = item.badgeKey === "tasks" && badgeData.hasOverdueTasks;
-                                const isSlaAlert = item.badgeKey === "requisitions" && badgeData.hasSlaBreach;
-
-                                return (
-                                    <Link
-                                        key={item.href}
-                                        href={item.href}
-                                        className={`group relative flex items-center gap-3 rounded-xl transition-all ${
-                                            isActive
-                                                ? "bg-primary text-white shadow-lg shadow-primary/25 font-bold"
-                                                : "text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900"
-                                        }`}
-                                        style={{
-                                            padding: collapsed ? "10px" : "8px 12px",
-                                            justifyContent: collapsed ? "center" : "flex-start",
-                                            transition: TRANSITION,
-                                        }}
-                                        title={collapsed ? item.label : undefined}
-                                    >
-                                        <Icon size={20} strokeWidth={isActive ? 2.5 : 2} className="shrink-0" />
-                                        <span
-                                            className="text-xs font-semibold whitespace-nowrap overflow-hidden flex-1"
-                                            style={{
-                                                width: collapsed ? 0 : "auto",
-                                                opacity: collapsed ? 0 : 1,
-                                                transition: TRANSITION,
-                                            }}
-                                        >
-                                            {item.label}
-                                        </span>
-
-                                        {/* Expanded Badge Count */}
-                                        {!collapsed && displayBadge !== undefined && (
-                                            <span
-                                                className={`px-1.5 py-0.5 text-[10px] font-black rounded-md leading-none flex items-center gap-1 ${
-                                                    isActive
-                                                        ? "bg-white/25 text-white"
-                                                        : isOverdueAlert || isSlaAlert
-                                                        ? "bg-red-50 text-red-700 border border-red-200"
-                                                        : item.badgeTone === "amber"
-                                                        ? "bg-amber-50 text-amber-700 border border-amber-200"
-                                                        : item.badgeTone === "emerald"
-                                                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                                        : "bg-neutral-100 text-neutral-600"
-                                                }`}
+                {/* Navigation */}
+                <nav className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar py-3">
+                    {resolvedGroups.map((grp, gi) => (
+                        <div key={gi} className={gi ? "mt-4" : ""}>
+                            {grp.groupTitle && (narrow
+                                ? <div className="h-px bg-white/[0.07] mx-4 mb-2" />
+                                : <p className="px-5 pb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[#6A82A6]">{grp.groupTitle}</p>)}
+                            <ul className={narrow ? "px-2 space-y-0.5" : "px-3 space-y-0.5"}>
+                                {grp.items.map((item) => {
+                                    const Icon = item.icon;
+                                    const isActive = current === item.href;
+                                    const raw = item.badgeKey ? badges[item.badgeKey] : item.badge;
+                                    const badge = raw !== undefined && raw !== null && (typeof raw === "string" || raw > 0) ? raw : undefined;
+                                    const alert = (item.badgeKey === "tasks" && badges.hasOverdueTasks) || (item.badgeKey === "requisitions" && badges.hasSlaBreach) || item.badgeTone === "red";
+                                    return (
+                                        <li key={item.href}>
+                                            <Link
+                                                href={item.href}
+                                                onClick={onCloseMobile}
+                                                aria-current={isActive ? "page" : undefined}
+                                                title={narrow ? item.label : item.tooltipHint}
+                                                className={`group relative flex items-center h-9 rounded-md text-[13px] transition-colors
+                                                    ${narrow ? "justify-center" : "gap-3 px-3"}
+                                                    ${isActive ? "bg-white/[0.09] text-white font-medium" : "hover:bg-white/[0.05] hover:text-white"}`}
                                             >
-                                                {displayBadge}
-                                                {(isOverdueAlert || isSlaAlert) && (
-                                                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                                                {isActive && <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r bg-accent" aria-hidden />}
+                                                <Icon size={17} strokeWidth={isActive ? 2.2 : 1.8} className={`shrink-0 ${isActive ? "text-white" : "text-[#94A6C3] group-hover:text-white"}`} />
+                                                {!narrow && <span className="flex-1 truncate">{item.label}</span>}
+                                                {!narrow && badge !== undefined && (
+                                                    <span className={`min-w-5 h-5 px-1.5 rounded text-[11px] font-semibold tabular-nums flex items-center justify-center ${alert ? "bg-accent text-white" : "bg-white/10 text-[#DEE4EE]"}`}>{badge}</span>
                                                 )}
-                                            </span>
-                                        )}
-
-                                        {/* Collapsed dot indicator */}
-                                        {collapsed && displayBadge !== undefined && (
-                                            <span className={`absolute top-2 right-2 w-2 h-2 rounded-full ${
-                                                isOverdueAlert || isSlaAlert ? "bg-red-500 animate-pulse" : "bg-primary"
-                                            }`} />
-                                        )}
-
-                                        {/* Tooltip (collapsed mode only) */}
-                                        {collapsed && (
-                                            <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-neutral-900 text-white text-xs font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-[70] flex items-center gap-2 shadow-xl">
-                                                <span>{item.label}</span>
-                                                {displayBadge !== undefined && (
-                                                    <span className="bg-primary px-1.5 py-0.5 rounded text-[10px] font-bold text-white">
-                                                        {displayBadge}
-                                                    </span>
-                                                )}
-                                                <div className="absolute left-0 top-1/2 -translate-x-1 -translate-y-1/2 w-2 h-2 bg-neutral-900 rotate-45" />
-                                            </div>
-                                        )}
-                                    </Link>
-                                );
-                            })}
+                                                {narrow && badge !== undefined && <span className={`absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full ${alert ? "bg-accent" : "bg-[#94A6C3]"}`} />}
+                                            </Link>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
                         </div>
                     ))}
                 </nav>
 
-                {/* Bottom User Profile & Logout */}
-                <div className="mt-auto flex flex-col gap-2 w-full px-3 shrink-0 pt-3 border-t border-neutral-100">
-                    {/* User profile snippet */}
-                    {!collapsed && user && (
-                        <div className="px-3 py-2 rounded-xl bg-neutral-50/80 border border-neutral-100 flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-full bg-primary/10 text-primary font-black text-xs flex items-center justify-center shrink-0">
-                                {user.name?.charAt(0) || "U"}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                                <p className="text-xs font-bold text-neutral-900 truncate leading-tight">{user.name}</p>
-                                <p className="text-[10px] text-neutral-400 font-semibold truncate uppercase">{user.role?.replaceAll("_", " ")}</p>
-                            </div>
+                {/* Footer: who's signed in, sign out, collapse */}
+                <div className="shrink-0 border-t border-white/[0.07] p-3 space-y-1">
+                    {!narrow && user && (
+                        <div className="flex items-center gap-2.5 px-2 py-1.5">
+                            <span className="w-7 h-7 rounded-full bg-white/10 text-white text-xs font-semibold flex items-center justify-center shrink-0">{user.name?.charAt(0) ?? "U"}</span>
+                            <span className="min-w-0 leading-tight">
+                                <span className="block text-[13px] text-white truncate">{user.name}</span>
+                                <span className="block text-[11px] text-[#94A6C3] truncate">{ROLE_LABEL[user.role] ?? user.role}</span>
+                            </span>
                         </div>
                     )}
-
-                    <button
-                        onClick={logout}
-                        className="group relative flex items-center gap-3 rounded-xl text-neutral-500 hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer"
-                        style={{
-                            padding: collapsed ? "12px" : "10px 12px",
-                            justifyContent: collapsed ? "center" : "flex-start",
-                            transition: TRANSITION,
-                        }}
-                    >
-                        <LogOut size={20} strokeWidth={2} className="shrink-0" />
-                        <span
-                            className="text-xs font-semibold whitespace-nowrap overflow-hidden"
-                            style={{
-                                width: collapsed ? 0 : "auto",
-                                opacity: collapsed ? 0 : 1,
-                                transition: TRANSITION,
-                            }}
-                        >
-                            Logout
-                        </span>
-                        {collapsed && (
-                            <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-neutral-900 text-white text-xs font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-[70] shadow-xl">
-                                Logout
-                            </div>
-                        )}
-                    </button>
+                    <div className={`flex ${narrow ? "flex-col items-center gap-1" : "items-center gap-1"}`}>
+                        <button onClick={logout} title="Sign out" className={`h-8 rounded-md text-[13px] flex items-center gap-2 hover:bg-white/[0.06] hover:text-white ${narrow ? "w-9 justify-center" : "flex-1 px-2"}`}>
+                            <LogOut size={16} strokeWidth={1.8} />{!narrow && "Sign out"}
+                        </button>
+                        <button onClick={onToggle} title={collapsed ? "Expand sidebar" : "Collapse sidebar"} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                            className="hidden lg:flex h-8 w-9 rounded-md items-center justify-center hover:bg-white/[0.06] hover:text-white">
+                            {collapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
+                        </button>
+                    </div>
                 </div>
             </aside>
-
-            {/* Edge Toggle Button — sits on the sidebar border, slides with it */}
-            <button
-                onClick={onToggle}
-                aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-                className="fixed z-[60] flex items-center justify-center w-7 h-7 bg-white border border-neutral-200 rounded-full text-neutral-400 shadow-md hover:text-primary hover:border-primary hover:shadow-lg transition-all cursor-pointer"
-                style={{
-                    top: "50%",
-                    left: sidebarWidth - 14,
-                    transform: "translateY(-50%)",
-                    transition: TRANSITION,
-                }}
-            >
-                {collapsed ? <ChevronRight size={14} strokeWidth={2.5} /> : <ChevronLeft size={14} strokeWidth={2.5} />}
-            </button>
         </>
     );
 }

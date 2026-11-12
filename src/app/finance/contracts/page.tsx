@@ -29,7 +29,7 @@ export default function ContractsPage() {
 
     return (
         <div className="space-y-6">
-            <PageHeader title="Contract Staffing" subtitle="Contractors placed at clients: bill rate vs pay rate, monthly timesheets → client invoice (Billing Queue) → contractor pay" action={<div className="flex gap-2"><button onClick={() => setTsOpen(true)} className={btn.ghost}>Log timesheet</button><button onClick={() => setAsgOpen(true)} className="px-4 py-2.5 rounded-xl bg-primary text-white font-bold text-xs flex items-center gap-2"><Plus size={15} /> New assignment</button></div>} />
+            <PageHeader title="Contract Staffing" subtitle="Contractors placed at clients: bill rate vs pay rate, monthly timesheets → client invoice (Billing Queue) → contractor pay" action={<div className="flex gap-2"><button onClick={() => setTsOpen(true)} className={btn.ghost}>Log timesheet</button><button onClick={() => setAsgOpen(true)} className="px-4 py-2.5 rounded-md bg-primary text-white font-medium text-xs flex items-center gap-2"><Plus size={15} /> New assignment</button></div>} />
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <StatCard label="Active contractors" value={active.length} icon={Timer} tone="primary" />
                 <StatCard label="Monthly run-rate (bill)" value={money(active.reduce((s, x) => s + (x.rateType === "MONTHLY" ? x.billRate : x.rateType === "DAILY" ? x.billRate * 21 : x.billRate * 168), 0))} icon={Timer} tone="blue" hint="Assuming 21 days / 168 hrs" />
@@ -96,7 +96,7 @@ export default function ContractsPage() {
                     <input required type="number" min="1" placeholder="Bill rate (client)" value={a.billRate} onChange={(e) => setA({ ...a, billRate: e.target.value })} className={inputCls} />
                     <input required type="number" min="1" placeholder="Pay rate (contractor)" value={a.payRate} onChange={(e) => setA({ ...a, payRate: e.target.value })} className={inputCls} />
                     <label className="text-xs font-bold text-neutral-500 col-span-2">Start date<input type="date" value={a.startDate} onChange={(e) => setA({ ...a, startDate: e.target.value })} className={inputCls} /></label>
-                    <button disabled={post.isPending} className="col-span-2 py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">Create assignment</button>
+                    <button disabled={post.isPending} className="col-span-2 py-2.5 rounded-md bg-primary text-white text-sm font-medium disabled:opacity-50">Create assignment</button>
                 </form>
             </ModalShell>
             <ModalShell open={tsOpen} onClose={() => setTsOpen(false)} title="Log timesheet">
@@ -104,7 +104,7 @@ export default function ContractsPage() {
                     <select required value={t.assignmentId} onChange={(e) => setT({ ...t, assignmentId: e.target.value })} className={inputCls}><option value="">Assignment</option>{active.map((x) => <option key={x.id} value={x.id}>{x.workerName} @ {x.clientName} ({x.rateType.toLowerCase()})</option>)}</select>
                     <input required type="month" value={t.month} onChange={(e) => setT({ ...t, month: e.target.value })} className={inputCls} />
                     <input required type="number" min="0.5" step="0.5" placeholder="Days / hours / months worked" value={t.units} onChange={(e) => setT({ ...t, units: e.target.value })} className={inputCls} />
-                    <button disabled={post.isPending} className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">Submit timesheet</button>
+                    <button disabled={post.isPending} className="w-full py-2.5 rounded-md bg-primary text-white text-sm font-medium disabled:opacity-50">Submit timesheet</button>
                 </form>
             </ModalShell>
         </div>

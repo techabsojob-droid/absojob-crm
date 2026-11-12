@@ -305,13 +305,13 @@ export default function AdminCandidatesPage() {
                     <div className="flex items-center gap-2.5 flex-wrap">
                         <button
                             onClick={handleExportCsv}
-                            className="px-3.5 py-2 bg-white border border-neutral-200 text-neutral-700 rounded-xl text-xs font-bold hover:bg-neutral-50 transition-colors flex items-center gap-1.5 shadow-xs"
+                            className="px-3.5 py-2 bg-white border border-neutral-200 text-neutral-700 rounded-md text-xs font-medium hover:bg-neutral-50 transition-colors flex items-center gap-1.5 shadow-xs"
                         >
                             <Download size={14} className="text-neutral-500" /> Export CSV
                         </button>
                         <button
                             onClick={() => setBulkOpen(true)}
-                            className="px-3.5 py-2 bg-white border border-neutral-200 text-neutral-700 rounded-xl text-xs font-bold hover:bg-neutral-50 transition-colors flex items-center gap-1.5 shadow-xs"
+                            className="px-3.5 py-2 bg-white border border-neutral-200 text-neutral-700 rounded-md text-xs font-medium hover:bg-neutral-50 transition-colors flex items-center gap-1.5 shadow-xs"
                         >
                             <UploadCloud size={14} className="text-neutral-500" /> Bulk CSV Import
                         </button>
@@ -320,7 +320,7 @@ export default function AdminCandidatesPage() {
                                 setDuplicateCandidateWarning(null);
                                 setAddOpen(true);
                             }}
-                            className="px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-all shadow-md shadow-primary/20 flex items-center gap-1.5"
+                            className="px-4 py-2 bg-primary text-white rounded-md text-xs font-medium hover:bg-primary-dark transition-all shadow-md flex items-center gap-1.5"
                         >
                             <Users size={15} /> Add Candidate
                         </button>
@@ -598,7 +598,7 @@ export default function AdminCandidatesPage() {
 
             {/* Contextual Bulk Action Bar */}
             {selectedIds.length > 0 && (
-                <div className="bg-neutral-900 text-white rounded-2xl p-3 px-5 flex items-center justify-between flex-wrap gap-3 shadow-xl animate-fade-in">
+                <div className="bg-navy text-white rounded-md p-3 px-5 flex items-center justify-between flex-wrap gap-3 shadow-xl animate-fade-in">
                     <div className="flex items-center gap-3">
                         <span className="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-xs font-black">
                             {selectedIds.length}
@@ -674,7 +674,7 @@ export default function AdminCandidatesPage() {
                             action={
                                 <button
                                     onClick={resetFilters}
-                                    className="mt-3 px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-all"
+                                    className="mt-3 px-4 py-2 bg-primary text-white rounded-md text-xs font-medium hover:bg-primary-dark transition-all"
                                 >
                                     Reset Filters
                                 </button>
@@ -845,7 +845,7 @@ export default function AdminCandidatesPage() {
 
                                                         <Link
                                                             href={`/admin/candidates/${c.id}`}
-                                                            className="inline-flex items-center gap-1 text-[11px] font-bold text-white bg-neutral-900 hover:bg-neutral-800 px-3 py-1.5 rounded-lg transition-all shadow-xs"
+                                                            className="inline-flex items-center gap-1 text-[11px] font-medium text-white bg-navy hover:bg-neutral-800 px-3 py-1.5 rounded-md transition-all shadow-xs"
                                                         >
                                                             360° Profile <ChevronRight size={11} />
                                                         </Link>
@@ -1107,7 +1107,7 @@ export default function AdminCandidatesPage() {
                     <button
                         type="submit"
                         disabled={addMutation.isPending}
-                        className="w-full py-3 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primary-dark transition-all disabled:opacity-50 shadow-md shadow-primary/20"
+                        className="w-full py-3 bg-primary text-white rounded-md text-sm font-medium hover:bg-primary-dark transition-all disabled:opacity-50 shadow-md"
                     >
                         {addMutation.isPending ? "Creating Candidate..." : "Index Candidate"}
                     </button>
@@ -1142,7 +1142,7 @@ Kavita Iyer, kavita.i@example.com, 9833344455, Wipro, AWS;Docker;Kubernetes, 5, 
                     <button
                         type="submit"
                         disabled={bulkImporting}
-                        className="w-full py-3 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primary-dark transition-all disabled:opacity-50 shadow-md shadow-primary/20"
+                        className="w-full py-3 bg-primary text-white rounded-md text-sm font-medium hover:bg-primary-dark transition-all disabled:opacity-50 shadow-md"
                     >
                         {bulkImporting ? "Processing CSV..." : "Start Import"}
                     </button>
@@ -1203,7 +1203,7 @@ Kavita Iyer, kavita.i@example.com, 9833344455, Wipro, AWS;Docker;Kubernetes, 5, 
                     <button
                         onClick={() => bulkActionMutation.mutate({ bulkAction: bulkActionType, candidateIds: selectedIds, payload: bulkActionPayload })}
                         disabled={bulkActionMutation.isPending}
-                        className="w-full py-2.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-all disabled:opacity-50"
+                        className="w-full py-2.5 bg-primary text-white rounded-md text-xs font-medium hover:bg-primary-dark transition-all disabled:opacity-50"
                     >
                         {bulkActionMutation.isPending ? "Executing..." : "Confirm & Apply"}
                     </button>
@@ -1212,7 +1212,7 @@ Kavita Iyer, kavita.i@example.com, 9833344455, Wipro, AWS;Docker;Kubernetes, 5, 
 
             {/* DRAWER: Candidate Quick View */}
             {quickViewCandidate && (
-                <div className="fixed inset-0 z-50 overflow-hidden bg-neutral-900/50 backdrop-blur-xs flex justify-end animate-fade-in">
+                <div className="fixed inset-0 z-50 overflow-hidden bg-navy-deep/40 backdrop-blur-xs flex justify-end animate-fade-in">
                     <div className="w-full max-w-md bg-white h-full shadow-2xl overflow-y-auto flex flex-col justify-between">
                         <div className="p-6 space-y-6">
                             <div className="flex items-center justify-between border-b border-neutral-100 pb-4">
@@ -1292,7 +1292,7 @@ Kavita Iyer, kavita.i@example.com, 9833344455, Wipro, AWS;Docker;Kubernetes, 5, 
                         <div className="p-4 border-t border-neutral-100 bg-neutral-50 space-y-2">
                             <Link
                                 href={`/admin/candidates/${quickViewCandidate.id}`}
-                                className="w-full py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+                                className="w-full py-2.5 bg-navy hover:bg-neutral-800 text-white rounded-md text-xs font-medium flex items-center justify-center gap-1.5 transition-colors shadow-sm"
                             >
                                 Open Full 360° Profile <ChevronRight size={14} />
                             </Link>
@@ -1391,7 +1391,7 @@ Kavita Iyer, kavita.i@example.com, 9833344455, Wipro, AWS;Docker;Kubernetes, 5, 
                                     <div className="pt-2 flex justify-end">
                                         <Link
                                             href="/admin/jobs"
-                                            className="px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 text-white rounded-lg text-xs font-bold transition-colors"
+                                            className="px-3 py-1.5 bg-navy hover:bg-neutral-800 text-white rounded-md text-xs font-medium transition-colors"
                                         >
                                             Submit Candidate to Job →
                                         </Link>
@@ -1449,7 +1449,7 @@ Kavita Iyer, kavita.i@example.com, 9833344455, Wipro, AWS;Docker;Kubernetes, 5, 
                                 });
                             }}
                             disabled={mergeMutation.isPending || !mergeTargetId}
-                            className="w-full py-2.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-all disabled:opacity-50"
+                            className="w-full py-2.5 bg-primary text-white rounded-md text-xs font-medium hover:bg-primary-dark transition-all disabled:opacity-50"
                         >
                             {mergeMutation.isPending ? "Merging Profiles..." : "Execute Profile Merge"}
                         </button>

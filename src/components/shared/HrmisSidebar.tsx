@@ -867,7 +867,7 @@ export default function HrmisSidebar({
             {/* ─── Mobile Backdrop Overlay ────────────────────────────────────── */}
             {mobileOpen && (
                 <div
-                    className="fixed inset-0 z-40 bg-neutral-900/60 backdrop-blur-sm lg:hidden transition-opacity"
+                    className="fixed inset-0 z-40 bg-navy-deep/50 backdrop-blur-sm lg:hidden transition-opacity"
                     onClick={onMobileClose}
                     aria-hidden="true"
                 />
@@ -875,7 +875,7 @@ export default function HrmisSidebar({
 
             {/* ─── Sidebar Aside Container ───────────────────────────────────── */}
             <aside
-                className={`fixed top-0 left-0 h-screen z-50 flex flex-col bg-white border-r border-neutral-200 select-none transition-transform duration-250 ease-out lg:translate-x-0 ${
+                className={`sidebar-dark fixed top-0 left-0 h-screen z-50 flex flex-col bg-white border-r border-neutral-200 select-none transition-transform duration-250 ease-out lg:translate-x-0 ${
                     mobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full lg:translate-x-0"
                 }`}
                 style={{
@@ -897,7 +897,7 @@ export default function HrmisSidebar({
                         title={collapsed ? "AbsoJob HRMIS" : "Switch workspace"}
                     >
                         {/* Logo Mark */}
-                        <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white text-sm font-black tracking-tight shadow-md shadow-primary/25 shrink-0">
+                        <div className="sidebar-logo w-8 h-8 bg-accent rounded-md flex items-center justify-center text-white text-[13px] font-bold tracking-tight shrink-0">
                             AJ
                         </div>
 
@@ -929,7 +929,7 @@ export default function HrmisSidebar({
 
                     {/* Workspace Switcher Dropdown */}
                     {workspaceOpen && !collapsed && (
-                        <div className="absolute top-full left-3 right-3 mt-1.5 bg-white rounded-2xl shadow-2xl border border-neutral-100 py-2 z-[70] animate-fade-in origin-top">
+                        <div className="sidebar-pop absolute top-full left-3 right-3 mt-1.5 bg-white rounded-2xl shadow-2xl border border-neutral-100 py-2 z-[70] animate-fade-in origin-top">
                             <p className="px-3.5 py-1.5 text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
                                 Switch Workspace
                             </p>
@@ -974,7 +974,7 @@ export default function HrmisSidebar({
                     <div className="px-4 pt-3 pb-1 shrink-0">
                         <button
                             onClick={() => setSearchOpen(true)}
-                            className="w-full flex items-center justify-between px-3 py-2 bg-neutral-50 hover:bg-neutral-100/80 border border-neutral-200/80 rounded-xl text-neutral-400 hover:text-neutral-700 text-xs font-medium transition-all group shadow-2xs"
+                            className="w-full flex items-center justify-between px-3 py-2 bg-neutral-50 hover:bg-neutral-100/80 border border-neutral-200/80 rounded-md text-neutral-400 hover:text-neutral-700 text-xs font-medium transition-all group shadow-2xs"
                         >
                             <span className="flex items-center gap-2">
                                 <Search size={14} className="text-neutral-400 group-hover:text-primary transition-colors" />
@@ -1011,7 +1011,7 @@ export default function HrmisSidebar({
                                         onClick={onMobileClose}
                                         className={`group relative flex items-center gap-3 rounded-xl transition-all ${
                                             active
-                                                ? "bg-primary text-white shadow-md shadow-primary/25"
+                                                ? "bg-primary text-white shadow-md"
                                                 : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900"
                                         }`}
                                         style={{
@@ -1082,7 +1082,7 @@ export default function HrmisSidebar({
                                                 }}
                                                 className={`flex items-center gap-3 rounded-xl transition-all ${
                                                     active
-                                                        ? "bg-primary text-white shadow-md shadow-primary/25 font-bold"
+                                                        ? "bg-primary text-white shadow-md font-bold"
                                                         : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 font-semibold"
                                                 }`}
                                                 style={{
@@ -1149,14 +1149,14 @@ export default function HrmisSidebar({
 
                                                 {/* Tooltip (collapsed state only) */}
                                                 {collapsed && (
-                                                    <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-neutral-900 text-white text-xs font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-[70] flex items-center gap-2 shadow-xl">
+                                                    <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-navy text-white text-xs font-medium rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-[70] flex items-center gap-2 shadow-xl">
                                                         <span>{item.label}</span>
                                                         {badgeVal !== undefined && badgeVal > 0 && (
-                                                            <span className="bg-primary px-1.5 py-0.5 rounded text-[10px] font-bold text-white">
+                                                            <span className="bg-primary px-1.5 py-0.5 rounded text-[10px] font-medium text-white">
                                                                 {badgeVal}
                                                             </span>
                                                         )}
-                                                        <div className="absolute left-0 top-1/2 -translate-x-1 -translate-y-1/2 w-2 h-2 bg-neutral-900 rotate-45" />
+                                                        <div className="absolute left-0 top-1/2 -translate-x-1 -translate-y-1/2 w-2 h-2 bg-navy rotate-45" />
                                                     </div>
                                                 )}
                                             </Link>
@@ -1211,7 +1211,7 @@ export default function HrmisSidebar({
                         }`}
                         title={collapsed ? `${user?.name || "Ananya Sen"} (${user?.role || "HR_ADMIN"})` : undefined}
                     >
-                        <div className="w-8 h-8 rounded-full bg-emerald-600 text-white font-black text-xs flex items-center justify-center shrink-0 shadow-xs">
+                        <div className="w-8 h-8 rounded-full bg-white/10 text-white font-semibold text-xs flex items-center justify-center shrink-0">
                             {user?.name ? user.name.charAt(0) : "A"}
                         </div>
                         {!collapsed && (
@@ -1263,7 +1263,7 @@ export default function HrmisSidebar({
             {/* ─── Edge Toggle Button (Desktop Only) ─────────────────────────── */}
             <button
                 onClick={onToggle}
-                className="hidden lg:flex fixed z-[60] items-center justify-center w-7 h-7 bg-white border border-neutral-200 rounded-full text-neutral-400 shadow-md hover:text-primary hover:border-primary hover:shadow-lg transition-all"
+                className="hidden lg:flex fixed z-[60] items-center justify-center w-6 h-6 bg-white border border-neutral-200 rounded-full text-neutral-500 shadow-sm hover:text-navy hover:border-neutral-300 transition-all"
                 style={{
                     top: "50%",
                     left: sidebarWidth - 14,
@@ -1278,7 +1278,7 @@ export default function HrmisSidebar({
             {/* ─── Global Navigation Search Modal (⌘K / Ctrl+K) ────────────── */}
             {searchOpen && (
                 <div
-                    className="fixed inset-0 z-[100] bg-neutral-900/50 backdrop-blur-xs flex items-start justify-center pt-24 px-4"
+                    className="fixed inset-0 z-[100] bg-navy-deep/40 backdrop-blur-xs flex items-start justify-center pt-24 px-4"
                     onClick={() => setSearchOpen(false)}
                 >
                     <div
