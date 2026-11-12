@@ -68,7 +68,7 @@ export default function TaReferralsPage() {
                                     <Badge value={r.status} />
                                     {["SUBMITTED", "UNDER_REVIEW"].includes(r.status) && !r.applicationId && (
                                         <div className="flex gap-1.5">
-                                            <button onClick={() => { setAccepting(r); setJobId(r.jobId ?? ""); }} className="px-2.5 py-1 rounded-lg bg-primary text-white text-xs font-bold">Add to pipeline</button>
+                                            <button onClick={() => { setAccepting(r); setJobId(r.jobId ?? ""); }} className="px-2.5 py-1 rounded-md bg-primary text-white text-xs font-medium">Add to pipeline</button>
                                             <button
                                                 onClick={() => { const reason = window.prompt("Why is this referral not a fit?"); if (reason) act.mutate({ id: r.id, action: "REJECT", reason }); }}
                                                 className="px-2.5 py-1 rounded-lg border border-rose-200 text-rose-700 text-xs font-bold"
@@ -95,7 +95,7 @@ export default function TaReferralsPage() {
                         {jobs.map((j) => <option key={j.id} value={j.id}>{j.title}{j.clientName ? ` — ${j.clientName}` : ""}</option>)}
                     </select>
                     <p className="text-[11px] text-neutral-400">The candidate enters SCREENING and is owned by the job&apos;s primary recruiter.</p>
-                    <button disabled={act.isPending || !jobId} className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">Add to Pipeline</button>
+                    <button disabled={act.isPending || !jobId} className="w-full py-2.5 rounded-md bg-primary text-white text-sm font-medium disabled:opacity-50">Add to Pipeline</button>
                 </form>
             </ModalShell>
         </div>

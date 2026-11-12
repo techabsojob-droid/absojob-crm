@@ -38,7 +38,7 @@ export function ClientTaManagers({ clientId, accountManagerId, value }: { client
                             </label>
                         );
                     })}
-                    <button disabled={!dirty || save.isPending} onClick={() => save.mutate()} className="mt-2 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold disabled:opacity-40">{save.isPending ? "Saving…" : "Save access"}</button>
+                    <button disabled={!dirty || save.isPending} onClick={() => save.mutate()} className="mt-2 px-3 py-1.5 rounded-md bg-primary text-white text-xs font-medium disabled:opacity-40">{save.isPending ? "Saving…" : "Save access"}</button>
                 </div>
             )}
         </SectionCard>

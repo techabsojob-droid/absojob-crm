@@ -54,7 +54,7 @@ export default function PayoutKyc() {
                         </label>
                     )}
                     {k && <label className="text-xs font-bold text-neutral-600 sm:col-span-2">Industries you hire for<input value={val("specialization", k.specialization.join(", "))} onChange={(e) => setF({ ...f, specialization: e.target.value })} className={inputCls} /></label>}
-                    <button disabled={save.isPending || (!Object.keys(f).length && !idProof && k?.status !== "REJECTED")} className="sm:col-span-2 py-2.5 rounded-xl bg-primary text-white font-bold disabled:opacity-50">{k?.status === "REJECTED" ? "Save & resubmit KYC" : "Save"}</button>
+                    <button disabled={save.isPending || (!Object.keys(f).length && !idProof && k?.status !== "REJECTED")} className="sm:col-span-2 py-2.5 rounded-md bg-primary text-white font-medium disabled:opacity-50">{k?.status === "REJECTED" ? "Save & resubmit KYC" : "Save"}</button>
                 </form>
             </SectionCard>
         </div>

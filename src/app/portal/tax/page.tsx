@@ -83,7 +83,7 @@ export default function TaxPage() {
                     {data.editable && (
                         <div className="flex gap-2">
                             <button type="button" disabled={save.isPending} onClick={() => save.mutate(payload(false))} className="px-4 py-2.5 rounded-xl border border-neutral-200 text-xs font-bold">Save draft</button>
-                            <button disabled={save.isPending || uploading} className="flex-1 py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">Submit for verification</button>
+                            <button disabled={save.isPending || uploading} className="flex-1 py-2.5 rounded-md bg-primary text-white text-sm font-medium disabled:opacity-50">Submit for verification</button>
                         </div>
                     )}
                 </form>
@@ -91,7 +91,7 @@ export default function TaxPage() {
 
             <SectionCard title="Form 16" subtitle="Issued from paid salary — Part B summary">
                 {data.form16Years.length === 0 ? <p className="text-xs text-neutral-400">Available once salary has been paid in a financial year.</p> : (
-                    <div className="flex flex-wrap gap-2">{data.form16Years.map((fy) => <Link key={fy} href={`/portal/tax/form16/${fy}`} className="px-3 py-2 rounded-xl border border-neutral-200 text-xs font-bold flex items-center gap-1.5 hover:bg-neutral-50"><Receipt size={13} /> FY {fy}</Link>)}</div>
+                    <div className="flex flex-wrap gap-2">{data.form16Years.map((fy) => <Link key={fy} href={`/portal/tax/form16/${fy}`} className="px-3 py-2 rounded-md border border-neutral-200 text-xs font-medium flex items-center gap-1.5 hover:bg-neutral-50"><Receipt size={13} /> FY {fy}</Link>)}</div>
                 )}
             </SectionCard>
         </div>

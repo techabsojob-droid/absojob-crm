@@ -26,7 +26,7 @@ export default function PortalReferralsPage() {
     return (
         <div className="space-y-6">
             <PageHeader title="My Referrals" subtitle="Track every candidate you referred — interviews, offers, joining and incentive"
-                action={<button onClick={() => setOpen(true)} className="px-4 py-2.5 rounded-xl bg-primary text-white font-bold text-xs flex items-center gap-1.5"><Plus size={14} /> Refer a candidate</button>} />
+                action={<button onClick={() => setOpen(true)} className="px-4 py-2.5 rounded-md bg-primary text-white font-medium text-xs flex items-center gap-1.5"><Plus size={14} /> Refer a candidate</button>} />
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <StatCard label="Referred" value={s.total} icon={Send} tone="blue" />
                 <StatCard label="Shortlisted+" value={s.shortlisted} icon={TrendingUp} tone="purple" />

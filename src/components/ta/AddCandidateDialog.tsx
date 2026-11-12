@@ -195,7 +195,7 @@ export default function AddCandidateDialog({ jobId, jobTitle, jobSkills, jobChoi
                                                     <Link href={`/ta/candidates/${h.id}`} target="_blank" className="p-1.5 rounded-lg border border-neutral-200 text-neutral-500 hover:text-primary" title="Open profile"><ExternalLink size={12} /></Link>
                                                     {h.blacklisted || h.doNotContact ? <span className="font-bold text-red-600">{h.blacklisted ? "Blacklisted" : "Do not contact"}</span>
                                                         : inJob.has(h.id) ? <span className="font-bold text-emerald-700">Already on this job</span>
-                                                            : <button type="button" disabled={!targetJob || busy} onClick={() => addExisting.mutate(h.id)} className="px-3 py-1.5 bg-primary text-white rounded-lg font-bold disabled:opacity-40">Add to job</button>}
+                                                            : <button type="button" disabled={!targetJob || busy} onClick={() => addExisting.mutate(h.id)} className="px-3 py-1.5 bg-primary text-white rounded-md font-medium disabled:opacity-40">Add to job</button>}
                                                 </div>
                                             </li>
                                         ))}
@@ -295,7 +295,7 @@ export default function AddCandidateDialog({ jobId, jobTitle, jobSkills, jobChoi
                             </div>
                         )}
                         {!resumeFile && <p className="text-[11px] text-neutral-400">No resume uploaded — you can also attach it later from the candidate profile.</p>}
-                        <button disabled={busy} className="w-full py-2.5 rounded-xl bg-primary text-white font-bold text-xs disabled:opacity-50">
+                        <button disabled={busy} className="w-full py-2.5 rounded-md bg-primary text-white font-medium text-xs disabled:opacity-50">
                             {busy ? "Adding…" : targetJob ? `Create candidate & add to ${job?.title ?? "this job"}` : "Create candidate"}
                         </button>
                     </form>

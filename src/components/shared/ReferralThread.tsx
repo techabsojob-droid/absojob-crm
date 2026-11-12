@@ -33,7 +33,7 @@ export default function ReferralThread({ referralId }: { referralId: string }) {
             </div>
             <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); if (text.trim()) send.mutate({ text }, { onSuccess: () => setText("") }); }}>
                 <input value={text} onChange={(e) => setText(e.target.value)} maxLength={2000} placeholder="Write a message…" className={inputCls} aria-label="Message" />
-                <button disabled={send.isPending || !text.trim()} className="px-3 rounded-xl bg-primary text-white disabled:opacity-50" aria-label="Send"><Send size={14} /></button>
+                <button disabled={send.isPending || !text.trim()} className="px-3 rounded-md bg-primary text-white disabled:opacity-50" aria-label="Send"><Send size={14} /></button>
             </form>
         </div>
     );

@@ -57,7 +57,7 @@ function RequestsContent() {
     return (
         <div className="space-y-6 max-w-4xl">
             <PageHeader title="Requests & Letters" subtitle="WFH, corrections, letters, profile changes and IT / HR help — track everything here"
-                action={<button onClick={() => { setForm(EMPTY); setOpen(true); }} className="px-4 py-2.5 rounded-xl bg-primary text-white font-bold text-xs flex items-center gap-2"><Plus size={15} /> New request</button>} />
+                action={<button onClick={() => { setForm(EMPTY); setOpen(true); }} className="px-4 py-2.5 rounded-md bg-primary text-white font-medium text-xs flex items-center gap-2"><Plus size={15} /> New request</button>} />
 
             <SectionCard title={`My requests (${requests.length})`}>
                 {isLoading ? <SkeletonPulse className="h-24 w-full" /> : requests.length === 0 ? <EmptyState icon={ClipboardList} message="You haven't raised any requests." /> : (
@@ -127,7 +127,7 @@ function RequestsContent() {
                         </label>
                     )}
                     {["BANK_CHANGE", "NAME_CHANGE", "ADDRESS_CHANGE"].includes(form.type) && <p className="text-[11px] text-neutral-400">HR verifies the proof; the change is applied to your record automatically on approval{form.type === "BANK_CHANGE" ? " and used from the next payroll" : ""}.</p>}
-                    <button disabled={submit.isPending || uploading || (NEEDS_PROOF.includes(form.type) && !form.attachmentFileId)} className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">Submit</button>
+                    <button disabled={submit.isPending || uploading || (NEEDS_PROOF.includes(form.type) && !form.attachmentFileId)} className="w-full py-2.5 rounded-md bg-primary text-white text-sm font-medium disabled:opacity-50">Submit</button>
                 </form>
             </ModalShell>
 
@@ -145,7 +145,7 @@ function RequestsContent() {
                     <label className="text-xs font-bold text-neutral-600">Main reason for leaving<select value={fb.reasonCategory} onChange={(e) => setFb({ ...fb, reasonCategory: e.target.value })} className={inputCls}>{["Career growth", "Compensation", "Manager / team", "Work-life balance", "Relocation", "Higher studies", "Health / personal", "Other"].map((r) => <option key={r}>{r}</option>)}</select></label>
                     <label className="flex items-center gap-2 text-xs font-semibold"><input type="checkbox" checked={fb.wouldRecommend} onChange={(e) => setFb({ ...fb, wouldRecommend: e.target.checked })} /> I would recommend this company to a friend</label>
                     <textarea required rows={4} placeholder="What should we improve?" value={fb.comments} onChange={(e) => setFb({ ...fb, comments: e.target.value })} className={inputCls} />
-                    <button disabled={exitAct.isPending} className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">Submit feedback</button>
+                    <button disabled={exitAct.isPending} className="w-full py-2.5 rounded-md bg-primary text-white text-sm font-medium disabled:opacity-50">Submit feedback</button>
                 </form>
             </ModalShell>
         </div>

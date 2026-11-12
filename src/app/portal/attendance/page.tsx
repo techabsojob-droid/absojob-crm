@@ -49,9 +49,11 @@ export default function PortalAttendancePage() {
 
     return (
         <div className="space-y-6">
-            <PageHeader title="Attendance" subtitle={`${shift.name} · ${shift.startTime}–${shift.endTime} · ${shift.graceMinutes} min grace`} />
+            {inTa
+                ? <p className="text-[13px] text-neutral-500">{`${shift.name} · ${shift.startTime}–${shift.endTime} · ${shift.graceMinutes} min grace`}</p>
+                : <PageHeader title="Attendance" subtitle={`${shift.name} · ${shift.startTime}–${shift.endTime} · ${shift.graceMinutes} min grace`} />}
 
-            <div className="bg-gradient-to-br from-primary to-[#0f2e1e] p-6 rounded-3xl text-white">
+            <div className="bg-navy p-6 rounded-xl text-white">
                 <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div>
                         <p className="text-xs font-bold text-white/60 uppercase tracking-wider">{new Date(`${today.date}T00:00:00Z`).toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })}</p>
@@ -124,7 +126,7 @@ export default function PortalAttendancePage() {
                             <label className="text-xs font-bold text-neutral-600">Actual check-out<input required type="time" value={fixForm.requestedCheckOut} onChange={(e) => setFixForm({ ...fixForm, requestedCheckOut: e.target.value })} className={inputCls} /></label>
                         </div>
                         <textarea required rows={3} placeholder="Reason (e.g. forgot to punch, client visit)" value={fixForm.description} onChange={(e) => setFixForm({ ...fixForm, description: e.target.value })} className={inputCls} />
-                        <button disabled={regularize.isPending} className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">Submit correction</button>
+                        <button disabled={regularize.isPending} className="w-full py-2.5 rounded-md bg-primary text-white text-sm font-medium disabled:opacity-50">Submit correction</button>
                     </form>
                 )}
             </ModalShell>

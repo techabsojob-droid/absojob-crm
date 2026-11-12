@@ -242,7 +242,7 @@ function OrganizationContent() {
                             {/* Tier 1: CEO / Executive */}
                             {ceo && (
                                 <div className="flex flex-col items-center">
-                                    <div className="w-64 p-4 rounded-2xl bg-white border-2 border-primary shadow-lg shadow-primary/10 text-center space-y-1 relative">
+                                    <div className="w-64 p-4 rounded-2xl bg-white border-2 border-primary shadow-lg text-center space-y-1 relative">
                                         <div className="w-12 h-12 rounded-full bg-primary text-white font-black text-sm flex items-center justify-center mx-auto mb-2 shadow-xs">
                                             {ceo.name.charAt(0)}
                                         </div>

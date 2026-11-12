@@ -162,7 +162,7 @@ function Board({ title, subtitle }: { title: string; subtitle?: string }) {
                 title={title}
                 subtitle={subtitle ?? `${counts.open} open · ${counts.overdue} overdue · ${counts.blocked} blocked`}
                 action={
-                    <button onClick={() => setCreating(true)} disabled={!meta} className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-xs font-bold rounded-xl shadow-md shadow-primary/20 hover:bg-primary/95 disabled:opacity-60">
+                    <button onClick={() => setCreating(true)} disabled={!meta} className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-xs font-medium rounded-md shadow-xs hover:bg-primary/95 disabled:opacity-60">
                         <Plus size={16} /> Create task
                     </button>
                 }

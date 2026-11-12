@@ -8,7 +8,7 @@ import {
 import { SkeletonPulse } from "@/components/shared/UIStates";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, LineChart, Line, Legend } from "recharts";
 
-const PIE_COLORS = ["#1B4332", "#2D6A4F", "#40916C", "#52B788", "#74C69D", "#95D5B2", "#B7E4C7"];
+const PIE_COLORS = ["#2F6AA8", "#8A6FB0", "#5AA9E6", "#E0952A", "#B42332", "#1E9367", "#BDC9DC"];
 
 export default function ReportsPage() {
     const { data, isLoading } = useQuery({
@@ -99,11 +99,11 @@ export default function ReportsPage() {
                 <SectionCard title="Placement Trend" subtitle="Joins per month (last 6)">
                     <ResponsiveContainer width="100%" height={260}>
                         <LineChart data={data.monthlyTrend}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                            <XAxis dataKey="month" tick={{ fontSize: 12, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-                            <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
+                            <CartesianGrid strokeDasharray="3 3" stroke="#E2E7EF" vertical={false} />
+                            <XAxis dataKey="month" tick={{ fontSize: 12, fill: "#A0AABA" }} axisLine={false} tickLine={false} />
+                            <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#A0AABA" }} axisLine={false} tickLine={false} />
                             <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #E5E7EB", fontSize: 12 }} />
-                            <Line type="monotone" dataKey="placements" stroke="#1B4332" strokeWidth={2.5} dot={{ r: 4, fill: "#1B4332" }} />
+                            <Line type="monotone" dataKey="placements" stroke="#2F6AA8" strokeWidth={2.5} dot={{ r: 4, fill: "#2F6AA8" }} />
                         </LineChart>
                     </ResponsiveContainer>
                 </SectionCard>
@@ -122,7 +122,7 @@ export default function ReportsPage() {
                                 <span className="font-extrabold text-neutral-900">₹{c.revenue.toLocaleString("en-IN")}</span>
                             </div>
                             <div className="h-2.5 bg-neutral-100 rounded-full overflow-hidden">
-                                <div className="h-full bg-gradient-to-r from-primary to-emerald-700 rounded-full transition-all" style={{ width: `${(c.revenue / maxRevenue) * 100}%` }} />
+                                <div className="h-full bg-navy rounded-full transition-all" style={{ width: `${(c.revenue / maxRevenue) * 100}%` }} />
                             </div>
                         </div>
                     ))}
@@ -133,13 +133,13 @@ export default function ReportsPage() {
             <SectionCard title="Referral Engine Health" subtitle={`${data.referralStats.total} lifetime referrals · ${data.referralStats.hired} hired · ₹${data.referralStats.incentiveTotal.toLocaleString("en-IN")} incentives`} action={<Users2 size={18} className="text-primary" />}>
                 <ResponsiveContainer width="100%" height={240}>
                     <BarChart data={data.referralStats.byAgent}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                        <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-                        <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E2E7EF" vertical={false} />
+                        <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#A0AABA" }} axisLine={false} tickLine={false} />
+                        <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#A0AABA" }} axisLine={false} tickLine={false} />
                         <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #E5E7EB", fontSize: 12 }} />
                         <Legend wrapperStyle={{ fontSize: 11 }} />
-                        <Bar dataKey="referrals" name="Referrals" fill="#95D5B2" radius={[6, 6, 0, 0]} maxBarSize={28} />
-                        <Bar dataKey="hires" name="Hires" fill="#1B4332" radius={[6, 6, 0, 0]} maxBarSize={28} />
+                        <Bar dataKey="referrals" name="Referrals" fill="#1E9367" radius={[6, 6, 0, 0]} maxBarSize={28} />
+                        <Bar dataKey="hires" name="Hires" fill="#2F6AA8" radius={[6, 6, 0, 0]} maxBarSize={28} />
                     </BarChart>
                 </ResponsiveContainer>
             </SectionCard>

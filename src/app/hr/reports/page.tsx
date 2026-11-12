@@ -355,7 +355,7 @@ function ReportsContent() {
                                         <button
                                             onClick={() => handleGenerate(rpt.id, rpt.title)}
                                             disabled={isGenerating}
-                                            className="px-3.5 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-white font-bold text-xs transition-colors flex items-center gap-1.5 shadow-2xs"
+                                            className="px-3.5 py-1.5 rounded-md bg-primary hover:bg-primary/90 text-white font-medium text-xs transition-colors flex items-center gap-1.5 shadow-2xs"
                                         >
                                             <Download size={13} />
                                             {isGenerating ? "Generating..." : "Download"}

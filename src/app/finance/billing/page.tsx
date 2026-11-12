@@ -45,7 +45,7 @@ export default function BillingQueuePage() {
                 title="Billing Queue"
                 subtitle="Everything billable — joined placements, offer milestones (split billing), approved timesheets and re-billable expenses. Select items of one client to bill them on a single invoice."
                 action={picked.length > 0 && (
-                    <button onClick={() => { setOpen(true); setOverrides({}); setFx(""); }} className="px-4 py-2.5 rounded-xl bg-primary text-white font-bold text-xs">
+                    <button onClick={() => { setOpen(true); setOverrides({}); setFx(""); }} className="px-4 py-2.5 rounded-md bg-primary text-white font-medium text-xs">
                         Invoice {picked.length} item(s) · {money(picked.reduce((s, p) => s + (Number(overrides[p.key]) || p.amount), 0))}
                     </button>
                 )}
@@ -113,7 +113,7 @@ export default function BillingQueuePage() {
                     )}
                     <p className="text-[11px] text-neutral-400">GST (CGST+SGST or IGST, or zero-rated for exports) and due date follow the client&apos;s billing profile. Invoices above the approval limit go to a second approver.</p>
                     <label className="flex items-center gap-2 font-semibold"><input type="checkbox" checked={send} onChange={(e) => setSend(e.target.checked)} /> Send to client now (email)</label>
-                    <button disabled={bill.isPending} className="w-full py-2.5 rounded-xl bg-primary text-white font-bold disabled:opacity-50">{send ? "Raise & send invoice" : "Save draft"}</button>
+                    <button disabled={bill.isPending} className="w-full py-2.5 rounded-md bg-primary text-white font-medium disabled:opacity-50">{send ? "Raise & send invoice" : "Save draft"}</button>
                 </form>
             </ModalShell>
         </div>

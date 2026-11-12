@@ -34,7 +34,7 @@ export default function ReferralDetailPage() {
             <div className="flex items-center gap-3">
                 <Link href="/portal/referrals" className="p-2 rounded-xl border border-neutral-200 text-neutral-500 hover:bg-neutral-50" title="Back"><ArrowLeft size={16} /></Link>
                 <div>
-                    <h1 className="text-2xl font-black text-neutral-900 flex items-center gap-2">{data.candidate?.name} <Badge value={data.status} /></h1>
+                    <h1 className="text-[22px] leading-tight font-semibold tracking-tight text-neutral-900 flex items-center gap-2">{data.candidate?.name} <Badge value={data.status} /></h1>
                     <p className="text-xs text-neutral-500">{data.job ? `${data.job.title}${data.job.clientName ? ` · ${data.job.clientName}` : ""} · ${data.job.location}` : "General referral"} · referred {data.createdAt.slice(0, 10)}</p>
                 </div>
             </div>

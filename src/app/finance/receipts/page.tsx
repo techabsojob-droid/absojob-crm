@@ -28,7 +28,7 @@ export default function ReceiptsPage() {
 
     return (
         <div className="space-y-6">
-            <PageHeader title="Receipts" subtitle="Client payments — split across invoices, TDS credit, and on-account advances" action={<button onClick={() => setOpen(true)} className="px-4 py-2.5 rounded-xl bg-primary text-white font-bold text-xs flex items-center gap-2"><Plus size={15} /> Record receipt</button>} />
+            <PageHeader title="Receipts" subtitle="Client payments — split across invoices, TDS credit, and on-account advances" action={<button onClick={() => setOpen(true)} className="px-4 py-2.5 rounded-md bg-primary text-white font-medium text-xs flex items-center gap-2"><Plus size={15} /> Record receipt</button>} />
             <select value={clientId} onChange={(e) => setClientId(e.target.value)} className="px-3 py-1.5 rounded-xl border border-neutral-200 text-xs font-semibold"><option value="ALL">All clients</option>{clients.map((c) => <option key={c.id} value={c.id}>{c.companyName}</option>)}</select>
             <SectionCard title={`${data.length} receipt(s) · ${money(data.reduce((s, r) => s + r.amount, 0))}`}>
                 {data.length === 0 ? <EmptyState icon={HandCoins} message="No receipts yet." /> : (
@@ -91,7 +91,7 @@ export default function ReceiptsPage() {
                             {allocated > 0 && <p className="text-[11px] text-neutral-500 mt-1">Allocated {money(allocated)} of {money(Number(form.amount) || 0)} — {money(Math.max(0, (Number(form.amount) || 0) - allocated))} goes on account</p>}
                         </div>
                     )}
-                    <button disabled={record.isPending} className="w-full py-2.5 rounded-xl bg-primary text-white font-bold disabled:opacity-50">Save receipt</button>
+                    <button disabled={record.isPending} className="w-full py-2.5 rounded-md bg-primary text-white font-medium disabled:opacity-50">Save receipt</button>
                 </form>
             </ModalShell>
         </div>

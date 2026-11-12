@@ -46,7 +46,7 @@ export default function MyTrainingPage() {
                     <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); act.mutate({ id: fb.id, action: "feedback", rating: Number(form.rating), comment: form.comment }, { onSuccess: () => setFb(null) }); }}>
                         <select value={form.rating} onChange={(e) => setForm({ ...form, rating: e.target.value })} className={inputCls} aria-label="Rating">{[5, 4, 3, 2, 1].map((n) => <option key={n} value={n}>{"★".repeat(n)}</option>)}</select>
                         <textarea rows={4} placeholder="What did you learn? What could be better?" value={form.comment} onChange={(e) => setForm({ ...form, comment: e.target.value })} className={inputCls} />
-                        <button disabled={act.isPending} className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">Submit & mark complete</button>
+                        <button disabled={act.isPending} className="w-full py-2.5 rounded-md bg-primary text-white text-sm font-medium disabled:opacity-50">Submit & mark complete</button>
                     </form>
                 )}
             </ModalShell>

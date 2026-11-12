@@ -68,7 +68,7 @@ export default function HRTrainingPage() {
                 title="Learning & Development (L&D)"
                 subtitle="Organize employee training workshops, skill development bootcamps, and compliance certifications."
                 action={
-                    <button onClick={() => setCreateOpen(true)} className="px-4 py-2.5 rounded-xl bg-primary text-white font-bold text-xs flex items-center gap-2">
+                    <button onClick={() => setCreateOpen(true)} className="px-4 py-2.5 rounded-md bg-primary text-white font-medium text-xs flex items-center gap-2">
                         <Plus size={15} /> New Program
                     </button>
                 }
@@ -175,7 +175,7 @@ export default function HRTrainingPage() {
                         <input required type="date" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} className={inputCls} />
                     </div>
                     <textarea placeholder="Description" rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className={inputCls} />
-                    <button disabled={mutate.isPending} className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">Create Program</button>
+                    <button disabled={mutate.isPending} className="w-full py-2.5 rounded-md bg-primary text-white text-sm font-medium disabled:opacity-50">Create Program</button>
                 </form>
             </ModalShell>
 
@@ -217,7 +217,7 @@ export default function HRTrainingPage() {
                             <button
                                 disabled={!enrollIds.length || mutate.isPending}
                                 onClick={() => mutate.mutate({ method: "PATCH", body: { id: current.id, action: "enroll", employeeIds: enrollIds } })}
-                                className="mt-2 px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold disabled:opacity-50"
+                                className="mt-2 px-4 py-2 rounded-md bg-primary text-white text-xs font-medium disabled:opacity-50"
                             >
                                 Enroll {enrollIds.length || ""}
                             </button>

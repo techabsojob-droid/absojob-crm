@@ -104,7 +104,7 @@ function Form({ initial }: { initial: S }) {
                     <span className="text-[11px] text-neutral-400">Only the Super Admin can reopen or move the lock back.</span>
                 </div>
             </SectionCard>
-            <button disabled={save.isPending} className="px-6 py-3 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">Save all settings</button>
+            <button disabled={save.isPending} className="px-6 py-3 rounded-md bg-primary text-white text-sm font-medium disabled:opacity-50">Save all settings</button>
         </form>
     );
 }

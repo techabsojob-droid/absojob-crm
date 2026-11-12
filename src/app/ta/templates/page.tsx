@@ -20,7 +20,7 @@ export default function TemplatesPage() {
     return (
         <div className="space-y-6">
             <PageHeader title="Message Templates" subtitle="Reusable email / WhatsApp / SMS messages for candidates and clients — placeholders are filled in automatically"
-                action={<button onClick={() => setOpen(true)} className="px-4 py-2.5 rounded-xl bg-primary text-white font-bold text-xs flex items-center gap-1.5"><Plus size={14} /> New template</button>} />
+                action={<button onClick={() => setOpen(true)} className="px-4 py-2.5 rounded-md bg-primary text-white font-medium text-xs flex items-center gap-1.5"><Plus size={14} /> New template</button>} />
             {!data?.length ? <SectionCard><EmptyState icon={MessageSquareText} message="No templates yet." /></SectionCard> : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {data.map((t) => (
@@ -42,7 +42,7 @@ export default function TemplatesPage() {
                     {f.channel === "EMAIL" && <input required value={f.subject} onChange={(e) => setF({ ...f, subject: e.target.value })} placeholder="Subject" className={inputCls} />}
                     <textarea required rows={7} value={f.body} onChange={(e) => setF({ ...f, body: e.target.value })} placeholder="Message" className={inputCls} />
                     <div className="flex flex-wrap gap-1">{PLACEHOLDERS.map((p) => <button type="button" key={p} onClick={() => setF({ ...f, body: `${f.body}{{${p}}}` })} className="text-[11px] px-2 py-0.5 rounded-full bg-neutral-100 hover:bg-primary/10 font-mono">{`{{${p}}}`}</button>)}</div>
-                    <button disabled={create.isPending} className="w-full py-2.5 rounded-xl bg-primary text-white font-bold disabled:opacity-50">Save template</button>
+                    <button disabled={create.isPending} className="w-full py-2.5 rounded-md bg-primary text-white font-medium disabled:opacity-50">Save template</button>
                 </form>
             </ModalShell>
         </div>

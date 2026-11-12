@@ -196,14 +196,8 @@ export default function TaCandidatesPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-1">
                 <div>
-                    <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
-                            Talent Pool
-                        </span>
-                        <span className="text-xs text-neutral-400 font-bold">Candidate Sourcing & Database</span>
-                    </div>
-                    <h1 className="text-2xl font-black text-neutral-900 mt-0.5">Candidates</h1>
-                    <p className="text-xs text-neutral-500 font-medium">
+                    <h1 className="text-[22px] leading-tight font-semibold tracking-tight text-neutral-900">Candidates</h1>
+                    <p className="text-[13px] text-neutral-500 mt-1">
                         Search and filter verified talent profiles, detect duplicates, and push candidates into active pipelines.
                     </p>
                 </div>
@@ -211,15 +205,15 @@ export default function TaCandidatesPage() {
                 <div className="flex items-center gap-2.5 flex-wrap">
                     <button
                         onClick={() => exportCsv()}
-                        className="px-3.5 py-2 bg-white hover:bg-neutral-50 border border-neutral-200 text-neutral-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-2xs"
+                        className="px-3.5 py-2 bg-white hover:bg-neutral-50 border border-neutral-200 text-neutral-700 rounded-md text-xs font-medium flex items-center gap-1.5 transition-colors shadow-2xs"
                     >
                         <Download size={14} /> Export
                     </button>
                     <button
                         onClick={() => setAddModalOpen(true)}
-                        className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-primary/20 transition-all hover:scale-[1.02]"
+                        className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-md text-xs font-medium flex items-center gap-1.5 shadow-md transition-all hover:scale-[1.02]"
                     >
-                        <Plus size={15} /> + Add Candidate
+                        <Plus size={15} /> Add Candidate
                     </button>
                 </div>
             </div>
@@ -299,7 +293,7 @@ export default function TaCandidatesPage() {
                         <select
                             value={noticeFilter}
                             onChange={(e) => setNoticeFilter(e.target.value)}
-                            className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold text-neutral-700 outline-none hover:bg-neutral-100 cursor-pointer"
+                            className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-md text-xs font-semibold text-neutral-700 outline-none hover:bg-neutral-100 cursor-pointer"
                         >
                             <option value="ALL">All Notice Periods</option>
                             <option value="IMMEDIATE">Immediate (≤15d)</option>
@@ -311,7 +305,7 @@ export default function TaCandidatesPage() {
                         <select
                             value={sourceFilter}
                             onChange={(e) => setSourceFilter(e.target.value)}
-                            className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold text-neutral-700 outline-none hover:bg-neutral-100 cursor-pointer"
+                            className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-md text-xs font-semibold text-neutral-700 outline-none hover:bg-neutral-100 cursor-pointer"
                         >
                             <option value="ALL">All Sources</option>
                             <option value="LINKEDIN">LinkedIn</option>
@@ -325,7 +319,7 @@ export default function TaCandidatesPage() {
                         <select
                             value={ratingFilter}
                             onChange={(e) => setRatingFilter(e.target.value)}
-                            className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold text-neutral-700 outline-none hover:bg-neutral-100 cursor-pointer"
+                            className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-md text-xs font-semibold text-neutral-700 outline-none hover:bg-neutral-100 cursor-pointer"
                         >
                             <option value="ALL">All Ratings</option>
                             <option value="5">5 Stars only</option>
@@ -436,7 +430,7 @@ export default function TaCandidatesPage() {
                         action={
                             <button
                                 onClick={() => setAddModalOpen(true)}
-                                className="mt-2 px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold"
+                                className="mt-2 px-4 py-2 bg-primary text-white rounded-md text-xs font-medium"
                             >
                                 Add Candidate
                             </button>
@@ -581,7 +575,7 @@ export default function TaCandidatesPage() {
                                                     </button>
                                                     <Link
                                                         href={`/ta/candidates/${c.id}`}
-                                                        className="px-2.5 py-1 bg-primary/10 hover:bg-primary hover:text-white text-primary rounded-lg text-[11px] font-bold transition-colors"
+                                                        className="px-2.5 py-1 bg-primary/10 hover:bg-primary hover:text-white text-primary rounded-md text-[11px] font-medium transition-colors"
                                                     >
                                                         360° Profile
                                                     </Link>
@@ -674,7 +668,7 @@ export default function TaCandidatesPage() {
                                     </button>
                                     <Link
                                         href={`/ta/candidates/${c.id}`}
-                                        className="px-3 py-1 bg-primary text-white hover:bg-primary-dark rounded-lg text-xs font-bold transition-colors"
+                                        className="px-3 py-1 bg-primary text-white hover:bg-primary-dark rounded-md text-xs font-medium transition-colors"
                                     >
                                         360° Profile
                                     </Link>
@@ -794,7 +788,7 @@ export default function TaCandidatesPage() {
                             )}
                             <Link
                                 href={`/ta/candidates/${previewCandidate.id}`}
-                                className="w-full py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-xs"
+                                className="w-full py-2.5 bg-primary hover:bg-primary-dark text-white rounded-md text-xs font-medium flex items-center justify-center gap-2 transition-colors shadow-xs"
                             >
                                 <ArrowRight size={14} /> Open 360° Candidate Profile
                             </Link>
@@ -871,7 +865,7 @@ export default function TaCandidatesPage() {
                             <button
                                 type="submit"
                                 disabled={addToPipelineMutation.isPending}
-                                className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-xl text-xs font-bold shadow-md shadow-primary/20 disabled:opacity-50"
+                                className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-md text-xs font-medium shadow-md disabled:opacity-50"
                             >
                                 {addToPipelineMutation.isPending ? "Adding…" : "Push to Pipeline"}
                             </button>

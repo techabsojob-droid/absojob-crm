@@ -56,14 +56,14 @@ export default function PerformancePage() {
                 <div className="h-72 w-full pt-4">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={recruiters}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                            <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#666" }} axisLine={{ stroke: "#e5e5e5" }} />
-                            <YAxis tick={{ fontSize: 11, fill: "#666" }} axisLine={{ stroke: "#e5e5e5" }} />
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E7EF" />
+                            <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#666" }} axisLine={{ stroke: "#E2E7EF" }} />
+                            <YAxis tick={{ fontSize: 11, fill: "#666" }} axisLine={{ stroke: "#E2E7EF" }} />
                             <Tooltip contentStyle={{ borderRadius: "12px", border: "1px solid #eee", fontSize: "12px" }} />
                             <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "10px" }} />
-                            <Bar dataKey="activePipeline" fill="#1B4332" name="Active Candidates" radius={[4, 4, 0, 0]} />
-                            <Bar dataKey="interviews" fill="#52B788" name="Interviews" radius={[4, 4, 0, 0]} />
-                            <Bar dataKey="joined" fill="#D97706" name="Placements (Joined)" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="activePipeline" fill="#2F6AA8" name="Active Candidates" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="interviews" fill="#E0952A" name="Interviews" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="joined" fill="#E0952A" name="Placements (Joined)" radius={[4, 4, 0, 0]} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>

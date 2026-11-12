@@ -36,10 +36,10 @@ export function TempPasswordDialog({ login, onClose }: { login: IssuedLogin | nu
                     <p className="text-[11px] text-neutral-500">They should change it after signing in (profile menu › Change password). You can issue a new one any time from their profile with “Reset password”.</p>
                 </div>
                 <div className="px-6 py-4 border-t border-neutral-100 flex justify-end gap-2">
-                    <button onClick={copy} className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold border border-neutral-200 rounded-xl hover:bg-neutral-50">
+                    <button onClick={copy} className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium border border-neutral-200 rounded-md hover:bg-neutral-50">
                         {copied ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />} {copied ? "Copied" : "Copy details"}
                     </button>
-                    <button onClick={onClose} className="px-4 py-2 text-xs font-bold bg-primary text-white rounded-xl">Done</button>
+                    <button onClick={onClose} className="px-4 py-2 text-xs font-medium bg-primary text-white rounded-md">Done</button>
                 </div>
             </div>
         </div>

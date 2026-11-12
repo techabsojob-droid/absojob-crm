@@ -128,7 +128,7 @@ export default function TeamPage() {
                         </button>
                         <button
                             onClick={() => { setStep(1); setModalOpen(true); }}
-                            className="px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-all shadow-md shadow-primary/25 flex items-center gap-1.5"
+                            className="px-4 py-2 bg-primary text-white rounded-md text-xs font-medium hover:bg-primary-dark transition-all shadow-md flex items-center gap-1.5"
                         >
                             <UserPlus size={16} /> Add Team Member
                         </button>
@@ -227,7 +227,7 @@ export default function TeamPage() {
                         {list.filter((u) => u.role === "SUPER_ADMIN").map((ceo) => (
                             <div key={ceo.id} className="space-y-6">
                                 <div className="p-4 max-w-sm mx-auto bg-primary/5 border-2 border-primary rounded-2xl text-center space-y-1 shadow-sm">
-                                    <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-primary text-white">
+                                    <span className="px-2 py-0.5 rounded text-[9px] font-medium uppercase tracking-wider bg-primary text-white">
                                         Executive Root
                                     </span>
                                     <h3 className="font-extrabold text-neutral-900 text-sm">{ceo.name}</h3>
@@ -529,7 +529,7 @@ export default function TeamPage() {
                                     reportingTo: editUser.reportingTo,
                                 })}
                                 disabled={patchMutation.isPending}
-                                className="px-4 py-2 text-xs font-bold bg-primary text-white rounded-xl shadow hover:bg-primary-dark"
+                                className="px-4 py-2 text-xs font-medium bg-primary text-white rounded-md shadow hover:bg-primary-dark"
                             >
                                 {patchMutation.isPending ? "Updating..." : "Save Changes"}
                             </button>
@@ -675,7 +675,7 @@ export default function TeamPage() {
                             <button
                                 type="submit"
                                 disabled={createMutation.isPending}
-                                className="px-5 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-all shadow-md shadow-primary/20"
+                                className="px-5 py-2 bg-primary text-white rounded-md text-xs font-medium hover:bg-primary-dark transition-all shadow-md"
                             >
                                 {step === 1 ? "Next: Hierarchy →" : createMutation.isPending ? "Inviting..." : "Confirm & Send Invitation"}
                             </button>

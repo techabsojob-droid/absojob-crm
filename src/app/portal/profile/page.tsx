@@ -88,7 +88,7 @@ function ProfileContent() {
         <div className="space-y-6 max-w-4xl">
             <PageHeader title="My Profile" subtitle={user.role === "AGENT" ? "Your partner account, KYC and payout details" : "Your employment record, documents and company assets"} />
 
-            <div className="bg-gradient-to-br from-primary to-[#0f2e1e] p-6 rounded-3xl text-white shadow-xl shadow-primary/20">
+            <div className="bg-navy p-6 rounded-xl text-white shadow-xl">
                 <div className="flex items-center gap-5 flex-wrap">
                     <div className="w-20 h-20 rounded-2xl bg-white/10 border border-white/25 flex items-center justify-center text-3xl font-black">
                         {user.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
@@ -119,7 +119,7 @@ function ProfileContent() {
 
             {tab === "security" && (
                 <SectionCard title="Password" subtitle="Keep your account secure — use a password you don't use elsewhere">
-                    <button onClick={() => setPwOpen(true)} className="px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold">Change password</button>
+                    <button onClick={() => setPwOpen(true)} className="px-4 py-2 rounded-md bg-primary text-white text-xs font-medium">Change password</button>
                     <ChangePasswordModal open={pwOpen} onClose={() => setPwOpen(false)} />
                 </SectionCard>
             )}
@@ -170,7 +170,7 @@ function ProfileContent() {
             {tab === "documents" && (
                 <SectionCard
                     title="My Documents"
-                    action={emp ? <button onClick={() => setUploadOpen(true)} className="px-3 py-1.5 rounded-xl bg-primary text-white text-xs font-bold flex items-center gap-1.5"><Upload size={13} /> Upload</button> : undefined}
+                    action={emp ? <button onClick={() => setUploadOpen(true)} className="px-3 py-1.5 rounded-md bg-primary text-white text-xs font-medium flex items-center gap-1.5"><Upload size={13} /> Upload</button> : undefined}
                 >
                     {data.documents.length === 0 ? (
                         <EmptyState icon={FileText} message="No documents yet." />
@@ -225,7 +225,7 @@ function ProfileContent() {
                         {form.fileUrl && <span className="text-emerald-700 text-[11px]">✓ attached</span>}
                     </label>
                     <label className="block text-xs font-bold text-neutral-600">Expiry date (passport, visa…)<input type="date" value={form.expiryDate} onChange={(e) => setForm({ ...form, expiryDate: e.target.value })} className={inputCls} /></label>
-                    <button disabled={upload.isPending || uploading || !form.fileUrl} className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">Submit for verification</button>
+                    <button disabled={upload.isPending || uploading || !form.fileUrl} className="w-full py-2.5 rounded-md bg-primary text-white text-sm font-medium disabled:opacity-50">Submit for verification</button>
                 </form>
             </ModalShell>
         </div>
@@ -256,7 +256,7 @@ function PersonalForm({ emp, onSaved }: { emp: Emp; onSaved: () => void }) {
                 <label className="text-xs font-bold text-neutral-600">Name<input required value={f.ecName} onChange={set("ecName")} className={inputCls} /></label>
                 <label className="text-xs font-bold text-neutral-600">Relationship<input required value={f.ecRelationship} onChange={set("ecRelationship")} className={inputCls} /></label>
                 <label className="text-xs font-bold text-neutral-600">Phone<input required value={f.ecPhone} onChange={set("ecPhone")} className={inputCls} /></label>
-                <div className="sm:col-span-2"><button disabled={save.isPending} className="px-5 py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">Save changes</button></div>
+                <div className="sm:col-span-2"><button disabled={save.isPending} className="px-5 py-2.5 rounded-md bg-primary text-white text-sm font-medium disabled:opacity-50">Save changes</button></div>
             </form>
         </SectionCard>
     );

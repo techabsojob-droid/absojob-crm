@@ -41,11 +41,11 @@ export default function RegisterPartnerPage() {
 
     if (done) return (
         <div className="min-h-screen flex items-center justify-center bg-neutral-50 p-6">
-            <div className="max-w-md w-full bg-white rounded-3xl border border-neutral-200 p-8 text-center space-y-4">
+            <div className="max-w-md w-full bg-white rounded-xl border border-neutral-200 p-8 text-center space-y-4">
                 <CheckCircle2 className="mx-auto text-emerald-500" size={48} />
-                <h1 className="text-2xl font-bold">Application received</h1>
+                <h1 className="text-[22px] leading-tight font-semibold tracking-tight">Application received</h1>
                 <p className="text-sm text-neutral-600">{done}</p>
-                <Link href="/login" className="inline-block px-5 py-2.5 rounded-xl bg-primary text-white font-bold text-sm">Back to sign in</Link>
+                <Link href="/login" className="inline-block px-5 py-2.5 rounded-md bg-primary text-white font-medium text-sm">Back to sign in</Link>
             </div>
         </div>
     );
@@ -75,7 +75,7 @@ export default function RegisterPartnerPage() {
                         </div>
                     </div>
 
-                    <form onSubmit={submit} className="space-y-6 bg-white rounded-3xl border border-neutral-200 p-6">
+                    <form onSubmit={submit} className="space-y-6 bg-white rounded-xl border border-neutral-200 p-6">
                         {error && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-xl font-medium">{error}</div>}
 
                         {mode === "apply" && (
@@ -120,7 +120,7 @@ export default function RegisterPartnerPage() {
                             </label>
                         )}
 
-                        <button disabled={busy} className="w-full py-3.5 bg-primary text-white rounded-xl text-sm font-bold disabled:opacity-60">{busy ? "Submitting…" : mode === "apply" ? "Submit application" : "Resubmit for verification"}</button>
+                        <button disabled={busy} className="w-full py-3.5 bg-primary text-white rounded-md text-sm font-medium disabled:opacity-60">{busy ? "Submitting…" : mode === "apply" ? "Submit application" : "Resubmit for verification"}</button>
                         <p className="text-center text-sm text-neutral-500">Already a partner? <Link href="/login" className="font-bold text-primary">Sign in</Link></p>
                     </form>
                 </div>

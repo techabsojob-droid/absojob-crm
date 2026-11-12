@@ -2,23 +2,26 @@
 
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
-import { ChevronRight } from "lucide-react";
+import { useEffect } from "react";
+import { X } from "lucide-react";
 import { STAGE_LABELS, type ApplicationStage } from "@/lib/types";
 
 // ─── Page Header ─────────────────────────────────────────────
 export function PageHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: React.ReactNode }) {
     return (
-        <div className="flex items-start justify-between gap-4 mb-6">
-            <div>
-                <h1 className="text-2xl font-bold text-neutral-900 flex items-center gap-2">{title}</h1>
-                {subtitle && <p className="text-sm text-neutral-500 mt-1">{subtitle}</p>}
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-5">
+            <div className="min-w-0">
+                <h1 className="text-[22px] leading-tight font-semibold text-neutral-900 tracking-tight">{title}</h1>
+                {subtitle && <p className="text-[13px] text-neutral-500 mt-1">{subtitle}</p>}
             </div>
-            {action}
+            {action && <div className="flex items-center gap-2 flex-wrap shrink-0">{action}</div>}
         </div>
     );
 }
 
 // ─── KPI Stat Card ───────────────────────────────────────────
+// Compact metric: label, value, optional hint. Tone only marks attention (warning / danger);
+// the icon is a quiet glyph, not a coloured tile.
 export function StatCard({ label, value, icon: Icon, tone = "primary", hint, href }: {
     label: string;
     value: string | number;
@@ -27,156 +30,70 @@ export function StatCard({ label, value, icon: Icon, tone = "primary", hint, hre
     hint?: string;
     href?: string;
 }) {
-    const tones: Record<string, string> = {
-        primary: "bg-primary/5 text-primary",
-        blue: "bg-blue-50 text-blue-600",
-        amber: "bg-amber-50 text-amber-600",
-        emerald: "bg-emerald-50 text-emerald-600",
-        red: "bg-red-50 text-red-600",
-        purple: "bg-purple-50 text-purple-600",
-        neutral: "bg-neutral-100 text-neutral-600",
-    };
-
+    const valueTone = tone === "red" ? "text-danger" : tone === "amber" ? "text-warning" : "text-neutral-900";
     const inner = (
         <>
-            <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">{label}</p>
-                <h3 className="text-2xl font-extrabold text-neutral-900 mt-1">{value}</h3>
-                {hint && <p className="text-[11px] text-neutral-400 mt-0.5">{hint}</p>}
-                {href && (
-                    <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity mt-1">
-                        View details <ChevronRight size={10} />
-                    </span>
-                )}
+            <div className="flex items-start justify-between gap-2">
+                <p className="text-[12px] font-medium text-neutral-500 leading-snug">{label}</p>
+                <Icon size={15} className="text-neutral-300 shrink-0 mt-0.5" aria-hidden />
             </div>
-            <div className={`w-12 h-12 rounded-xl ${tones[tone]} flex items-center justify-center shrink-0`}>
-                <Icon size={22} />
-            </div>
+            <p className={`text-[22px] leading-none font-semibold tabular-nums mt-2 ${valueTone}`}>{value}</p>
+            {hint && <p className="text-[11.5px] text-neutral-500 mt-1.5 truncate">{hint}</p>}
         </>
     );
-
-    if (href) {
-        return (
-            <Link
-                href={href}
-                className="group bg-white p-5 rounded-2xl border border-neutral-200/80 shadow-xs flex items-center justify-between hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
-            >
-                {inner}
-            </Link>
-        );
-    }
-
-    return (
-        <div className="bg-white p-5 rounded-2xl border border-neutral-200/80 shadow-xs flex items-center justify-between">
-            {inner}
-        </div>
-    );
+    const cls = "block bg-white px-4 py-3.5 rounded-xl border border-neutral-200 min-w-0";
+    return href
+        ? <Link href={href} className={`${cls} hover:border-neutral-300 hover:shadow-sm transition-[border-color,box-shadow] group`}>{inner}</Link>
+        : <div className={cls}>{inner}</div>;
 }
 
 // ─── Status / Stage Badge ────────────────────────────────────
-const BADGE_STYLES: Record<string, string> = {
+// Every status maps to one of six tones so colour always means the same thing.
+const TONE = {
+    neutral: "bg-neutral-100 text-neutral-600 border-neutral-200",
+    info: "bg-info-light text-blue-700 border-blue-100",
+    progress: "bg-violet-50 text-navy border-violet-100",
+    warning: "bg-warning-light text-amber-700 border-amber-100",
+    success: "bg-success-light text-emerald-700 border-emerald-100",
+    danger: "bg-danger-light text-red-700 border-red-100",
+} as const;
+const STATUS_TONE: Record<string, keyof typeof TONE> = {
     // jobs
-    DRAFT: "bg-neutral-100 text-neutral-600 border-neutral-200",
-    PENDING_APPROVAL: "bg-amber-50 text-amber-700 border-amber-100",
-    APPROVED: "bg-blue-50 text-blue-700 border-blue-100",
-    SOURCING: "bg-violet-50 text-violet-700 border-violet-100",
-    CLIENT_REVIEW: "bg-indigo-50 text-indigo-700 border-indigo-100",
-    INTERVIEWING: "bg-cyan-50 text-cyan-700 border-cyan-100",
-    OFFER_STAGE: "bg-amber-50 text-amber-700 border-amber-100",
-    JOINING: "bg-teal-50 text-teal-700 border-teal-100",
-    FULFILLED: "bg-emerald-50 text-emerald-700 border-emerald-100",
-    ON_HOLD: "bg-orange-50 text-orange-700 border-orange-100",
-    CLOSED: "bg-neutral-100 text-neutral-500 border-neutral-200",
-    CANCELLED: "bg-red-50 text-red-600 border-red-100",
+    DRAFT: "neutral", PENDING_APPROVAL: "warning", APPROVED: "info", SOURCING: "info", SCREENING: "info", CLIENT_REVIEW: "progress",
+    INTERVIEWING: "progress", OFFER_STAGE: "warning", JOINING: "progress", FULFILLED: "success", ON_HOLD: "warning", CLOSED: "neutral", CANCELLED: "danger",
     // SLA
-    ON_TRACK: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    AT_RISK: "bg-amber-50 text-amber-700 border-amber-200 font-bold",
-    OVERDUE: "bg-red-50 text-red-700 border-red-200 font-bold",
+    ON_TRACK: "success", AT_RISK: "warning", OVERDUE: "danger", CRITICAL: "danger",
     // clients
-    PROSPECT: "bg-blue-50 text-blue-700 border-blue-100",
-    ONBOARDING: "bg-amber-50 text-amber-700 border-amber-100",
-    ACTIVE: "bg-emerald-50 text-emerald-700 border-emerald-100",
-    PAUSED: "bg-orange-50 text-orange-700 border-orange-100",
-    CHURNED: "bg-neutral-100 text-neutral-500 border-neutral-200",
-    // pipeline stages
-    SOURCED: "bg-neutral-100 text-neutral-600 border-neutral-200",
-    SCREENING: "bg-sky-50 text-sky-700 border-sky-100",
-    INTERVIEW_SCHEDULED: "bg-cyan-50 text-cyan-700 border-cyan-100",
-    TECH_ROUND: "bg-violet-50 text-violet-700 border-violet-100",
-    CLIENT_ROUND: "bg-indigo-50 text-indigo-700 border-indigo-100",
-    HR_ROUND: "bg-purple-50 text-purple-700 border-purple-100",
-    OFFER_SENT: "bg-amber-50 text-amber-700 border-amber-100",
-    OFFER_ACCEPTED: "bg-teal-50 text-teal-700 border-teal-100",
-    JOINED: "bg-emerald-50 text-emerald-700 border-emerald-100",
-    REJECTED: "bg-red-50 text-red-600 border-red-100",
-    BACKED_OUT: "bg-orange-50 text-orange-700 border-orange-100",
-    WITHDRAWN: "bg-orange-50 text-orange-700 border-orange-100",
-    CONTACTED: "bg-blue-50 text-blue-700 border-blue-100",
-    INTERVIEW_COMPLETED: "bg-fuchsia-50 text-fuchsia-700 border-fuchsia-100",
-    SELECTED: "bg-lime-50 text-lime-700 border-lime-100",
-    BLACKLISTED: "bg-red-100 text-red-800 border-red-200",
-    // referrals
-    SUBMITTED: "bg-blue-50 text-blue-700 border-blue-100",
-    UNDER_REVIEW: "bg-amber-50 text-amber-700 border-amber-100",
-    SHORTLISTED: "bg-violet-50 text-violet-700 border-violet-100",
-    HIRED: "bg-emerald-50 text-emerald-700 border-emerald-100",
-    // users & hr
-    SUPER_ADMIN: "bg-primary/10 text-primary border-primary/20",
-    HR_ADMIN: "bg-emerald-50 text-emerald-800 border-emerald-200",
-    TA_MANAGER: "bg-purple-50 text-purple-700 border-purple-100",
-    TA_RECRUITER: "bg-blue-50 text-blue-700 border-blue-100",
-    AGENT: "bg-emerald-50 text-emerald-700 border-emerald-100",
-    EMPLOYEE: "bg-neutral-100 text-neutral-600 border-neutral-200",
-    INVITED: "bg-blue-50 text-blue-700 border-blue-100",
-    SUSPENDED: "bg-red-50 text-red-600 border-red-100",
-    EXITED: "bg-neutral-100 text-neutral-500 border-neutral-200",
-    NOTICE_PERIOD: "bg-amber-50 text-amber-800 border-amber-200",
+    PROSPECT: "info", ONBOARDING: "warning", ACTIVE: "success", PAUSED: "warning", CHURNED: "neutral",
+    // pipeline
+    SOURCED: "neutral", CONTACTED: "info", SHORTLISTED: "progress", INTERVIEW_SCHEDULED: "progress", TECH_ROUND: "progress", CLIENT_ROUND: "progress",
+    HR_ROUND: "progress", INTERVIEW_COMPLETED: "progress", SELECTED: "success", OFFER_SENT: "warning", OFFER_ACCEPTED: "success", JOINED: "success",
+    REJECTED: "danger", BACKED_OUT: "danger", WITHDRAWN: "neutral", BLACKLISTED: "danger", NOT_INTERESTED: "neutral",
+    // referrals / submissions
+    SUBMITTED: "info", UNDER_REVIEW: "warning", HIRED: "success", PENDING_REVIEW: "warning", INTERVIEW_REQUESTED: "progress",
+    // users & HR
+    SUPER_ADMIN: "progress", HR_ADMIN: "progress", TA_MANAGER: "progress", TA_RECRUITER: "info", FINANCE_ADMIN: "progress", AGENT: "neutral", EMPLOYEE: "neutral",
+    INVITED: "info", SUSPENDED: "danger", EXITED: "neutral", NOTICE_PERIOD: "warning", VERIFIED: "success",
     // priority
-    URGENT: "bg-red-50 text-red-600 border-red-100",
-    HIGH: "bg-orange-50 text-orange-700 border-orange-100",
-    MEDIUM: "bg-blue-50 text-blue-700 border-blue-100",
-    LOW: "bg-neutral-100 text-neutral-500 border-neutral-200",
-    // partner KYC / client submissions / joining risk
-    VERIFIED: "bg-emerald-50 text-emerald-700 border-emerald-100",
-    PENDING_REVIEW: "bg-amber-50 text-amber-700 border-amber-100",
-    INTERVIEW_REQUESTED: "bg-violet-50 text-violet-700 border-violet-100",
-    // generic
-    PENDING: "bg-amber-50 text-amber-700 border-amber-100",
-    APPROVED_LEDGER: "bg-blue-50 text-blue-700 border-blue-100",
-    PAID: "bg-emerald-50 text-emerald-700 border-emerald-100",
-    PROCESSING: "bg-blue-50 text-blue-700 border-blue-100",
-    PRESENT: "bg-emerald-50 text-emerald-700 border-emerald-100",
-    ABSENT: "bg-red-50 text-red-600 border-red-100",
-    LATE: "bg-orange-50 text-orange-700 border-orange-100",
-    HALF_DAY: "bg-amber-50 text-amber-700 border-amber-100",
-    ON_LEAVE: "bg-blue-50 text-blue-700 border-blue-100",
-    WFH: "bg-violet-50 text-violet-700 border-violet-100",
-    SCHEDULED: "bg-blue-50 text-blue-700 border-blue-100",
-    COMPLETED: "bg-emerald-50 text-emerald-700 border-emerald-100",
-    RESCHEDULED: "bg-amber-50 text-amber-700 border-amber-100",
-    NO_SHOW: "bg-red-50 text-red-600 border-red-100",
-    // interview outcomes
-    STRONG_HIRE: "bg-emerald-100 text-emerald-800 border-emerald-300 font-extrabold",
-    HIRE: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    MAYBE: "bg-amber-50 text-amber-700 border-amber-200",
-    NO_HIRE: "bg-red-50 text-red-700 border-red-200",
-    // Call activity
-    CONNECTED: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    NOT_ANSWERED: "bg-neutral-100 text-neutral-600 border-neutral-200",
-    BUSY: "bg-amber-50 text-amber-700 border-amber-200",
-    SWITCHED_OFF: "bg-neutral-100 text-neutral-600 border-neutral-200",
-    CALL_BACK: "bg-blue-50 text-blue-700 border-blue-200",
-    WRONG_NUMBER: "bg-red-50 text-red-700 border-red-200",
-    INTERESTED: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    NOT_INTERESTED: "bg-red-50 text-red-700 border-red-200",
-    LISTED: "bg-blue-50 text-blue-700 border-blue-200",
+    URGENT: "danger", HIGH: "warning", MEDIUM: "info", LOW: "neutral",
+    // generic workflow
+    PENDING: "warning", IN_PROGRESS: "info", IN_REVIEW: "progress", DONE: "success", TODO: "neutral", BLOCKED: "danger",
+    APPROVED_LEDGER: "info", PAID: "success", PROCESSING: "info", PROCESSED: "info", SENT: "info", PARTIALLY_PAID: "warning", WRITTEN_OFF: "neutral", FAILED: "danger",
+    // attendance
+    PRESENT: "success", ABSENT: "danger", LATE: "warning", HALF_DAY: "warning", ON_LEAVE: "info", WFH: "progress",
+    // interviews
+    SCHEDULED: "info", COMPLETED: "success", RESCHEDULED: "warning", NO_SHOW: "danger",
+    STRONG_HIRE: "success", HIRE: "success", MAYBE: "warning", NO_HIRE: "danger",
+    // calls
+    CONNECTED: "success", NOT_ANSWERED: "neutral", BUSY: "warning", SWITCHED_OFF: "neutral", CALL_BACK: "info", WRONG_NUMBER: "danger", INTERESTED: "success",
+    LISTED: "info", OPEN: "info", ACCEPTED: "success", DECLINED: "danger", EXPIRED: "neutral",
 };
 
 export function Badge({ value, label }: { value: string; label?: string }) {
-    const style = BADGE_STYLES[value] ?? "bg-neutral-100 text-neutral-600 border-neutral-200";
-    const display = label ?? STAGE_LABELS[value as ApplicationStage] ?? value.replaceAll("_", " ");
+    const style = TONE[STATUS_TONE[value] ?? "neutral"];
+    const display = label ?? STAGE_LABELS[value as ApplicationStage] ?? value.replaceAll("_", " ").toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
     return (
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border whitespace-nowrap ${style}`}>
+        <span className={`inline-flex items-center h-5 px-1.5 rounded text-[11px] font-medium border whitespace-nowrap ${style}`}>
             {display}
         </span>
     );
@@ -185,12 +102,10 @@ export function Badge({ value, label }: { value: string; label?: string }) {
 // ─── Empty State ─────────────────────────────────────────────
 export function EmptyState({ icon: Icon, message, action }: { icon: LucideIcon; message: string; action?: React.ReactNode }) {
     return (
-        <div className="py-16 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-neutral-50 flex items-center justify-center mx-auto mb-3">
-                <Icon size={24} className="text-neutral-300" />
-            </div>
-            <p className="text-sm text-neutral-400 font-medium">{message}</p>
-            {action && <div className="mt-2">{action}</div>}
+        <div className="py-10 px-4 text-center">
+            <Icon size={22} className="text-neutral-300 mx-auto mb-2.5" aria-hidden />
+            <p className="text-[13px] text-neutral-500 max-w-sm mx-auto">{message}</p>
+            {action && <div className="mt-3">{action}</div>}
         </div>
     );
 }
@@ -204,18 +119,18 @@ export function SectionCard({ title, subtitle, children, action, className = "" 
     className?: string;
 }) {
     return (
-        <div className={`bg-white rounded-2xl border border-neutral-200/80 shadow-xs ${className}`}>
+        <section className={`bg-white rounded-xl border border-neutral-200 min-w-0 ${className}`}>
             {(title || action) && (
-                <div className="flex items-center justify-between px-5 pt-5 pb-1">
-                    <div>
-                        <h2 className="text-base font-bold text-neutral-900">{title}</h2>
-                        {subtitle && <p className="text-xs text-neutral-400 mt-0.5">{subtitle}</p>}
+                <header className="flex flex-wrap items-center justify-between gap-2 px-5 py-3.5 border-b border-neutral-100">
+                    <div className="min-w-0">
+                        {title && <h2 className="text-[14px] font-semibold text-neutral-900">{title}</h2>}
+                        {subtitle && <p className="text-[12px] text-neutral-500 mt-0.5">{subtitle}</p>}
                     </div>
-                    {action}
-                </div>
+                    {action && <div className="flex items-center gap-2 shrink-0">{action}</div>}
+                </header>
             )}
             <div className="p-5">{children}</div>
-        </div>
+        </section>
     );
 }
 
@@ -232,18 +147,25 @@ export function ModalShell({ open = true, onClose, title, children, wide }: {
     children: React.ReactNode;
     wide?: boolean;
 }) {
+    useEffect(() => {
+        if (!open) return;
+        const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, [open, onClose]);
     if (!open) return null;
     return (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+        <div className="fixed inset-0 bg-navy-deep/40 z-50 flex items-end sm:items-center justify-center sm:p-4" onClick={onClose}>
             <div
-                className={`bg-white rounded-3xl w-full ${wide ? "max-w-2xl" : "max-w-md"} max-h-[90vh] overflow-y-auto animate-fade-in`}
+                role="dialog" aria-modal="true" aria-label={title}
+                className={`bg-white rounded-t-xl sm:rounded-xl w-full ${wide ? "sm:max-w-2xl" : "sm:max-w-md"} max-h-[92vh] overflow-y-auto shadow-2xl animate-fade-in`}
                 onClick={(e) => e.stopPropagation()}
             >
-                <div className="sticky top-0 bg-white/95 backdrop-blur px-6 py-4 border-b border-neutral-100 flex items-center justify-between z-10">
-                    <h3 className="font-bold text-neutral-900">{title}</h3>
-                    <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-neutral-100 text-neutral-400 hover:text-neutral-700 transition-colors text-xl leading-none">×</button>
+                <div className="sticky top-0 bg-white px-5 py-3.5 border-b border-neutral-100 flex items-center justify-between gap-3 z-10">
+                    <h3 className="text-[15px] font-semibold text-neutral-900 truncate">{title}</h3>
+                    <button onClick={onClose} aria-label="Close" className="w-8 h-8 -mr-1.5 rounded-md hover:bg-neutral-100 text-neutral-400 hover:text-neutral-700 flex items-center justify-center"><X size={17} /></button>
                 </div>
-                <div className="p-6">{children}</div>
+                <div className="p-5">{children}</div>
             </div>
         </div>
     );

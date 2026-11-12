@@ -202,7 +202,7 @@ export default function PerformancePage() {
                                 <input type="number" min="0" value={edit.vals[m.key]} onChange={(e) => setEdit({ ...edit, vals: { ...edit.vals, [m.key]: e.target.value } })} className={inputCls} />
                             </label>
                         ))}
-                        <button disabled={save.isPending} className="w-full py-2.5 rounded-xl bg-primary text-white font-bold text-sm disabled:opacity-50">Save target</button>
+                        <button disabled={save.isPending} className="w-full py-2.5 rounded-md bg-primary text-white font-medium text-sm disabled:opacity-50">Save target</button>
                     </form>
                 </ModalShell>
             )}

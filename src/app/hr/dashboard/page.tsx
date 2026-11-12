@@ -22,12 +22,12 @@ import {
 import { MyWork } from "@/components/tasks/TaskWidgets";
 
 const ATT_COLORS: Record<string, string> = {
-    present: "#10B981",
-    late: "#F59E0B",
-    onLeave: "#3B82F6",
-    wfh: "#8B5CF6",
-    absent: "#EF4444",
-    halfDay: "#EC4899",
+    present: "#1E9367",
+    late: "#E0952A",
+    onLeave: "#2F6AA8",
+    wfh: "#8A6FB0",
+    absent: "#B42332",
+    halfDay: "#5AA9E6",
 };
 
 export default function HrDashboardPage() {
@@ -101,7 +101,7 @@ export default function HrDashboardPage() {
                         <span className="p-1.5 bg-primary/10 text-primary rounded-lg">
                             <Activity size={20} />
                         </span>
-                        <h1 className="text-2xl font-black text-neutral-900 tracking-tight">HR Command Center</h1>
+                        <h1 className="text-[22px] leading-tight font-semibold tracking-tight text-neutral-900">HR Command Center</h1>
                         <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
                             Live Sync
                         </span>
@@ -124,7 +124,7 @@ export default function HrDashboardPage() {
                     <button
                         onClick={() => refetch()}
                         disabled={isRefetching}
-                        className="px-3 py-2 bg-white border border-neutral-200 text-neutral-700 hover:bg-neutral-50 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 shadow-xs"
+                        className="px-3 py-2 bg-white border border-neutral-200 text-neutral-700 hover:bg-neutral-50 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 shadow-xs"
                     >
                         <RefreshCw size={13} className={isRefetching ? "animate-spin text-primary" : "text-neutral-400"} />
                         <span>Refresh</span>
@@ -132,7 +132,7 @@ export default function HrDashboardPage() {
 
                     <Link
                         href="/hr/onboarding"
-                        className="flex items-center gap-1.5 px-3.5 py-2 bg-primary text-white rounded-xl text-xs font-bold shadow-md shadow-primary/20 hover:bg-primary-dark transition-all"
+                        className="flex items-center gap-1.5 px-3.5 py-2 bg-primary text-white rounded-md text-xs font-medium shadow-xs hover:bg-primary-dark transition-all"
                     >
                         <UserPlus size={14} /> Onboarding ({kpis.pendingOnboarding})
                     </Link>
@@ -293,7 +293,7 @@ export default function HrDashboardPage() {
                             </div>
                             <Link
                                 href={item.link}
-                                className="w-full py-1.5 bg-neutral-50 hover:bg-primary hover:text-white text-neutral-700 text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 border border-neutral-200/70"
+                                className="w-full py-1.5 bg-neutral-50 hover:bg-primary hover:text-white text-neutral-700 text-xs font-medium rounded-md transition-colors flex items-center justify-center gap-1.5 border border-neutral-200/70"
                             >
                                 <span>{item.cta}</span>
                                 <ArrowUpRight size={13} />
@@ -428,18 +428,18 @@ export default function HrDashboardPage() {
                         <AreaChart data={attendanceTrend}>
                             <defs>
                                 <linearGradient id="presentGrad" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#10B981" stopOpacity={0.4} />
-                                    <stop offset="95%" stopColor="#10B981" stopOpacity={0.0} />
+                                    <stop offset="5%" stopColor="#1E9367" stopOpacity={0.4} />
+                                    <stop offset="95%" stopColor="#1E9367" stopOpacity={0.0} />
                                 </linearGradient>
                             </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                            <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#6B7280" }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fontSize: 11, fill: "#6B7280" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                            <CartesianGrid strokeDasharray="3 3" stroke="#E2E7EF" vertical={false} />
+                            <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#718096" }} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fontSize: 11, fill: "#718096" }} axisLine={false} tickLine={false} allowDecimals={false} />
                             <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #E5E7EB", fontSize: 12 }} />
-                            <Area type="monotone" dataKey="present" stroke="#10B981" strokeWidth={2} fillOpacity={1} fill="url(#presentGrad)" name="Present" />
-                            <Line type="monotone" dataKey="late" stroke="#F59E0B" strokeWidth={2} name="Late" />
-                            <Line type="monotone" dataKey="absent" stroke="#EF4444" strokeWidth={2} name="Absent" />
-                            <Line type="monotone" dataKey="wfh" stroke="#8B5CF6" strokeWidth={2} name="WFH" />
+                            <Area type="monotone" dataKey="present" stroke="#1E9367" strokeWidth={2} fillOpacity={1} fill="url(#presentGrad)" name="Present" />
+                            <Line type="monotone" dataKey="late" stroke="#E0952A" strokeWidth={2} name="Late" />
+                            <Line type="monotone" dataKey="absent" stroke="#B42332" strokeWidth={2} name="Absent" />
+                            <Line type="monotone" dataKey="wfh" stroke="#8A6FB0" strokeWidth={2} name="WFH" />
                         </AreaChart>
                     </ResponsiveContainer>
                 </SectionCard>
@@ -531,11 +531,11 @@ export default function HrDashboardPage() {
                 >
                     <ResponsiveContainer width="100%" height={260}>
                         <BarChart data={departmentBreakdown}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                            <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#6B7280" }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fontSize: 11, fill: "#6B7280" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                            <CartesianGrid strokeDasharray="3 3" stroke="#E2E7EF" vertical={false} />
+                            <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#718096" }} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fontSize: 11, fill: "#718096" }} axisLine={false} tickLine={false} allowDecimals={false} />
                             <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #E5E7EB", fontSize: 12 }} />
-                            <Bar dataKey="count" fill="#1B4332" radius={[6, 6, 0, 0]} name="Headcount" />
+                            <Bar dataKey="count" fill="#2F6AA8" radius={[6, 6, 0, 0]} name="Headcount" />
                         </BarChart>
                     </ResponsiveContainer>
                 </SectionCard>
@@ -769,7 +769,7 @@ export default function HrDashboardPage() {
                         <div className="pt-3 border-t border-neutral-100 flex items-center gap-2">
                             <Link
                                 href={`/hr/employees?id=${quickEmployee.id}`}
-                                className="flex-1 py-2.5 bg-primary text-white text-center font-bold rounded-xl hover:bg-primary-dark transition-colors"
+                                className="flex-1 py-2.5 bg-primary text-white text-center font-medium rounded-md hover:bg-primary-dark transition-colors"
                             >
                                 Open 360° Profile
                             </Link>

@@ -3,10 +3,10 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 // Validated categorical slots (reference palette, light surface): billed = blue, collected = orange
-const SERIES_1 = "#2a78d6";
-const SERIES_2 = "#eb6834";
-const GRID = "#e7e6e1";
-const AXIS = "#6b6a66";
+const SERIES_1 = "#2F6AA8";
+const SERIES_2 = "#E0952A";
+const GRID = "#E2E7EF";
+const AXIS = "#718096";
 
 const compactInr = (v: number) => (v >= 1e7 ? `₹${(v / 1e7).toFixed(1)}Cr` : v >= 1e5 ? `₹${(v / 1e5).toFixed(1)}L` : v >= 1e3 ? `₹${Math.round(v / 1e3)}k` : `₹${v}`);
 const fullInr = (v: number) => `₹${Math.round(v).toLocaleString("en-IN")}`;
@@ -22,7 +22,7 @@ export function BilledCollectedChart({ data }: { data: { month: string; billed: 
                     <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: AXIS, fontSize: 11 }} />
                     <YAxis tickFormatter={compactInr} tickLine={false} axisLine={false} width={56} tick={{ fill: AXIS, fontSize: 11 }} />
                     <Tooltip cursor={{ fill: "rgba(0,0,0,0.04)" }} formatter={(v) => fullInr(Number(v))} contentStyle={{ borderRadius: 12, fontSize: 12 }} />
-                    <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, color: "#52514e" }} />
+                    <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, color: "#3F4C63" }} />
                     <Bar dataKey="billed" name="Billed" fill={SERIES_1} radius={[4, 4, 0, 0]} maxBarSize={28} />
                     <Bar dataKey="collected" name="Collected" fill={SERIES_2} radius={[4, 4, 0, 0]} maxBarSize={28} />
                 </BarChart>
@@ -39,7 +39,7 @@ export function HorizontalBars({ data, label }: { data: { name: string; value: n
                 <BarChart data={data} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
                     <CartesianGrid horizontal={false} stroke={GRID} />
                     <XAxis type="number" tickFormatter={compactInr} tickLine={false} axisLine={false} tick={{ fill: AXIS, fontSize: 11 }} />
-                    <YAxis type="category" dataKey="name" width={110} tickLine={false} axisLine={false} tick={{ fill: "#52514e", fontSize: 11 }} />
+                    <YAxis type="category" dataKey="name" width={110} tickLine={false} axisLine={false} tick={{ fill: "#3F4C63", fontSize: 11 }} />
                     <Tooltip cursor={{ fill: "rgba(0,0,0,0.04)" }} formatter={(v) => [fullInr(Number(v)), label]} contentStyle={{ borderRadius: 12, fontSize: 12 }} />
                     <Bar dataKey="value" fill={SERIES_1} radius={[0, 4, 4, 0]} maxBarSize={22} />
                 </BarChart>
@@ -58,7 +58,7 @@ export function MonthlyCountChart({ data, a, b }: { data: ({ month: string } & R
                     <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: AXIS, fontSize: 11 }} />
                     <YAxis allowDecimals={false} tickLine={false} axisLine={false} width={32} tick={{ fill: AXIS, fontSize: 11 }} />
                     <Tooltip cursor={{ fill: "rgba(0,0,0,0.04)" }} contentStyle={{ borderRadius: 12, fontSize: 12 }} />
-                    <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, color: "#52514e" }} />
+                    <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, color: "#3F4C63" }} />
                     <Bar dataKey={a.key} name={a.label} fill={SERIES_1} radius={[4, 4, 0, 0]} maxBarSize={24} />
                     <Bar dataKey={b.key} name={b.label} fill={SERIES_2} radius={[4, 4, 0, 0]} maxBarSize={24} />
                 </BarChart>

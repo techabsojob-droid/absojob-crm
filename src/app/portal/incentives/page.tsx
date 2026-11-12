@@ -26,7 +26,7 @@ export default function PortalIncentivesPage() {
     return (
         <div className="space-y-6">
             <PageHeader title="My Earnings" subtitle="Every incentive, TDS deduction, clawback and payout — tracked transparently"
-                action={<a href="/api/portal/incentives?format=csv" className="px-4 py-2.5 rounded-xl border border-neutral-200 bg-white font-bold text-xs flex items-center gap-1.5 hover:bg-neutral-50"><Download size={14} /> Statement (CSV)</a>} />
+                action={<a href="/api/portal/incentives?format=csv" className="px-4 py-2.5 rounded-md border border-neutral-200 bg-white font-medium text-xs flex items-center gap-1.5 hover:bg-neutral-50"><Download size={14} /> Statement (CSV)</a>} />
 
             {!data.payoutReady && (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 flex gap-3">

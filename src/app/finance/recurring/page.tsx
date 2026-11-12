@@ -19,7 +19,7 @@ export default function RecurringPage() {
 
     return (
         <div className="space-y-6">
-            <PageHeader title="Recurring Invoices" subtitle="Retainers & RPO fees billed automatically on schedule (drafts, or sent directly when auto-send is on)" action={<button onClick={() => setOpen(true)} className="px-4 py-2.5 rounded-xl bg-primary text-white font-bold text-xs flex items-center gap-2"><Plus size={15} /> New schedule</button>} />
+            <PageHeader title="Recurring Invoices" subtitle="Retainers & RPO fees billed automatically on schedule (drafts, or sent directly when auto-send is on)" action={<button onClick={() => setOpen(true)} className="px-4 py-2.5 rounded-md bg-primary text-white font-medium text-xs flex items-center gap-2"><Plus size={15} /> New schedule</button>} />
             <SectionCard>
                 {data.length === 0 ? <EmptyState icon={Repeat} message="No recurring schedules." /> : (
                     <ul className="divide-y divide-neutral-100 text-sm">
@@ -50,7 +50,7 @@ export default function RecurringPage() {
                         <label className="text-xs font-bold text-neutral-500">End (optional)<input type="date" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} className={inputCls} /></label>
                     </div>
                     <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={form.autoSend} onChange={(e) => setForm({ ...form, autoSend: e.target.checked })} /> Email invoices automatically</label>
-                    <button disabled={create.isPending} className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">Save schedule</button>
+                    <button disabled={create.isPending} className="w-full py-2.5 rounded-md bg-primary text-white text-sm font-medium disabled:opacity-50">Save schedule</button>
                 </form>
             </ModalShell>
         </div>

@@ -33,7 +33,7 @@ export default function MyInterviewsPage() {
             <div className="flex items-center gap-2">
                 <Badge value={i.status === "COMPLETED" ? i.outcome : i.status} />
                 {["SCHEDULED", "RESCHEDULED"].includes(i.status) && (
-                    <button onClick={() => setFb(i)} className="px-2.5 py-1 rounded-lg bg-primary text-white text-xs font-bold">Give feedback</button>
+                    <button onClick={() => setFb(i)} className="px-2.5 py-1 rounded-md bg-primary text-white text-xs font-medium">Give feedback</button>
                 )}
             </div>
         </li>
@@ -56,7 +56,7 @@ export default function MyInterviewsPage() {
                         <input type="number" min="0" max="10" value={form.score} onChange={(e) => setForm({ ...form, score: e.target.value })} className={inputCls} />
                     </div>
                     <textarea required rows={4} placeholder="Strengths, weaknesses, recommendation" value={form.feedback} onChange={(e) => setForm({ ...form, feedback: e.target.value })} className={inputCls} />
-                    <button disabled={submit.isPending} className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">Submit Feedback</button>
+                    <button disabled={submit.isPending} className="w-full py-2.5 rounded-md bg-primary text-white text-sm font-medium disabled:opacity-50">Submit Feedback</button>
                 </form>
             </ModalShell>
         </div>

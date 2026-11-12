@@ -55,7 +55,7 @@ export default function CandidateComms({ candidateId, applications }: { candidat
                         <select value={f.outcome} onChange={(e) => setF({ ...f, outcome: e.target.value })} className={inputCls} aria-label="Outcome">{OUTCOMES.map((o) => <option key={o}>{o}</option>)}</select>
                         <input type="date" value={f.nextFollowUpDate} min={new Date().toISOString().slice(0, 10)} onChange={(e) => setF({ ...f, nextFollowUpDate: e.target.value })} className={inputCls} title="Follow-up date (creates a task)" aria-label="Follow-up date" />
                     </div>
-                    <button disabled={send.isPending || (data?.doNotContact && outgoingMsg)} className="w-full py-2.5 rounded-xl bg-primary text-white font-bold disabled:opacity-50">
+                    <button disabled={send.isPending || (data?.doNotContact && outgoingMsg)} className="w-full py-2.5 rounded-md bg-primary text-white font-medium disabled:opacity-50">
                         {!outgoingMsg ? "Log" : f.channel === "EMAIL" ? "Send email" : f.channel === "WHATSAPP" ? "Open WhatsApp & log" : "Open SMS & log"}
                     </button>
                 </form>

@@ -5,8 +5,8 @@ import QueryProvider from "@/providers/QueryProvider";
 import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
-  title: "TrueVision CRM — Real Estate Agent & Lead Management",
-  description: "Manage agents, leads, property inventory, performance tracking for real estate agencies",
+  title: "AbsoJob — Recruitment CRM",
+  description: "AbsoJob recruitment CRM: requisitions, pipeline, candidates, clients, team and HR in one place",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

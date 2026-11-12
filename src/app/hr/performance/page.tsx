@@ -106,7 +106,7 @@ function PerformanceContent() {
                 title="Performance & Talent Development"
                 subtitle="Track employee goal achievements, review cycles, manager feedback, and performance ratings."
                 action={
-                    <button onClick={() => setNewOpen(true)} className="px-4 py-2.5 rounded-xl bg-primary text-white font-bold text-xs flex items-center gap-2">
+                    <button onClick={() => setNewOpen(true)} className="px-4 py-2.5 rounded-md bg-primary text-white font-medium text-xs flex items-center gap-2">
                         <Plus size={15} /> Start Review
                     </button>
                 }
@@ -228,7 +228,7 @@ function PerformanceContent() {
                                                 </span>
                                             )}
                                             {r.status !== "COMPLETED" && (
-                                                <button onClick={() => setReviewing(r)} className="px-2.5 py-1 rounded-lg bg-primary/10 text-primary font-bold hover:bg-primary hover:text-white">
+                                                <button onClick={() => setReviewing(r)} className="px-2.5 py-1 rounded-md bg-primary/10 text-primary font-medium hover:bg-primary hover:text-white">
                                                     {r.status === "MANAGER_REVIEW" ? "Give manager review" : "Review now"}
                                                 </button>
                                             )}
@@ -377,7 +377,7 @@ function PerformanceContent() {
                     </select>
                     <input required placeholder="Review cycle (e.g. 2026-H2)" value={newForm.reviewCycle} onChange={(e) => setNewForm({ ...newForm, reviewCycle: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-sm" />
                     <textarea required rows={4} placeholder={"Goals — one per line"} value={newForm.goals} onChange={(e) => setNewForm({ ...newForm, goals: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-sm" />
-                    <button disabled={act.isPending} className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">Start Review</button>
+                    <button disabled={act.isPending} className="w-full py-2.5 rounded-md bg-primary text-white text-sm font-medium disabled:opacity-50">Start Review</button>
                 </form>
             </ModalShell>
 

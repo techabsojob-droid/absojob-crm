@@ -325,7 +325,7 @@ export default function RequisitionWizard({ jobId, duplicateOf }: { jobId?: stri
                     <Link href={editing ? `/ta/requisitions/${jobId}` : "/ta/requisitions"} onClick={(e) => { if (dirty && !window.confirm("Discard your unsaved changes?")) e.preventDefault(); else savedOk.current = true; }} className="inline-flex items-center gap-1 text-xs font-semibold text-neutral-500 hover:text-neutral-800">
                         <ArrowLeft size={13} /> {editing ? "Back to requisition" : "All Openings"}
                     </Link>
-                    <h1 className="text-2xl font-bold text-neutral-900 mt-1">
+                    <h1 className="text-[22px] leading-tight font-semibold tracking-tight text-neutral-900 mt-1">
                         {editing ? `Edit ${job?.requisitionCode ?? "requisition"}` : duplicateOf ? "Duplicate requisition" : "Create New Requisition"}
                     </h1>
                     <p className="text-sm text-neutral-500 mt-0.5">
@@ -346,7 +346,7 @@ export default function RequisitionWizard({ jobId, duplicateOf }: { jobId?: stri
                             <li key={st.key} className="flex items-center gap-1 sm:gap-2 shrink-0">
                                 <button type="button" onClick={() => (i <= visited || i < step ? go(i) : go(i))} disabled={i > visited + 1}
                                     aria-current={i === step ? "step" : undefined}
-                                    className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-colors disabled:cursor-not-allowed ${i === step ? "bg-primary text-white shadow-sm shadow-primary/20" : hasErr ? "bg-red-50 text-red-700" : done ? "bg-primary/8 text-primary hover:bg-primary/12" : "text-neutral-400"}`}>
+                                    className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-colors disabled:cursor-not-allowed ${i === step ? "bg-primary text-white shadow-sm" : hasErr ? "bg-red-50 text-red-700" : done ? "bg-primary/8 text-primary hover:bg-primary/12" : "text-neutral-400"}`}>
                                     <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${i === step ? "bg-white/20" : hasErr ? "bg-red-100" : done ? "bg-primary/15" : "bg-neutral-100"}`}>
                                         {hasErr ? "!" : done && i !== step ? <Check size={11} /> : i + 1}
                                     </span>
@@ -605,9 +605,9 @@ export default function RequisitionWizard({ jobId, duplicateOf }: { jobId?: stri
                     <div className="flex items-center gap-2">
                         {step > 0 && <button type="button" onClick={() => go(step - 1)} className="h-10 px-4 rounded-xl border border-neutral-200 text-sm font-semibold text-neutral-700 hover:bg-neutral-50 flex items-center gap-1.5"><ArrowLeft size={14} /> Previous</button>}
                         {step < STEPS.length - 1 ? (
-                            <button type="button" onClick={() => go(step + 1)} className="h-10 px-5 rounded-xl bg-primary text-white text-sm font-semibold shadow-sm shadow-primary/20 hover:bg-primary-dark flex items-center gap-1.5">Next <ArrowRight size={14} /></button>
+                            <button type="button" onClick={() => go(step + 1)} className="h-10 px-5 rounded-xl bg-primary text-white text-sm font-semibold shadow-sm hover:bg-primary-dark flex items-center gap-1.5">Next <ArrowRight size={14} /></button>
                         ) : (
-                            <button type="button" disabled={!!saving} onClick={() => save(editing && !isDraft ? "save" : "submit")} className="h-10 px-5 rounded-xl bg-primary text-white text-sm font-semibold shadow-sm shadow-primary/20 hover:bg-primary-dark disabled:opacity-50 flex items-center gap-1.5">
+                            <button type="button" disabled={!!saving} onClick={() => save(editing && !isDraft ? "save" : "submit")} className="h-10 px-5 rounded-xl bg-primary text-white text-sm font-semibold shadow-sm hover:bg-primary-dark disabled:opacity-50 flex items-center gap-1.5">
                                 {saving && saving !== "draft" ? <Loader2 size={14} className="animate-spin" /> : editing && !isDraft ? <Save size={14} /> : <Send size={14} />} {submitLabel}
                             </button>
                         )}

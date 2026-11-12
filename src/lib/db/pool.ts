@@ -27,8 +27,12 @@ export function pool(): Pool {
         const p = new Pool({
             connectionString: url,
             ssl: /localhost|127\.0\.0\.1/.test(url) ? undefined : { rejectUnauthorized: false },
-            max: Number(process.env.DATABASE_POOL_MAX) || 5,
-            idleTimeoutMillis: 30_000,
+            // Serverless (Vercel) runs many short-lived instances: keep each one's footprint tiny
+            // and release idle connections fast, or the Supabase pooler runs out of clients
+            // (EMAXCONNSESSION). Use the transaction pooler (port 6543) in DATABASE_URL there.
+            max: Number(process.env.DATABASE_POOL_MAX) || (process.env.VERCEL ? 2 : 5),
+            idleTimeoutMillis: process.env.VERCEL ? 5_000 : 30_000,
+            allowExitOnIdle: !!process.env.VERCEL,
             connectionTimeoutMillis: 10_000,
             types: typeConfig,
         });

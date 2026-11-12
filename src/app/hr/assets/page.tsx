@@ -78,7 +78,7 @@ export default function HRAssetsPage() {
                 title="Company Asset Management"
                 subtitle="Track hardware inventory, laptop allocation, serial tags, asset condition, and employee assignments."
                 action={
-                    <button onClick={() => setAddOpen(true)} className="px-4 py-2.5 rounded-xl bg-primary text-white font-bold text-xs flex items-center gap-2">
+                    <button onClick={() => setAddOpen(true)} className="px-4 py-2.5 rounded-md bg-primary text-white font-medium text-xs flex items-center gap-2">
                         <Plus size={15} /> Add Asset
                     </button>
                 }
@@ -194,10 +194,10 @@ export default function HRAssetsPage() {
                                         </td>
                                         <td className="py-3.5 px-2 text-right whitespace-nowrap space-x-1.5">
                                             {ast.status === "AVAILABLE" && (
-                                                <button onClick={() => setAssignFor(ast)} className="px-2.5 py-1 rounded-lg bg-primary/10 text-primary text-xs font-bold hover:bg-primary hover:text-white">Assign</button>
+                                                <button onClick={() => setAssignFor(ast)} className="px-2.5 py-1 rounded-md bg-primary/10 text-primary text-xs font-medium hover:bg-primary hover:text-white">Assign</button>
                                             )}
                                             {ast.status === "ASSIGNED" && (
-                                                <button onClick={() => { setReturnFor(ast); setReturnCondition(ast.condition); }} className="px-2.5 py-1 rounded-lg border border-neutral-200 text-neutral-700 text-xs font-bold hover:bg-neutral-100">Return</button>
+                                                <button onClick={() => { setReturnFor(ast); setReturnCondition(ast.condition); }} className="px-2.5 py-1 rounded-md border border-neutral-200 text-neutral-700 text-xs font-medium hover:bg-neutral-100">Return</button>
                                             )}
                                             {ast.status === "AVAILABLE" && (
                                                 <button onClick={() => mutate.mutate({ method: "PATCH", body: { id: ast.id, action: "status", status: "MAINTENANCE" } })} className="px-2.5 py-1 rounded-lg border border-amber-200 text-amber-700 text-xs font-bold hover:bg-amber-50">Service</button>
@@ -236,7 +236,7 @@ export default function HRAssetsPage() {
                     </div>
                     <input required placeholder="Serial number" value={addForm.serialNumber} onChange={(e) => setAddForm({ ...addForm, serialNumber: e.target.value })} className={inputCls} />
                     <textarea placeholder="Notes (optional)" value={addForm.notes} onChange={(e) => setAddForm({ ...addForm, notes: e.target.value })} className={inputCls} rows={2} />
-                    <button disabled={mutate.isPending} className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">Save Asset</button>
+                    <button disabled={mutate.isPending} className="w-full py-2.5 rounded-md bg-primary text-white text-sm font-medium disabled:opacity-50">Save Asset</button>
                 </form>
             </ModalShell>
 
@@ -247,7 +247,7 @@ export default function HRAssetsPage() {
                         <option value="">Select employee</option>
                         {employeeOptions.map((e) => <option key={e.id} value={e.id}>{e.name} · {e.employeeId} · {e.department}</option>)}
                     </select>
-                    <button disabled={mutate.isPending || !assignEmp} className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">Assign Asset</button>
+                    <button disabled={mutate.isPending || !assignEmp} className="w-full py-2.5 rounded-md bg-primary text-white text-sm font-medium disabled:opacity-50">Assign Asset</button>
                 </form>
             </ModalShell>
 
@@ -259,7 +259,7 @@ export default function HRAssetsPage() {
                         {["EXCELLENT", "GOOD", "FAIR", "DAMAGED"].map((c) => <option key={c} value={c}>{c}</option>)}
                     </select>
                     <p className="text-[11px] text-neutral-400">Damaged assets go to maintenance automatically.</p>
-                    <button disabled={mutate.isPending} className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">Record Return</button>
+                    <button disabled={mutate.isPending} className="w-full py-2.5 rounded-md bg-primary text-white text-sm font-medium disabled:opacity-50">Record Return</button>
                 </form>
             </ModalShell>
 

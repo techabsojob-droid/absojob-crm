@@ -107,7 +107,7 @@ export default function DataQualityPage() {
                             <div className="shrink-0 flex items-center gap-2 self-end sm:self-center">
                                 <button
                                     onClick={() => actionMutation.mutate({ id: iss.id, action: "RESOLVE" })}
-                                    className="px-3 py-1.5 text-xs font-bold bg-primary text-white rounded-xl shadow hover:bg-primary/95 flex items-center gap-1"
+                                    className="px-3 py-1.5 text-xs font-medium bg-primary text-white rounded-md shadow hover:bg-primary/95 flex items-center gap-1"
                                 >
                                     <Merge size={14} /> Merge & Fix
                                 </button>

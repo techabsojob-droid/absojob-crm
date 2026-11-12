@@ -54,7 +54,7 @@ export default function AnnouncementsPage() {
                 title="Announcements"
                 subtitle="Broadcast updates to TA team, field agents & employees"
                 action={
-                    <button onClick={() => setModalOpen(true)} className="px-4 py-2 bg-primary text-white rounded-xl text-sm font-semibold hover:bg-primary-dark transition-colors shadow-lg shadow-primary/25 flex items-center gap-2">
+                    <button onClick={() => setModalOpen(true)} className="px-4 py-2 bg-primary text-white rounded-md text-sm font-semibold hover:bg-primary-dark transition-colors shadow-lg flex items-center gap-2">
                         <Plus size={16} /> New Announcement
                     </button>
                 }
@@ -127,7 +127,7 @@ export default function AnnouncementsPage() {
                         <span className="text-sm font-medium text-neutral-700">Pin to top</span>
                     </label>
 
-                    <button disabled={createMutation.isPending} className="w-full py-3 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primary-dark transition-all disabled:opacity-50 shadow-lg shadow-primary/25">
+                    <button disabled={createMutation.isPending} className="w-full py-3 bg-primary text-white rounded-md text-sm font-medium hover:bg-primary-dark transition-all disabled:opacity-50 shadow-lg">
                         {createMutation.isPending ? "Publishing..." : "Publish Announcement"}
                     </button>
                 </form>

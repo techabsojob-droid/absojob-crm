@@ -4,13 +4,15 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 
-export const inputCls = "w-full px-3 py-2 rounded-xl border border-neutral-200 text-sm focus:border-primary outline-none bg-white";
+export const inputCls = "w-full h-9 px-3 rounded-md border border-neutral-300 text-[13px] text-neutral-800 focus:border-navy outline-none bg-white [&:is(textarea)]:h-auto [&:is(textarea)]:py-2";
 export const btn = {
-    primary: "px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold disabled:opacity-50",
-    good: "px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-bold disabled:opacity-50",
-    ghost: "px-3 py-1.5 rounded-lg border border-neutral-200 text-neutral-700 text-xs font-bold hover:bg-neutral-50 disabled:opacity-50",
-    danger: "px-3 py-1.5 rounded-lg border border-rose-200 text-rose-700 text-xs font-bold hover:bg-rose-50 disabled:opacity-50",
-    soft: "px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-bold hover:bg-primary hover:text-white disabled:opacity-50",
+    // Navy = default primary; crimson ("accent") is reserved for the one key action on a screen
+    primary: "inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md bg-navy text-white text-[13px] font-medium hover:bg-navy-2 disabled:opacity-50 disabled:pointer-events-none",
+    accent: "inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md bg-accent text-white text-[13px] font-medium hover:bg-accent-dark disabled:opacity-50 disabled:pointer-events-none",
+    good: "inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md bg-success text-white text-[13px] font-medium hover:bg-emerald-700 disabled:opacity-50 disabled:pointer-events-none",
+    ghost: "inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md border border-neutral-300 bg-white text-neutral-700 text-[13px] font-medium hover:bg-neutral-50 hover:border-neutral-400 disabled:opacity-50 disabled:pointer-events-none",
+    danger: "inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md border border-red-200 bg-white text-red-700 text-[13px] font-medium hover:bg-red-50 disabled:opacity-50 disabled:pointer-events-none",
+    soft: "inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md bg-primary-light text-navy text-[13px] font-medium hover:bg-violet-100 disabled:opacity-50 disabled:pointer-events-none",
 };
 
 export function money(n: number | null | undefined, currency = "INR") {
@@ -45,11 +47,19 @@ export function useAct<T = unknown>(path: string, method: "POST" | "PATCH" | "PU
 }
 
 export function Tabs<T extends string>({ tabs, value, onChange }: { tabs: { id: T; label: string }[]; value: T; onChange: (v: T) => void }) {
+    // Underlined tabs: the standard section switcher across the CRM
     return (
-        <div className="flex flex-wrap gap-1.5 border-b border-neutral-200 pb-3">
-            {tabs.map((t) => (
-                <button key={t.id} onClick={() => onChange(t.id)} className={`px-3 py-1.5 rounded-xl text-xs font-bold ${value === t.id ? "bg-primary text-white" : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"}`}>{t.label}</button>
-            ))}
+        <div role="tablist" className="flex gap-1 overflow-x-auto border-b border-neutral-200 -mb-px no-scrollbar">
+            {tabs.map((t) => {
+                const on = value === t.id;
+                return (
+                    <button key={t.id} role="tab" aria-selected={on} onClick={() => onChange(t.id)}
+                        className={`relative h-9 px-3 text-[13px] whitespace-nowrap transition-colors ${on ? "text-navy font-semibold" : "text-neutral-500 hover:text-neutral-800"}`}>
+                        {t.label}
+                        {on && <span className="absolute left-2 right-2 -bottom-px h-0.5 rounded-full bg-accent" />}
+                    </button>
+                );
+            })}
         </div>
     );
 }

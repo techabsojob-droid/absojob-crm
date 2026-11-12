@@ -86,7 +86,7 @@ export default function TaCandidateProfilePage() {
                         <Link href="/ta/candidates" className="p-2 rounded-xl border border-neutral-200 text-neutral-500 hover:bg-neutral-50" title="Back to candidates"><ArrowLeft size={16} /></Link>
                         <div>
                             <div className="flex items-center gap-2 flex-wrap">
-                                <h1 className="text-2xl font-black text-neutral-900">{c.name}</h1>
+                                <h1 className="text-[22px] leading-tight font-semibold tracking-tight text-neutral-900">{c.name}</h1>
                                 <span className="font-mono text-xs font-bold text-neutral-400 bg-neutral-100 px-2 py-0.5 rounded-md">{c.candidateCode}</span>
                                 {data.stats?.currentStage && <Badge value={data.stats.currentStage} />}
                                 {c.blacklisted && <Badge value="BLACKLISTED" />}
@@ -270,7 +270,7 @@ export default function TaCandidateProfilePage() {
                     <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); addNote.mutate({ newNote: note }, { onSuccess: () => { setNoteOpen(false); setNote({ text: "", category: "General" }); } }); }}>
                         <select value={note.category} onChange={(e) => setNote({ ...note, category: e.target.value })} className={inputCls} aria-label="Category">{["General", "Screening", "Salary", "Client Feedback", "Interview", "Compliance"].map((x) => <option key={x}>{x}</option>)}</select>
                         <textarea required rows={5} value={note.text} onChange={(e) => setNote({ ...note, text: e.target.value })} className={inputCls} placeholder="Note" />
-                        <button disabled={addNote.isPending} className="w-full py-2.5 rounded-xl bg-primary text-white font-bold text-sm disabled:opacity-50">Save note</button>
+                        <button disabled={addNote.isPending} className="w-full py-2.5 rounded-md bg-primary text-white font-medium text-sm disabled:opacity-50">Save note</button>
                     </form>
                 </ModalShell>
             )}
@@ -284,7 +284,7 @@ export default function TaCandidateProfilePage() {
                         </select>
                         <label className="block text-xs font-bold text-neutral-600">Fit score (0–100)<input type="number" min="0" max="100" value={pipe.fitScore} onChange={(e) => setPipe({ ...pipe, fitScore: e.target.value })} className={inputCls} /></label>
                         <textarea rows={3} value={pipe.screeningNotes} onChange={(e) => setPipe({ ...pipe, screeningNotes: e.target.value })} className={inputCls} placeholder="Screening notes" />
-                        <button disabled={addToPipe.isPending} className="w-full py-2.5 rounded-xl bg-primary text-white font-bold text-sm disabled:opacity-50">Add to pipeline</button>
+                        <button disabled={addToPipe.isPending} className="w-full py-2.5 rounded-md bg-primary text-white font-medium text-sm disabled:opacity-50">Add to pipeline</button>
                     </form>
                 </ModalShell>
             )}
@@ -297,7 +297,7 @@ export default function TaCandidateProfilePage() {
                         <textarea rows={4} value={shareForm.note} onChange={(e) => setShareForm({ ...shareForm, note: e.target.value })} className={inputCls} placeholder="Why this candidate fits (optional)" />
                         <input value={shareForm.cc} onChange={(e) => setShareForm({ ...shareForm, cc: e.target.value })} className={inputCls} placeholder="CC (comma separated, optional)" />
                         <label className="flex items-center gap-2 text-xs font-semibold"><input type="checkbox" checked={shareForm.attachResume} disabled={!resumes[0] && !data.referral?.resumeFileId} onChange={(e) => setShareForm({ ...shareForm, attachResume: e.target.checked })} /> Attach resume{!resumes[0] && !data.referral?.resumeFileId ? " (none uploaded)" : ""}</label>
-                        <button disabled={shareAct.isPending} className="w-full py-2.5 rounded-xl bg-primary text-white font-bold disabled:opacity-50 flex items-center justify-center gap-1.5"><Send size={14} /> Email to client</button>
+                        <button disabled={shareAct.isPending} className="w-full py-2.5 rounded-md bg-primary text-white font-medium disabled:opacity-50 flex items-center justify-center gap-1.5"><Send size={14} /> Email to client</button>
                     </form>
                 </ModalShell>
             )}
@@ -308,7 +308,7 @@ export default function TaCandidateProfilePage() {
                         <select value={fbForm.status} onChange={(e) => setFbForm({ ...fbForm, status: e.target.value })} className={inputCls} aria-label="Client decision"><option value="SHORTLISTED">Shortlisted</option><option value="INTERVIEW_REQUESTED">Interview requested</option><option value="REJECTED">Rejected</option><option value="PENDING_REVIEW">Still reviewing</option></select>
                         <textarea rows={3} value={fbForm.clientFeedback} onChange={(e) => setFbForm({ ...fbForm, clientFeedback: e.target.value })} className={inputCls} placeholder="Client's comments" />
                         {fbForm.status === "REJECTED" && <input required value={fbForm.rejectionReason} onChange={(e) => setFbForm({ ...fbForm, rejectionReason: e.target.value })} className={inputCls} placeholder="Rejection reason *" />}
-                        <button disabled={fbAct.isPending} className="w-full py-2.5 rounded-xl bg-primary text-white font-bold disabled:opacity-50">Save</button>
+                        <button disabled={fbAct.isPending} className="w-full py-2.5 rounded-md bg-primary text-white font-medium disabled:opacity-50">Save</button>
                     </form>
                 </ModalShell>
             )}

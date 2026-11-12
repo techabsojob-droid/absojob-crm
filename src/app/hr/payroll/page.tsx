@@ -302,7 +302,7 @@ function PayrollContent() {
                                     <button
                                         disabled={cycleAction.isPending}
                                         onClick={() => cycleAction.mutate("process")}
-                                        className="px-4 py-2.5 rounded-xl bg-primary text-white font-bold text-xs hover:bg-primary/90 disabled:opacity-50"
+                                        className="px-4 py-2.5 rounded-md bg-primary text-white font-medium text-xs hover:bg-primary/90 disabled:opacity-50"
                                     >
                                         Process & lock {draftCount}
                                     </button>
@@ -413,7 +413,7 @@ function PayrollContent() {
 
             {/* Payslip Modal View */}
             {selectedPayslip && (
-                <div className="fixed inset-0 z-50 bg-neutral-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-50 bg-navy-deep/40 backdrop-blur-xs flex items-center justify-center p-4">
                     <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-neutral-200 p-6 space-y-5 animate-scale-in">
                         <div className="flex items-start justify-between border-b border-neutral-200 pb-3">
                             <div>
@@ -472,7 +472,7 @@ function PayrollContent() {
                         <div className="flex justify-end gap-3 pt-2">
                             <button
                                 onClick={() => window.print()}
-                                className="px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold flex items-center gap-1.5 shadow-xs"
+                                className="px-4 py-2 rounded-md bg-primary text-white text-xs font-medium flex items-center gap-1.5 shadow-xs"
                             >
                                 <Printer size={14} /> Print / Download PDF
                             </button>

@@ -37,7 +37,7 @@ export default function PortalDashboard() {
     return (
         <div className="space-y-6">
             <PageHeader
-                title={`Hi ${user?.name.split(" ")[0]} 👋`}
+                title={`Hi ${user?.name.split(" ")[0]}`}
                 subtitle={isTa ? "Your recruitment desk at a glance" : data.partner ? "Your referrals, earnings and standing among partners" : "Your referrals, earnings & attendance"}
             />
 
@@ -79,7 +79,7 @@ export default function PortalDashboard() {
                         </SectionCard>
                         <SectionCard title="Quick actions">
                             <div className="space-y-2">
-                                <Link href="/portal/jobs" className="block w-full text-center py-2.5 rounded-xl bg-primary text-white text-xs font-bold">Browse open jobs & refer</Link>
+                                <Link href="/portal/jobs" className="block w-full text-center py-2.5 rounded-md bg-primary text-white text-xs font-medium">Browse open jobs & refer</Link>
                                 <Link href="/portal/referrals" className="block w-full text-center py-2.5 rounded-xl border border-neutral-200 text-xs font-bold">Track my referrals</Link>
                                 <Link href="/portal/incentives" className="block w-full text-center py-2.5 rounded-xl border border-neutral-200 text-xs font-bold">Earnings & statement</Link>
                             </div>
@@ -121,7 +121,7 @@ export default function PortalDashboard() {
                     ) : (
                         <>
                             <p className="text-sm text-neutral-500">You haven't checked in yet today.</p>
-                            <Link href="/portal/attendance" className="px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-colors shadow-lg shadow-primary/25 flex items-center gap-2 ml-auto">
+                            <Link href="/portal/attendance" className="px-4 py-2 bg-primary text-white rounded-md text-xs font-medium hover:bg-primary-dark transition-colors shadow-lg flex items-center gap-2 ml-auto">
                                 <CalendarCheck size={14} /> Go to Attendance
                             </Link>
                         </>

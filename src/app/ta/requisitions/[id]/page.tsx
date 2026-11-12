@@ -218,7 +218,7 @@ export default function TaRequisitionDetailPage({ params }: { params: Promise<{ 
                         </Link>
                         <div>
                             <div className="flex items-center gap-2 flex-wrap">
-                                <h1 className="text-2xl font-black text-neutral-900 tracking-tight">{job.title}</h1>
+                                <h1 className="text-[22px] leading-tight font-semibold tracking-tight text-neutral-900">{job.title}</h1>
                                 <span className="font-mono text-xs font-bold text-neutral-400 bg-neutral-100 px-2 py-0.5 rounded-md">
                                     {requisitionLabel(job)}
                                 </span>
@@ -255,17 +255,17 @@ export default function TaRequisitionDetailPage({ params }: { params: Promise<{ 
                     {/* Actions — assignment, specification, hold and listing are team-lead only */}
                     <div className="flex items-center gap-2 flex-wrap">
                         {data.canEdit && (
-                            <Link href={`/ta/requisitions/${job.id}/edit`} className="px-3.5 py-2 border border-neutral-200 rounded-xl text-xs font-bold text-neutral-700 hover:bg-neutral-50 flex items-center gap-1.5">
+                            <Link href={`/ta/requisitions/${job.id}/edit`} className="px-3.5 py-2 border border-neutral-200 rounded-md text-xs font-medium text-neutral-700 hover:bg-neutral-50 flex items-center gap-1.5">
                                 <Edit2 size={14} /> Edit
                             </Link>
                         )}
                         {canCreateRequisition(me?.role) && (
-                            <Link href={`/ta/requisitions/new?from=${job.id}`} className="px-3.5 py-2 border border-neutral-200 rounded-xl text-xs font-bold text-neutral-700 hover:bg-neutral-50 flex items-center gap-1.5">
+                            <Link href={`/ta/requisitions/new?from=${job.id}`} className="px-3.5 py-2 border border-neutral-200 rounded-md text-xs font-medium text-neutral-700 hover:bg-neutral-50 flex items-center gap-1.5">
                                 <Layers size={14} /> Duplicate
                             </Link>
                         )}
                         {canManage && !["CLOSED", "CANCELLED", "FULFILLED", "DRAFT"].includes(job.status) && (
-                            <button onClick={() => setDialog("close")} className="px-3.5 py-2 border border-neutral-200 rounded-xl text-xs font-bold text-neutral-700 hover:bg-neutral-50 flex items-center gap-1.5"><CheckCircle2 size={14} /> Close</button>
+                            <button onClick={() => setDialog("close")} className="px-3.5 py-2 border border-neutral-200 rounded-md text-xs font-medium text-neutral-700 hover:bg-neutral-50 flex items-center gap-1.5"><CheckCircle2 size={14} /> Close</button>
                         )}
                         {canManage && !["CLOSED", "CANCELLED", "FULFILLED"].includes(job.status) && (
                             <button onClick={() => setDialog("cancel")} className="px-3.5 py-2 border border-red-200 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 flex items-center gap-1.5"><X size={14} /> Cancel</button>
@@ -280,7 +280,7 @@ export default function TaRequisitionDetailPage({ params }: { params: Promise<{ 
                             onClick={() => { setAddOpen(true); }}
                             disabled={!acceptingCandidates}
                             title={acceptingCandidates ? "Add a candidate to this job" : `Requisition is ${job.status.replace(/_/g, " ").toLowerCase()} and not accepting candidates`}
-                            className="px-3.5 py-2 bg-primary hover:bg-primary-dark text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs disabled:opacity-50"
+                            className="px-3.5 py-2 bg-primary hover:bg-primary-dark text-white rounded-md text-xs font-medium flex items-center gap-1.5 transition-colors shadow-xs disabled:opacity-50"
                         >
                             <Plus size={14} /> Add Candidate
                         </button>
@@ -288,7 +288,7 @@ export default function TaRequisitionDetailPage({ params }: { params: Promise<{ 
                             <>
                                 <button
                                     onClick={() => { setSelectedRecruiterId(job.primaryRecruiterId || ""); setAssignModalOpen(true); }}
-                                    className="px-3.5 py-2 border border-neutral-200 rounded-xl text-xs font-bold text-neutral-700 hover:bg-neutral-50 transition-colors flex items-center gap-1.5"
+                                    className="px-3.5 py-2 border border-neutral-200 rounded-md text-xs font-medium text-neutral-700 hover:bg-neutral-50 transition-colors flex items-center gap-1.5"
                                 >
                                     <Users size={14} /> Assign Recruiter
                                 </button>
@@ -330,7 +330,7 @@ export default function TaRequisitionDetailPage({ params }: { params: Promise<{ 
                 {job.status === "DRAFT" && (
                     <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-xs flex items-center justify-between gap-3 flex-wrap">
                         <span className="text-neutral-700"><b>Draft</b> — not yet submitted.{job.statusReason ? <span className="text-amber-700"> {job.statusReason}</span> : null}</span>
-                        {data.canEdit && <Link href={`/ta/requisitions/${job.id}/edit`} className="px-3 py-1.5 rounded-lg bg-primary text-white font-bold">Continue editing & submit</Link>}
+                        {data.canEdit && <Link href={`/ta/requisitions/${job.id}/edit`} className="px-3 py-1.5 rounded-md bg-primary text-white font-medium">Continue editing & submit</Link>}
                     </div>
                 )}
                 {job.status === "PENDING_APPROVAL" && (
@@ -608,7 +608,7 @@ export default function TaRequisitionDetailPage({ params }: { params: Promise<{ 
                             <button
                                 onClick={() => { setAddOpen(true); }}
                                 disabled={!acceptingCandidates}
-                                className="px-3 py-1.5 bg-primary text-white rounded-xl text-xs font-bold flex items-center gap-1 disabled:opacity-50"
+                                className="px-3 py-1.5 bg-primary text-white rounded-md text-xs font-medium flex items-center gap-1 disabled:opacity-50"
                             >
                                 <Plus size={13} /> Add Candidate
                             </button>
@@ -621,7 +621,7 @@ export default function TaRequisitionDetailPage({ params }: { params: Promise<{ 
                         <div className="p-8 text-center text-xs text-neutral-400 space-y-2">
                             <p>{candidates.length === 0 ? "No candidates have been added to this requisition yet." : "No applications match this filter."}</p>
                             {candidates.length === 0 && acceptingCandidates && (
-                                <button onClick={() => { setAddOpen(true); }} className="px-3 py-1.5 bg-primary text-white rounded-xl text-xs font-bold">Add the first candidate</button>
+                                <button onClick={() => { setAddOpen(true); }} className="px-3 py-1.5 bg-primary text-white rounded-md text-xs font-medium">Add the first candidate</button>
                             )}
                         </div>
                     ) : (
@@ -679,7 +679,7 @@ export default function TaRequisitionDetailPage({ params }: { params: Promise<{ 
                                                 )}
                                                 <Link
                                                     href={`/ta/candidates/${c.candidateId}`}
-                                                    className="px-2.5 py-1 bg-neutral-100 hover:bg-primary hover:text-white rounded-lg text-[11px] font-bold transition-colors"
+                                                    className="px-2.5 py-1 bg-neutral-100 hover:bg-primary hover:text-white rounded-md text-[11px] font-medium transition-colors"
                                                 >
                                                     Profile →
                                                 </Link>
@@ -916,7 +916,7 @@ export default function TaRequisitionDetailPage({ params }: { params: Promise<{ 
                                 type="button"
                                 disabled={!selectedRecruiterId || selectedRecruiterId === job.primaryRecruiterId || patchMutation.isPending}
                                 onClick={() => patchMutation.mutate({ primaryRecruiterId: selectedRecruiterId })}
-                                className="px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold disabled:opacity-50"
+                                className="px-4 py-2 bg-primary text-white rounded-md text-xs font-medium disabled:opacity-50"
                             >
                                 Assign Recruiter
                             </button>
@@ -1088,7 +1088,7 @@ export default function TaRequisitionDetailPage({ params }: { params: Promise<{ 
                             <button
                                 type="submit"
                                 disabled={patchMutation.isPending}
-                                className="px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold disabled:opacity-50"
+                                className="px-4 py-2 bg-primary text-white rounded-md text-xs font-medium disabled:opacity-50"
                             >
                                 {targetStatus === "hold" ? "Put On Hold" : "Resume Sourcing"}
                             </button>

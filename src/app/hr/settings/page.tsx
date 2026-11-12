@@ -92,7 +92,7 @@ function SettingsContent() {
                     activeTab === "GENERAL" && (
                         <button
                             onClick={handleSave}
-                            className="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-sm transition-colors flex items-center gap-2 shadow-xs"
+                            className="px-5 py-2.5 rounded-md bg-primary hover:bg-primary/90 text-white font-medium text-sm transition-colors flex items-center gap-2 shadow-xs"
                         >
                             {saved ? <Check size={16} /> : <Save size={16} />}
                             {saved ? "Saved" : "Save Changes"}

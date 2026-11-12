@@ -119,13 +119,13 @@ export default function ClientsPage() {
                     <div className="flex items-center gap-2">
                         <button
                             onClick={exportCsv}
-                            className="px-3.5 py-2 bg-white border border-neutral-200 text-neutral-700 rounded-xl text-xs font-bold hover:bg-neutral-50 transition-all flex items-center gap-1.5 shadow-xs"
+                            className="px-3.5 py-2 bg-white border border-neutral-200 text-neutral-700 rounded-md text-xs font-medium hover:bg-neutral-50 transition-all flex items-center gap-1.5 shadow-xs"
                         >
                             <Download size={14} /> Export CSV
                         </button>
                         <button
                             onClick={() => setModalOpen(true)}
-                            className="px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-all shadow-md shadow-primary/25 flex items-center gap-1.5"
+                            className="px-4 py-2 bg-primary text-white rounded-md text-xs font-medium hover:bg-primary-dark transition-all shadow-md flex items-center gap-1.5"
                         >
                             <Plus size={16} /> Onboard Client
                         </button>
@@ -456,7 +456,7 @@ export default function ClientsPage() {
                         <button
                             type="submit"
                             disabled={createMutation.isPending}
-                            className="px-5 py-2.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-all disabled:opacity-50 shadow-md shadow-primary/20"
+                            className="px-5 py-2.5 bg-primary text-white rounded-md text-xs font-medium hover:bg-primary-dark transition-all disabled:opacity-50 shadow-md"
                         >
                             {createMutation.isPending ? "Onboarding..." : "Complete Client Onboarding"}
                         </button>

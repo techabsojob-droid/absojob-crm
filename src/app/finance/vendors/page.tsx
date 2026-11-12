@@ -30,7 +30,7 @@ export default function VendorsPage() {
 
     return (
         <div className="space-y-6">
-            <PageHeader title="Vendors & Bills" subtitle="Accounts payable — TDS by section, GST input credit, maker-checker approval, recurring bills" action={<div className="flex gap-2"><button onClick={() => setVOpen(true)} className={btn.ghost}>New vendor</button><button onClick={() => setBOpen(true)} className="px-4 py-2.5 rounded-xl bg-primary text-white font-bold text-xs flex items-center gap-2"><Plus size={15} /> Record bill</button></div>} />
+            <PageHeader title="Vendors & Bills" subtitle="Accounts payable — TDS by section, GST input credit, maker-checker approval, recurring bills" action={<div className="flex gap-2"><button onClick={() => setVOpen(true)} className={btn.ghost}>New vendor</button><button onClick={() => setBOpen(true)} className="px-4 py-2.5 rounded-md bg-primary text-white font-medium text-xs flex items-center gap-2"><Plus size={15} /> Record bill</button></div>} />
             <Tabs tabs={[{ id: "bills", label: "Bills" }, { id: "vendors", label: `Vendors (${data?.vendors.length ?? 0})` }]} value={tab} onChange={setTab} />
             {tab === "bills" && <>
                 <div className="flex gap-1.5">{["OPEN", "PENDING_APPROVAL", "OVERDUE", "PAID", "ALL"].map((s) => <button key={s} onClick={() => setStatus(s)} className={`px-3 py-1.5 rounded-xl text-xs font-bold ${status === s ? "bg-primary text-white" : "bg-neutral-100 text-neutral-600"}`}>{s.replace("_", " ")}</button>)}</div>
@@ -87,7 +87,7 @@ export default function VendorsPage() {
                     <input placeholder="Bank name" value={v.bankName} onChange={(e) => setV({ ...v, bankName: e.target.value })} className={inputCls} />
                     <input placeholder="Account number" value={v.bankAccountNumber} onChange={(e) => setV({ ...v, bankAccountNumber: e.target.value })} className={inputCls} />
                     <input placeholder="IFSC" value={v.bankIfsc} onChange={(e) => setV({ ...v, bankIfsc: e.target.value.toUpperCase() })} className={inputCls} />
-                    <button disabled={post.isPending} className="col-span-2 py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">Save vendor</button>
+                    <button disabled={post.isPending} className="col-span-2 py-2.5 rounded-md bg-primary text-white text-sm font-medium disabled:opacity-50">Save vendor</button>
                 </form>
             </ModalShell>
             <ModalShell open={bOpen} onClose={() => setBOpen(false)} title="Record vendor bill">
@@ -102,7 +102,7 @@ export default function VendorsPage() {
                     <label className="text-xs font-bold text-neutral-500 flex flex-col justify-end"><span className="flex items-center gap-1"><Paperclip size={12} /> Bill copy</span><input type="file" accept="application/pdf,image/*" onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; try { const up = await uploadFile(file, "vendor-bill"); setB((x) => ({ ...x, fileId: up.id })); toast.success("Bill attached"); } catch (err) { toast.error((err as Error).message); } }} className="text-xs" /></label>
                     <label className="col-span-2 flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={b.recurring} onChange={(e) => setB({ ...b, recurring: e.target.checked })} /> Recurring monthly (e.g. rent)</label>
                     {vendor && Number(b.amount) > 0 && <p className="col-span-2 text-[11px] text-neutral-500">TDS {vendor.tdsSection} @ {vendor.tdsRate}% = {money(Math.round(Number(b.amount) * vendor.tdsRate / 100))} · payable {money(Number(b.amount) + (Number(b.gstAmount) || 0) - Math.round(Number(b.amount) * vendor.tdsRate / 100))}</p>}
-                    <button disabled={post.isPending} className="col-span-2 py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">Save bill</button>
+                    <button disabled={post.isPending} className="col-span-2 py-2.5 rounded-md bg-primary text-white text-sm font-medium disabled:opacity-50">Save bill</button>
                 </form>
             </ModalShell>
         </div>

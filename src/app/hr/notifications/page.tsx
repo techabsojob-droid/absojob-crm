@@ -203,7 +203,7 @@ export default function HRNotificationsPage() {
                                         {n.link && (
                                             <Link
                                                 href={n.link}
-                                                className="px-3 py-1.5 rounded-lg bg-neutral-100 hover:bg-primary hover:text-white text-neutral-700 text-xs font-bold transition-colors flex items-center gap-1.5"
+                                                className="px-3 py-1.5 rounded-md bg-neutral-100 hover:bg-primary hover:text-white text-neutral-700 text-xs font-medium transition-colors flex items-center gap-1.5"
                                             >
                                                 <span>View</span>
                                                 <ArrowRight size={13} />
