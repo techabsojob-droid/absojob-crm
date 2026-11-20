@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { commissionTermsFor, defaultSlaDays } from "@/lib/org-settings";
 import { requireRole } from "@/lib/mock/server";
 import { getJobsFromDb, getClientsFromDb, updateJobInDb, logAudit } from "@/lib/supabase/db";
 import { canAccessJob, isRecruitmentManager, notifyJobAssignment, resolveApprovalsFor, validRecruiters } from "@/lib/mock/pipeline";
@@ -63,7 +64,7 @@ export async function GET(
             candidatePhone: candidate?.phone ?? "",
             candidateHeadline: candidate?.headline ?? "",
             candidateTotalExp: candidate?.totalExperienceYears ?? 0,
-            candidateNoticeDays: candidate?.noticePeriodDays ?? 30,
+            candidateNoticeDays: candidate?.noticePeriodDays ?? null,
             candidateCurrentCompany: candidate?.currentCompany ?? "",
             candidateSource: candidate?.source ?? "DATABASE",
             candidateLocation: candidate?.location ?? candidate?.currentCity ?? "",
@@ -210,7 +211,7 @@ export async function GET(
 
     // Days open & SLA metrics
     const daysOpen = Math.floor((Date.now() - new Date(job.createdAt).getTime()) / 86400000);
-    const effectiveSlaDays = job.slaDays || 30;
+    const effectiveSlaDays = job.slaDays || defaultSlaDays(job.orgId);
     const daysRemaining = effectiveSlaDays - daysOpen;
     let calculatedSlaStatus = job.sla?.status || "ON_TRACK";
     if (job.status === "FULFILLED") {
@@ -263,7 +264,7 @@ export async function GET(
             clientName: client?.companyName ?? "—",
             clientIndustry: client?.industry ?? "Technology",
             // The requisition's own client contact wins over the client's default contact
-            clientContactPerson: job.clientContactName || client?.contactPerson || "Hiring Lead",
+            clientContactPerson: job.clientContactName || client?.contactPerson || null,
             clientContactEmail: job.clientContactEmail || client?.contactEmail || "",
             clientContactPhone: job.clientContactPhone || client?.contactPhone || "",
             clientLocation: client?.address ?? "",
@@ -277,6 +278,8 @@ export async function GET(
             timeToFirstInterviewDays: jobMetrics.avgDaysToFirstInterview,
             timeToOfferDays: jobMetrics.avgDaysToOffer,
             slaDays: effectiveSlaDays,
+            // Fee the client pays: their agreed rate, else the Settings commission rule for this job type
+            feePercent: client?.billing?.feePercent ?? client?.commissionRate ?? commissionTermsFor(job.orgId, job.employmentType).ratePercent,
             daysRemaining,
             calculatedSlaStatus,
             filled: filledOpenings,

@@ -5,14 +5,14 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import {
-    Phone, PhoneCall, PhoneIncoming, PhoneOutgoing, Clock, ThumbsUp, AlarmClock, Download, Plus, Search, Users, ExternalLink, Database, Globe,
+    Phone, PhoneCall, PhoneIncoming, PhoneOutgoing, Clock, ThumbsUp, AlarmClock, Download, Plus, Search, Users, ExternalLink, Database, Globe, UserPlus,
 } from "lucide-react";
 import { PageHeader, StatCard, Badge, SectionCard, ModalShell, EmptyState } from "@/components/shared/ui";
 import { SkeletonPulse } from "@/components/shared/UIStates";
 import { inputCls } from "@/components/finance/kit";
 import {
-    CallForm, CallDetails, CallHistory, callLabel, CALL_INTEREST, CALL_NEXT_ACTION, CALL_PURPOSE, CALL_RATING, CALL_ROLE_FIT, CALL_STATUS,
-    type Call, type CallAppOption,
+    CallForm, CallDetails, CallHistory, callLabel, CALL_INTEREST, CALL_NEXT_ACTION, CALL_PURPOSE, CALL_STATUS,
+    QUICK_FILTERS, QuickFilterChips, type QuickFilter, type Call, type CallAppOption,
 } from "@/components/ta/CallLog";
 import { OutsideCallDialog, OutsideCallsLog } from "@/components/ta/OutsideCalls";
 import { useAuth } from "@/lib/auth";
@@ -29,6 +29,11 @@ interface LogData {
         byStatus: { status: string; count: number }[];
     };
 }
+interface FollowUp {
+    id: string; dueDate: string | null; external: boolean; candidateId: string | null; candidateName: string; candidatePhone: string | null;
+    jobTitle: string | null; lastCall: { calledAt: string; callStatus: string; remarks: string } | null;
+}
+interface FollowUpData { overdue: FollowUp[]; dueToday: FollowUp[] }
 interface CandidateHit { id: string; name: string; candidateCode?: string; phone?: string; email?: string; currentDesignation?: string | null; currentCompany?: string | null; doNotContact?: boolean }
 interface CandidateDetail {
     candidate: { id: string; name: string; phone: string; email: string; currentCtcLpa: number; expectedCtcLpa: number; noticePeriodDays: number; location: string; doNotContact?: boolean; doNotContactReason?: string | null };
@@ -51,9 +56,7 @@ function TaCallsPage() {
     const [scope, setScope] = useState<"mine" | "team">("mine");
     const [period, setPeriod] = useState<Period>("7d");
     const [custom, setCustom] = useState({ from: daysAgo(30), to: istToday() });
-    const [status, setStatus] = useState("");
-    const [interest, setInterest] = useState("");
-    const [purpose, setPurpose] = useState("");
+    const [quick, setQuick] = useState<QuickFilter>("");
     const [recruiterId, setRecruiterId] = useState("");
     const [search, setSearch] = useState("");
     const q = useDeferredValue(search.trim());
@@ -63,7 +66,7 @@ function TaCallsPage() {
     // Two separate logs: candidates in the database, and people called from outside data (portals, sheets, references)
     const searchParams = useSearchParams();
     const [tab, setTab] = useState<"database" | "outside">(searchParams.get("tab") === "outside" ? "outside" : "database");
-    const [outsideOpen, setOutsideOpen] = useState<null | { phone?: string }>(null);
+    const [outsideOpen, setOutsideOpen] = useState<null | { phone?: string; personName?: string }>(null);
     const useDatabase = (candidateId: string) => { setOutsideOpen(null); setTab("database"); setLogFor(candidateId); setLogOpen(true); };
 
     const range = period === "today" ? { from: istToday(), to: istToday() }
@@ -74,39 +77,67 @@ function TaCallsPage() {
         const p = new URLSearchParams({ view: "log", scope });
         if (range.from) p.set("from", range.from);
         if (range.to) p.set("to", range.to);
-        if (status) p.set("status", status);
-        if (interest) p.set("interest", interest);
-        if (purpose) p.set("purpose", purpose);
+        for (const [k, v] of Object.entries((QUICK_FILTERS.find((f) => f.id === quick)?.params ?? {}) as Record<string, string>)) p.set(k, v);
         if (scope === "team" && recruiterId) p.set("recruiterId", recruiterId);
         if (q.length >= 2) p.set("q", q);
         return p.toString();
-    }, [scope, range.from, range.to, status, interest, purpose, recruiterId, q]);
+    }, [scope, range.from, range.to, quick, recruiterId, q]);
 
     const { data, isLoading, isError, error } = useQuery<LogData>({ queryKey: ["ta-calls-log", params], queryFn: () => api(`/api/ta/calls?${params}`) });
     const s = data?.stats;
     const team = data?.scope === "team";
-    const filtersOn = !!(status || interest || purpose || recruiterId || q.length >= 2);
+    const filtersOn = !!(quick || recruiterId || q.length >= 2);
+    // Calls to make: my reminders that are due today or overdue
+    const due = useQuery<FollowUpData>({ queryKey: ["ta-follow-ups", "mine"], queryFn: () => api("/api/ta/follow-ups?scope=mine") });
+    const toCall = [...(due.data?.overdue ?? []), ...(due.data?.dueToday ?? [])];
+    const logFollowUp = (f: FollowUp) => {
+        if (f.candidateId) { setLogFor(f.candidateId); setLogOpen(true); }
+        else setOutsideOpen({ phone: f.candidatePhone ?? "", personName: f.candidateName });
+    };
 
     return (
         <div className="space-y-6 pb-16 max-w-[1600px] mx-auto">
             <PageHeader
                 title="Calls"
-                subtitle="Log every call with structured feedback — database candidates and outside data (portals, sheets, references) are kept in separate logs."
+                subtitle="Log calls in a few taps. Reminders you set show up here when they're due."
                 action={
-                    <div className="flex flex-wrap items-center gap-2">
-                        <button type="button" onClick={() => setOutsideOpen({})} className="px-4 py-2 rounded-xl border border-primary/30 bg-white text-primary text-xs font-bold hover:bg-primary/5 flex items-center gap-1.5">
-                            <Globe size={14} /> Log call · Outside data
-                        </button>
-                        <button type="button" onClick={() => { setLogFor(null); setLogOpen(true); }} className="px-4 py-2 rounded-md bg-primary text-white text-xs font-medium shadow-md flex items-center gap-1.5">
-                            <Plus size={14} /> Log call · Database candidate
-                        </button>
-                    </div>
+                    <button type="button" onClick={() => { setLogFor(null); setLogOpen(true); }} className="px-4 py-2 rounded-md bg-primary text-white text-xs font-medium shadow-md flex items-center gap-1.5">
+                        <Plus size={14} /> Log a call
+                    </button>
                 }
             />
 
+            {/* Calls to make */}
+            {toCall.length > 0 && (
+                <SectionCard title="Calls to make" subtitle={`${toCall.length} reminder${toCall.length > 1 ? "s" : ""} due${due.data?.overdue.length ? ` · ${due.data.overdue.length} overdue` : ""}`}>
+                    <ul className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
+                        {toCall.slice(0, 9).map((f) => {
+                            const late = !!f.dueDate && f.dueDate < istToday();
+                            return (
+                                <li key={f.id} className={`p-3 rounded-lg border text-xs flex items-start justify-between gap-3 ${late ? "border-red-200 bg-red-50/40" : "border-neutral-200 bg-white"}`}>
+                                    <div className="min-w-0">
+                                        <p className="font-semibold text-neutral-900 truncate">{f.candidateName}{f.external && <span className="ml-1 font-normal text-neutral-400">(outside)</span>}</p>
+                                        <p className="text-neutral-500 truncate">{[f.jobTitle, f.candidatePhone].filter(Boolean).join(" · ")}</p>
+                                        <p className={late ? "text-red-600 font-medium" : "text-neutral-500"}>
+                                            {late ? `Overdue since ${new Date(`${f.dueDate}T12:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}` : "Due today"}
+                                            {f.lastCall ? ` · last: ${callLabel(CALL_STATUS, f.lastCall.callStatus).toLowerCase()}` : ""}
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                        {f.candidatePhone && <a href={`tel:${f.candidatePhone.replace(/\s/g, "")}`} aria-label={`Dial ${f.candidateName}`} className="w-8 h-8 rounded-md border border-neutral-200 flex items-center justify-center text-neutral-600 hover:text-navy"><Phone size={14} /></a>}
+                                        <button type="button" onClick={() => logFollowUp(f)} className="h-8 px-2.5 rounded-md bg-primary text-white font-medium">Log</button>
+                                    </div>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                    {toCall.length > 9 && <Link href="/ta/tasks" className="mt-2 inline-block text-xs font-medium text-navy">See all {toCall.length} in Tasks →</Link>}
+                </SectionCard>
+            )}
+
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex bg-neutral-100 p-1 rounded-xl border border-neutral-200/60">
-                    {([["database", "Database candidates", Database], ["outside", "Outside data", Globe]] as const).map(([k, l, I]) => (
+                    {([["database", "Candidates", Database], ["outside", "Outside contacts", Globe]] as const).map(([k, l, I]) => (
                         <button key={k} type="button" onClick={() => setTab(k)} className={`px-4 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 ${tab === k ? "bg-white shadow-2xs text-neutral-900" : "text-neutral-500 hover:text-neutral-800"}`}>
                             <I size={13} /> {l}
                         </button>
@@ -141,18 +172,7 @@ function TaCallsPage() {
                         ))}
                     </div>
                 )}
-                <select value={status} onChange={(e) => setStatus(e.target.value)} className={sel} aria-label="Call status">
-                    <option value="">All statuses</option>
-                    {CALL_STATUS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
-                </select>
-                <select value={interest} onChange={(e) => setInterest(e.target.value)} className={sel} aria-label="Interest">
-                    <option value="">Any interest</option>
-                    {CALL_INTEREST.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
-                </select>
-                <select value={purpose} onChange={(e) => setPurpose(e.target.value)} className={sel} aria-label="Purpose">
-                    <option value="">All purposes</option>
-                    {CALL_PURPOSE.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
-                </select>
+                <QuickFilterChips value={quick} onChange={setQuick} />
                 {team && (
                     <select value={recruiterId} onChange={(e) => setRecruiterId(e.target.value)} className={sel} aria-label="Recruiter">
                         <option value="">All recruiters</option>
@@ -164,7 +184,7 @@ function TaCallsPage() {
                     <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search candidate, phone, job or outcome" className={`${sel} w-full pl-8`} />
                 </div>
                 {filtersOn && (
-                    <button type="button" onClick={() => { setStatus(""); setInterest(""); setPurpose(""); setRecruiterId(""); setSearch(""); }} className="text-xs font-bold text-primary px-2">Clear</button>
+                    <button type="button" onClick={() => { setQuick(""); setRecruiterId(""); setSearch(""); }} className="text-xs font-bold text-primary px-2">Clear</button>
                 )}
                 <a href={`/api/ta/calls?${params}&format=csv`} className="px-3 py-1.5 rounded-md border border-neutral-200 bg-white text-xs font-medium text-neutral-700 hover:bg-neutral-50 flex items-center gap-1.5">
                     <Download size={13} /> Export CSV
@@ -202,8 +222,7 @@ function TaCallsPage() {
                                     <th className="px-2 py-2">Candidate</th>
                                     <th className="px-2 py-2">Job</th>
                                     <th className="px-2 py-2">Status</th>
-                                    <th className="px-2 py-2">Feedback</th>
-                                    <th className="px-2 py-2">Outcome</th>
+                                    <th className="px-2 py-2">Notes</th>
                                     <th className="px-2 py-2">Next step</th>
                                     {team && <th className="px-2 py-2">Recruiter</th>}
                                 </tr>
@@ -228,11 +247,6 @@ function TaCallsPage() {
                                             <td className="px-2 py-2.5 space-y-1">
                                                 <Badge value={c.callStatus} label={callLabel(CALL_STATUS, c.callStatus)} />
                                                 {c.candidateInterest && <div><Badge value={c.candidateInterest} label={callLabel(CALL_INTEREST, c.candidateInterest)} /></div>}
-                                            </td>
-                                            <td className="px-2 py-2.5 text-neutral-600 whitespace-nowrap">
-                                                {c.overallRating ? <p>Overall <b>{callLabel(CALL_RATING, c.overallRating)}</b></p> : null}
-                                                {c.roleFit ? <p className={c.roleFit === "NOT_FIT" ? "text-red-600" : ""}>{callLabel(CALL_ROLE_FIT, c.roleFit)}</p> : null}
-                                                {!c.overallRating && !c.roleFit && <span className="text-neutral-300">—</span>}
                                             </td>
                                             <td className="px-2 py-2.5 max-w-[240px]">
                                                 <p className="text-neutral-700 line-clamp-2">{c.callOutcome || c.remarks}</p>
@@ -274,14 +288,15 @@ function TaCallsPage() {
                 </ModalShell>
             )}
 
-            {logOpen && <LogCallDialog initialCandidateId={logFor} onClose={() => setLogOpen(false)} />}
+            {logOpen && <LogCallDialog initialCandidateId={logFor} onClose={() => setLogOpen(false)}
+                onOutside={(term) => { setLogOpen(false); setOutsideOpen(/\d{6,}/.test(term.replace(/\D/g, "")) ? { phone: term } : { personName: term }); }} />}
             {outsideOpen && <OutsideCallDialog prefill={outsideOpen} onClose={() => setOutsideOpen(null)} onUseDatabase={useDatabase} />}
         </div>
     );
 }
 
 /** Pick any candidate (search by name, phone, email or code), then log the call with full feedback. */
-function LogCallDialog({ initialCandidateId, onClose }: { initialCandidateId: string | null; onClose: () => void }) {
+function LogCallDialog({ initialCandidateId, onClose, onOutside }: { initialCandidateId: string | null; onClose: () => void; onOutside: (term: string) => void }) {
     const [candidateId, setCandidateId] = useState<string | null>(initialCandidateId);
     const [term, setTerm] = useState("");
     const t = useDeferredValue(term.trim());
@@ -309,14 +324,17 @@ function LogCallDialog({ initialCandidateId, onClose }: { initialCandidateId: st
                 <div className="space-y-3">
                     <div className="relative">
                         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-                        <input autoFocus value={term} onChange={(e) => setTerm(e.target.value)} placeholder="Search candidate by name, phone, email or code" className={`${inputCls} pl-9`} />
+                        <input autoFocus value={term} onChange={(e) => setTerm(e.target.value)} placeholder="Who did you call? Name, phone, email or code" className={`${inputCls} pl-9`} />
                     </div>
                     {t.length < 2 ? (
-                        <p className="text-xs text-neutral-400 text-center py-6">Type at least 2 characters to find the candidate you spoke to.</p>
+                        <p className="text-xs text-neutral-400 text-center py-6">Type at least 2 characters to find the candidate.</p>
                     ) : hits.isFetching && !hits.data ? (
                         <p className="text-xs text-neutral-400 text-center py-6">Searching…</p>
                     ) : !hits.data?.length ? (
-                        <p className="text-xs text-neutral-400 text-center py-6">No candidate found. Add them from Candidates or a job&apos;s Add Candidate first.</p>
+                        <div className="text-center py-6 space-y-2">
+                            <p className="text-xs text-neutral-500">No candidate matches &ldquo;{t}&rdquo;.</p>
+                            <button type="button" onClick={() => onOutside(t)} className="px-3 py-2 rounded-md bg-primary text-white text-xs font-medium inline-flex items-center gap-1.5"><UserPlus size={13} /> Log as an outside contact</button>
+                        </div>
                     ) : (
                         <ul className="divide-y divide-neutral-100 max-h-80 overflow-y-auto">
                             {hits.data.slice(0, 25).map((c) => (
@@ -332,6 +350,10 @@ function LogCallDialog({ initialCandidateId, onClose }: { initialCandidateId: st
                             ))}
                         </ul>
                     )}
+                    <p className="text-[12px] text-neutral-500 text-center border-t border-neutral-100 pt-3">
+                        Number from Naukri, LinkedIn, a sheet or a reference?{" "}
+                        <button type="button" onClick={() => onOutside(t)} className="font-medium text-navy underline underline-offset-2">Log as an outside contact</button>
+                    </p>
                 </div>
             ) : detail.isLoading ? (
                 <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <SkeletonPulse key={i} className="h-10 rounded-xl" />)}</div>

@@ -174,13 +174,17 @@ export function issueTempPassword(user: User): string {
     const temp = generateTempPassword();
     user.passwordHash = hashPassword(temp);
     user.passwordChangedAt = null;
+    // The old password stops working, so do the sessions opened with it
+    user.sessionsRevokedAt = new Date().toISOString();
+    user.failedLoginAttempts = 0;
+    user.lockedUntil = null;
     return temp;
 }
 
 /** A user record safe to send to the browser (never includes the password hash). */
-export function publicUser<T extends Partial<User>>(u: T): Omit<T, "passwordHash"> {
-    const { passwordHash: _hash, ...rest } = u;
-    void _hash;
+export function publicUser<T extends Partial<User>>(u: T): Omit<T, "passwordHash" | "mfaSecretEnc" | "mfaPendingSecretEnc"> {
+    const { passwordHash: _hash, mfaSecretEnc: _mfa, mfaPendingSecretEnc: _pending, ...rest } = u;
+    void _hash; void _mfa; void _pending;
     return rest;
 }
 

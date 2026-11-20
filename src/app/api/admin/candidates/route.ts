@@ -156,7 +156,10 @@ export async function PATCH(request: Request) {
             } else if (bulkAction === "ASSIGN_RECRUITER") {
                 if (assignee) {
                     c.ownership = {
-                        ...(c.ownership || { taManagerName: "Amit Joshi", recruitmentTeam: "Enterprise Squad" }),
+                        // The recruiter's own manager and department, not a made-up squad
+                        taManagerName: users.find((u) => u.id === assignee.reportingTo)?.name ?? c.ownership?.taManagerName ?? "",
+                        recruitmentTeam: assignee.department ?? c.ownership?.recruitmentTeam ?? "",
+                        ...(c.ownership?.accountManagerName ? { accountManagerName: c.ownership.accountManagerName } : {}),
                         assignedRecruiterId: assignee.id,
                         assignedRecruiterName: assignee.name,
                         assignedAt: new Date().toISOString(),

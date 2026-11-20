@@ -9,7 +9,7 @@ import { Badge, EmptyState, ModalShell, SectionCard, StatCard } from "@/componen
 import { SkeletonPulse } from "@/components/shared/UIStates";
 import { inputCls } from "@/components/finance/kit";
 import {
-    CallForm, CallDetails, CallHistory, callLabel, CALL_INTEREST, CALL_NEXT_ACTION, CALL_RATING, CALL_ROLE_FIT, CALL_STATUS, type Call,
+    CallForm, CallDetails, CallHistory, callLabel, CALL_INTEREST, CALL_NEXT_ACTION, CALL_STATUS, QUICK_FILTERS, QuickFilterChips, type QuickFilter, type Call,
 } from "@/components/ta/CallLog";
 import { api } from "@/lib/api";
 
@@ -35,7 +35,6 @@ interface Lookup { inDatabase: { id: string; name: string; candidateCode: string
 
 const sel = "px-2.5 py-1.5 rounded-lg border border-neutral-200 bg-white text-xs font-semibold text-neutral-700 outline-none focus:border-primary";
 const lbl = "block text-[11px] font-bold text-neutral-600 space-y-1";
-const head = "text-[10px] font-black uppercase tracking-wider text-neutral-400";
 const istToday = () => new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10);
 
 /** Outside call → the shape the shared call history / detail components render. */
@@ -46,6 +45,7 @@ const EMPTY_PERSON = { personName: "", phone: "", email: "", source: "", sourceD
 /** Log a call to someone who is not in the candidate database (numbers from portals, sheets, references). */
 export function OutsideCallDialog({ onClose, onUseDatabase, prefill }: { onClose: () => void; onUseDatabase: (candidateId: string) => void; prefill?: Partial<typeof EMPTY_PERSON> }) {
     const [p, setP] = useState({ ...EMPTY_PERSON, ...prefill });
+    const [about, setAbout] = useState(false);
     const set = (k: keyof typeof EMPTY_PERSON) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setP({ ...p, [k]: e.target.value });
     const phone10 = useDeferredValue(p.phone.replace(/\D/g, "").slice(-10));
     const email = useDeferredValue(p.email.trim());
@@ -56,45 +56,52 @@ export function OutsideCallDialog({ onClose, onUseDatabase, prefill }: { onClose
     const last = lookup.data?.previous?.[0];
     const inDb = lookup.data?.inDatabase;
 
-    const useLast = () => last && setP({
+    const useLast = () => last && (setAbout(true), setP({
         ...p, personName: p.personName || last.personName, email: p.email || last.email || "", source: p.source || last.source, sourceDetail: p.sourceDetail || last.sourceDetail || "",
         currentCompany: p.currentCompany || last.currentCompany || "", currentDesignation: p.currentDesignation || last.currentDesignation || "",
         totalExperienceYears: p.totalExperienceYears || (last.totalExperienceYears != null ? String(last.totalExperienceYears) : ""),
         skills: p.skills || (last.skills ?? []).join(", "), jobId: p.jobId || last.jobId || "",
-    });
+    }));
     const extra = useMemo(() => ({
         ...p, skills: p.skills.split(",").map((x) => x.trim()).filter(Boolean), jobId: p.jobId || undefined,
     }), [p]);
 
     return (
-        <ModalShell title="Log call · Outside data" onClose={onClose} wide>
+        <ModalShell title="Log a call · outside contact" onClose={onClose} wide>
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
                 <div className="lg:col-span-3">
                     <CallForm endpoint="/api/ta/external-calls" extra={extra} hideJob onDone={onClose}>
                         <div className="space-y-2">
-                            <p className={head}>Person called (not in the candidate database)</p>
+                            <p className="text-[13px] font-semibold text-neutral-800">Who did you call? <span className="font-normal text-neutral-500 text-[12px]">· not in the candidate database</span></p>
                             <div className="grid grid-cols-2 gap-2">
+                                <label className={lbl}>Phone *<input required autoFocus type="tel" inputMode="tel" maxLength={20} value={p.phone} onChange={set("phone")} className={inputCls} placeholder="98765 43210" /></label>
                                 <label className={lbl}>Name *<input required maxLength={120} value={p.personName} onChange={set("personName")} className={inputCls} placeholder="Full name" /></label>
-                                <label className={lbl}>Phone *<input required type="tel" maxLength={20} value={p.phone} onChange={set("phone")} className={inputCls} placeholder="+91 98765 43210" /></label>
-                                <label className={lbl}>Email<input type="email" maxLength={160} value={p.email} onChange={set("email")} className={inputCls} placeholder="optional" /></label>
-                                <label className={lbl}>Source *
+                                <label className={lbl}>Where is the number from? *
                                     <select required value={p.source} onChange={set("source")} className={inputCls}>
-                                        <option value="">Where is this contact from?</option>
+                                        <option value="">Choose…</option>
                                         {LEAD_SOURCES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
                                     </select>
                                 </label>
-                                <label className={`${lbl} col-span-2`}>Source detail<input maxLength={200} value={p.sourceDetail} onChange={set("sourceDetail")} className={inputCls} placeholder="Sheet name, portal profile link, or who referred" /></label>
-                                <label className={lbl}>Current company<input maxLength={160} value={p.currentCompany} onChange={set("currentCompany")} className={inputCls} /></label>
-                                <label className={lbl}>Designation<input maxLength={120} value={p.currentDesignation} onChange={set("currentDesignation")} className={inputCls} /></label>
-                                <label className={lbl}>Total experience (yrs)<input type="number" min="0" max="60" step="0.1" value={p.totalExperienceYears} onChange={set("totalExperienceYears")} className={inputCls} /></label>
-                                <label className={lbl}>Skills (comma separated)<input value={p.skills} onChange={set("skills")} className={inputCls} placeholder="Java, SQL" /></label>
-                                <label className={`${lbl} col-span-2`}>Regarding job
+                                <label className={lbl}>About which job?
                                     <select value={p.jobId} onChange={set("jobId")} className={inputCls}>
-                                        <option value="">General (no specific job)</option>
+                                        <option value="">General</option>
                                         {openJobs.map((j) => <option key={j.id} value={j.id}>{j.requisitionCode ? `${j.requisitionCode} · ` : ""}{j.title}{j.clientName ? ` · ${j.clientName}` : ""}</option>)}
                                     </select>
                                 </label>
                             </div>
+                            <button type="button" onClick={() => setAbout(!about)} aria-expanded={about} className="text-[12.5px] font-medium text-navy cursor-pointer">
+                                {about ? "− Hide profile details" : "+ Add email, company, experience, skills (optional)"}
+                            </button>
+                            {about && (
+                                <div className="grid grid-cols-2 gap-2">
+                                    <label className={lbl}>Email<input type="email" maxLength={160} value={p.email} onChange={set("email")} className={inputCls} /></label>
+                                    <label className={lbl}>Source detail<input maxLength={200} value={p.sourceDetail} onChange={set("sourceDetail")} className={inputCls} placeholder="Sheet name, profile link, who referred" /></label>
+                                    <label className={lbl}>Current company<input maxLength={160} value={p.currentCompany} onChange={set("currentCompany")} className={inputCls} /></label>
+                                    <label className={lbl}>Designation<input maxLength={120} value={p.currentDesignation} onChange={set("currentDesignation")} className={inputCls} /></label>
+                                    <label className={lbl}>Experience (yrs)<input type="number" min="0" max="60" step="0.1" value={p.totalExperienceYears} onChange={set("totalExperienceYears")} className={inputCls} /></label>
+                                    <label className={lbl}>Skills (comma separated)<input value={p.skills} onChange={set("skills")} className={inputCls} placeholder="Java, SQL" /></label>
+                                </div>
+                            )}
                             {inDb && (
                                 <div className="p-3 rounded-xl border border-amber-200 bg-amber-50 text-xs text-amber-800 flex items-center justify-between gap-3">
                                     <span className="flex items-center gap-1.5"><AlertTriangle size={14} /> <b>{inDb.name}</b> ({inDb.candidateCode}) is already in your database. Log it there so the history stays together.</span>
@@ -218,8 +225,7 @@ export function OutsideCallsLog({ manager, range, onLog, onUseDatabase }: {
     manager: boolean; range: { from: string; to: string }; onLog: (prefill?: Partial<typeof EMPTY_PERSON>) => void; onUseDatabase: (candidateId: string) => void;
 }) {
     const [scope, setScope] = useState<"mine" | "team">("mine");
-    const [status, setStatus] = useState("");
-    const [interest, setInterest] = useState("");
+    const [quick, setQuick] = useState<QuickFilter>("");
     const [source, setSource] = useState("");
     const [converted, setConverted] = useState("");
     const [recruiterId, setRecruiterId] = useState("");
@@ -232,15 +238,16 @@ export function OutsideCallsLog({ manager, range, onLog, onUseDatabase }: {
         const p = new URLSearchParams({ scope });
         if (range.from) p.set("from", range.from);
         if (range.to) p.set("to", range.to);
-        for (const [k, v] of [["status", status], ["interest", interest], ["source", source], ["converted", converted]] as const) if (v) p.set(k, v);
+        for (const [k, v] of Object.entries((QUICK_FILTERS.find((f) => f.id === quick)?.params ?? {}) as Record<string, string>)) p.set(k, v);
+        for (const [k, v] of [["source", source], ["converted", converted]] as const) if (v) p.set(k, v);
         if (scope === "team" && recruiterId) p.set("recruiterId", recruiterId);
         if (q.length >= 2) p.set("q", q);
         return p.toString();
-    }, [scope, range.from, range.to, status, interest, source, converted, recruiterId, q]);
+    }, [scope, range.from, range.to, quick, source, converted, recruiterId, q]);
     const { data, isLoading, isError, error } = useQuery<OutsideLog>({ queryKey: ["ta-external-calls", params], queryFn: () => api(`/api/ta/external-calls?${params}`) });
     const s = data?.stats;
     const team = data?.scope === "team";
-    const filtersOn = !!(status || interest || source || converted || recruiterId || q.length >= 2);
+    const filtersOn = !!(quick || source || converted || recruiterId || q.length >= 2);
 
     return (
         <div className="space-y-6">
@@ -252,16 +259,15 @@ export function OutsideCallsLog({ manager, range, onLog, onUseDatabase }: {
                         ))}
                     </div>
                 )}
+                <QuickFilterChips value={quick} onChange={setQuick} />
                 <select value={source} onChange={(e) => setSource(e.target.value)} className={sel} aria-label="Source"><option value="">All sources</option>{LEAD_SOURCES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
-                <select value={status} onChange={(e) => setStatus(e.target.value)} className={sel} aria-label="Call status"><option value="">All statuses</option>{CALL_STATUS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
-                <select value={interest} onChange={(e) => setInterest(e.target.value)} className={sel} aria-label="Interest"><option value="">Any interest</option>{CALL_INTEREST.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
                 <select value={converted} onChange={(e) => setConverted(e.target.value)} className={sel} aria-label="In database"><option value="">In database: any</option><option value="no">Not added yet</option><option value="yes">Added to database</option></select>
                 {team && <select value={recruiterId} onChange={(e) => setRecruiterId(e.target.value)} className={sel} aria-label="Recruiter"><option value="">All recruiters</option>{data?.recruiters.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select>}
                 <div className="relative flex-1 min-w-[200px]">
                     <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
                     <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, phone, email, company or outcome" className={`${sel} w-full pl-8`} />
                 </div>
-                {filtersOn && <button type="button" onClick={() => { setStatus(""); setInterest(""); setSource(""); setConverted(""); setRecruiterId(""); setSearch(""); }} className="text-xs font-bold text-primary px-2">Clear</button>}
+                {filtersOn && <button type="button" onClick={() => { setQuick(""); setSource(""); setConverted(""); setRecruiterId(""); setSearch(""); }} className="text-xs font-bold text-primary px-2">Clear</button>}
                 <a href={`/api/ta/external-calls?${params}&format=csv`} className="px-3 py-1.5 rounded-md border border-neutral-200 bg-white text-xs font-medium text-neutral-700 hover:bg-neutral-50">Export CSV</a>
             </div>
 
@@ -277,11 +283,11 @@ export function OutsideCallsLog({ manager, range, onLog, onUseDatabase }: {
                 </div>
             )}
 
-            <SectionCard title={team ? "Team outside-data calls" : "My outside-data calls"} subtitle={data ? `${data.items.length}${data.truncated ? "+" : ""} call(s) to people not in the candidate database` : undefined}>
+            <SectionCard title={team ? "Team calls to outside contacts" : "My calls to outside contacts"} subtitle={data ? `${data.items.length}${data.truncated ? "+" : ""} call(s) to people not in the candidate database` : undefined}>
                 {isError ? <p className="text-xs text-red-600 py-6 text-center">{(error as Error).message}</p>
                     : isLoading ? <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <SkeletonPulse key={i} className="h-12 rounded-xl" />)}</div>
                         : !data?.items.length ? (
-                            <EmptyState icon={PhoneCall} message={filtersOn ? "No outside calls match these filters." : "No outside-data calls yet. Log calls to numbers from Naukri, LinkedIn, sheets or references here."}
+                            <EmptyState icon={PhoneCall} message={filtersOn ? "No outside calls match these filters." : "No calls to outside contacts yet. These are numbers from Naukri, LinkedIn, sheets or references that aren't candidates yet."}
                                 action={<button type="button" onClick={() => onLog()} className="px-3 py-1.5 rounded-md bg-primary text-white text-xs font-medium">Log an outside call</button>} />
                         ) : (
                             <div className="overflow-x-auto -mx-2">
@@ -289,7 +295,7 @@ export function OutsideCallsLog({ manager, range, onLog, onUseDatabase }: {
                                     <thead>
                                         <tr className="text-left text-[10px] font-black uppercase tracking-wider text-neutral-400 border-b border-neutral-100">
                                             <th className="px-2 py-2">When</th><th className="px-2 py-2">Person</th><th className="px-2 py-2">Source</th><th className="px-2 py-2">Job</th>
-                                            <th className="px-2 py-2">Status</th><th className="px-2 py-2">Feedback</th><th className="px-2 py-2">Outcome</th><th className="px-2 py-2">Next step</th>
+                                            <th className="px-2 py-2">Status</th><th className="px-2 py-2">Notes</th><th className="px-2 py-2">Next step</th>
                                             {team && <th className="px-2 py-2">Recruiter</th>}<th className="px-2 py-2">Database</th>
                                         </tr>
                                     </thead>
@@ -306,11 +312,6 @@ export function OutsideCallsLog({ manager, range, onLog, onUseDatabase }: {
                                                     <td className="px-2 py-2.5 whitespace-nowrap"><p className="text-neutral-700">{callLabel(LEAD_SOURCES, c.source)}</p>{c.sourceDetail && <p className="text-neutral-400 truncate max-w-[140px]">{c.sourceDetail}</p>}</td>
                                                     <td className="px-2 py-2.5 max-w-[160px]"><p className="text-neutral-700 truncate">{c.jobTitle ?? <span className="text-neutral-400">General</span>}</p></td>
                                                     <td className="px-2 py-2.5 space-y-1"><Badge value={c.callStatus} label={callLabel(CALL_STATUS, c.callStatus)} />{c.candidateInterest && <div><Badge value={c.candidateInterest} label={callLabel(CALL_INTEREST, c.candidateInterest)} /></div>}</td>
-                                                    <td className="px-2 py-2.5 text-neutral-600 whitespace-nowrap">
-                                                        {c.overallRating && <p>Overall <b>{callLabel(CALL_RATING, c.overallRating)}</b></p>}
-                                                        {c.roleFit && <p className={c.roleFit === "NOT_FIT" ? "text-red-600" : ""}>{callLabel(CALL_ROLE_FIT, c.roleFit)}</p>}
-                                                        {!c.overallRating && !c.roleFit && <span className="text-neutral-300">—</span>}
-                                                    </td>
                                                     <td className="px-2 py-2.5 max-w-[220px]"><p className="text-neutral-700 line-clamp-2">{c.callOutcome || c.remarks}</p></td>
                                                     <td className="px-2 py-2.5 whitespace-nowrap">
                                                         {c.nextAction ? <p className="font-semibold text-primary">{callLabel(CALL_NEXT_ACTION, c.nextAction)}</p> : <span className="text-neutral-300">—</span>}

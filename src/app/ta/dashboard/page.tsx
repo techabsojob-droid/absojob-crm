@@ -11,31 +11,11 @@ import FollowUpsPanel from "@/components/ta/FollowUpsPanel";
 import AddCandidateDialog from "@/components/ta/AddCandidateDialog";
 import { useAuth } from "@/lib/auth";
 import { canCreateRequisition } from "@/lib/access";
+import { Kpi, KpiRow, OverviewTabs } from "@/components/shared/KpiStrip";
 
 type OverviewTab = "today" | "pipeline" | "interviews" | "jobs" | "joinings" | "team" | "activity";
 
 const greeting = () => { const h = new Date().getHours(); return h < 12 ? "morning" : h < 17 ? "afternoon" : "evening"; };
-
-function KpiRow({ title, children }: { title: string; children: React.ReactNode }) {
-    return (
-        <div className="flex flex-col lg:flex-row lg:items-stretch">
-            <p className="lg:w-36 shrink-0 px-4 pt-3 lg:py-4 text-[12px] font-semibold text-neutral-700 lg:border-r lg:border-neutral-100 flex items-center">{title}</p>
-            <div className="flex-1 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6">{children}</div>
-        </div>
-    );
-}
-
-/** Compact, clickable KPI tile. Tone colours the number only; the label always names it. */
-function Kpi({ label, value, hint, href, tone }: { label: string; value: string | number; hint?: string; href: string; tone?: "good" | "warn" | "bad" }) {
-    const colour = tone === "bad" ? "text-danger" : tone === "warn" ? "text-warning" : "text-neutral-900";
-    return (
-        <Link href={href} className="group px-4 py-3 hover:bg-neutral-50 transition-colors min-w-0">
-            <p className="text-[11px] font-semibold text-neutral-500 truncate">{label}</p>
-            <p className={`text-[20px] font-semibold tabular-nums leading-tight mt-1 ${colour}`}>{value}</p>
-            {hint && <p className="text-[10px] text-neutral-400 truncate group-hover:text-neutral-600">{hint}</p>}
-        </Link>
-    );
-}
 
 export default function TaCommandCenterDashboard() {
     const qc = useQueryClient();
@@ -420,18 +400,7 @@ export default function TaCommandCenterDashboard() {
             </div>
 
             {/* Sections — grouped into tabs so the overview stays short; nothing is hidden for good */}
-            <div className="sticky z-20 bg-background pt-1" style={{ top: "var(--topbar-height)" }}>
-                <div role="tablist" className="flex items-center gap-1 overflow-x-auto no-scrollbar border-b border-neutral-200">
-                    {tabs.map((t) => (
-                        <button key={t.id} type="button" role="tab" onClick={() => setTab(t.id)} aria-selected={tab === t.id}
-                            className={`relative h-10 px-3 text-[13px] whitespace-nowrap flex items-center gap-1.5 transition-colors ${tab === t.id ? "text-navy font-semibold" : "text-neutral-500 hover:text-neutral-800"}`}>
-                            {t.label}
-                            {t.count ? <span className={`min-w-5 h-5 px-1.5 rounded text-[11px] font-medium tabular-nums flex items-center justify-center ${t.alert ? "bg-danger-light text-red-700" : "bg-neutral-100 text-neutral-600"}`}>{t.count}</span> : null}
-                            {tab === t.id && <span className="absolute left-2 right-2 -bottom-px h-0.5 rounded-full bg-accent" />}
-                        </button>
-                    ))}
-                </div>
-            </div>
+            <OverviewTabs tabs={tabs} value={tab} onChange={setTab} />
             {tab === "today" && (<>
             <MyWork />
 

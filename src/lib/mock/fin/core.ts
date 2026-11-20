@@ -2,6 +2,7 @@
 
 import type { Client, ClientBillingProfile, Currency, FinanceSettings, User } from "@/lib/types";
 import { clients, emailOutbox, financeSettings, invoices, receipts, storedFiles, users } from "../data";
+import { commissionTermsFor, orgSettings } from "@/lib/org-settings";
 
 export const isFinance = (u: Pick<User, "role">) => u.role === "SUPER_ADMIN" || u.role === "FINANCE_ADMIN";
 
@@ -38,6 +39,12 @@ export function settingsFor(orgId: string): FinanceSettings {
         s = DEFAULTS(orgId);
         financeSettings.push(s);
     }
+    // Admin Settings own the GST rate and credit period; Finance settings mirror them
+    const org = orgSettings(orgId);
+    const gst = Number(org.taxGstRatePercent);
+    if (Number.isFinite(gst) && gst >= 0 && gst <= 28 && s.gstRate !== gst) s.gstRate = gst;
+    const credit = Number(org.defaultCreditPeriodDays);
+    if (Number.isFinite(credit) && credit >= 0 && credit <= 180 && s.defaultCreditDays !== credit) s.defaultCreditDays = credit;
     return s;
 }
 
@@ -70,15 +77,18 @@ export function clientById(orgId: string, id: string | null | undefined) {
 }
 
 /** Placement fee per the client's fee model (percent / flat / CTC slab). */
-export function feeForCtc(client: Client | undefined, ctcLpa: number): { fee: number; basis: string } {
-    if (!client) return { fee: Math.round(ctcLpa * 100000 * 0.0833), basis: "8.33% of CTC" };
+export function feeForCtc(client: Client | undefined, ctcLpa: number, orgId?: string): { fee: number; basis: string } {
+    if (!client) {
+        const pct = commissionTermsFor(orgId ?? "", null).ratePercent;
+        return { fee: Math.round(ctcLpa * 100000 * (pct / 100)), basis: `${pct}% of CTC` };
+    }
     const b = billingOf(client);
     if (b.feeModel === "FLAT" && b.flatFee) return { fee: Math.round(b.flatFee), basis: "flat fee" };
     if (b.feeModel === "SLAB" && b.feeSlabs?.length) {
         const slab = [...b.feeSlabs].sort((x, y) => x.uptoLpa - y.uptoLpa).find((x) => ctcLpa <= x.uptoLpa) ?? b.feeSlabs[b.feeSlabs.length - 1];
         return { fee: Math.round(ctcLpa * 100000 * (slab.percent / 100)), basis: `${slab.percent}% (CTC slab ≤ ₹${slab.uptoLpa}L)` };
     }
-    const pct = b.feePercent ?? client.commissionRate ?? 8.33;
+    const pct = b.feePercent ?? client.commissionRate ?? commissionTermsFor(client.orgId, null).ratePercent;
     return { fee: Math.round(ctcLpa * 100000 * (pct / 100)), basis: `${pct}% of CTC` };
 }
 

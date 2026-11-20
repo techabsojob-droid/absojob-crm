@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { invoices, receipts, placements } from "@/lib/mock/data";
 import { balanceDue, billingOf, clientById, GST_STATES, inrOf, refreshStatus, settingsFor } from "@/lib/mock/finance";
 import { requireFinance } from "@/lib/mock/fin/http";
+import { invoiceTat } from "@/lib/invoicing-details";
 
 // Full invoice document for the printable GST invoice / PDF
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -21,6 +22,13 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
         original: inv.creditNoteForId ? invoices.find((x) => x.id === inv.creditNoteForId)?.invoiceNumber ?? null : null,
         notes: invoices.filter((x) => x.creditNoteForId === inv.id).map((x) => ({ id: x.id, number: x.invoiceNumber, kind: x.kind, total: x.total, status: x.status })),
         receipts: receipts.filter((r) => r.allocations.some((a) => a.invoiceId === inv.id)).map((r) => ({ id: r.id, number: r.receiptNumber, date: r.date, method: r.method, reference: r.reference, allocation: r.allocations.find((a) => a.invoiceId === inv.id) })),
-        placements: (inv.placementIds ?? []).map((pid) => placements.find((p) => p.id === pid)).filter(Boolean).map((p) => ({ id: p!.id, candidateName: p!.candidateName, jobTitle: p!.jobTitle })),
+        // Candidate information for invoicing, one row per placement billed on this invoice
+        placements: (inv.placementIds ?? []).map((pid) => placements.find((p) => p.id === pid)).filter((p): p is NonNullable<typeof p> => !!p).map((p) => ({
+            id: p.id, candidateName: p.candidateName, jobTitle: p.jobTitle,
+            employeeCode: p.employeeCode ?? null, workLocation: p.workLocation ?? null, joiningDate: p.joiningDate.slice(0, 10), designation: p.offeredPosition,
+            grade: p.grade ?? null, ctcLpa: p.offeredSalaryLpa, employeeType: p.employeeType ?? null,
+            invoiceAmount: inv.lineItems.filter((l) => l.placementId === p.id).reduce((n, l) => n + l.amount, 0) || null,
+            tatDays: invoiceTat(p.joiningDate, inv.issueDate).days,
+        })),
     });
 }

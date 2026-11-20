@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
 import { users, addAudit, addNotification, jobs, candidates, applications, interviews, placements, tasks } from "@/lib/mock/data";
-import { assignableRoles, canManageUser, ensureEmployeeForUser, issueTempPassword, publicUser, syncUserToEmployee, uniqueUserId } from "@/lib/mock/identity";
+import { assignableRoles, canManageUser, employeeForUser, ensureEmployeeForUser, issueTempPassword, publicUser, syncUserToEmployee, uniqueUserId } from "@/lib/mock/identity";
 import { hashPassword, passwordPolicyError } from "@/lib/password";
 import { notifyRoles } from "@/lib/mock/pipeline";
+import { revokeUserSessions, securityPolicy } from "@/lib/security";
 import type { User, UserRole, UserStatus } from "@/lib/types";
 
 export async function GET(request: Request) {
@@ -26,22 +27,23 @@ export async function GET(request: Request) {
             const assignedApps = applications.filter((a) => a.recruiterId === u.id);
             const userPlacements = placements.filter((p) => p.recruiterId === u.id);
             const userTasks = tasks.filter((t) => t.assignedToId === u.id && !t.completed);
+            const emp = employeeForUser(u.id);
 
             return {
                 ...publicUser(u),
-                employeeId: `EMP-${u.id.replace(/[^0-9a-zA-Z]/g, "").slice(-4).toUpperCase() || "1001"}`,
+                employeeId: emp?.employeeId ?? null,
                 reportingToName: manager?.name ?? null,
                 reportingToRole: manager?.role ?? null,
-                secondaryManagerName: u.role === "TA_RECRUITER" ? "Aarav Mehta" : null,
-                team: u.department === "Talent Acquisition" ? "Technology TA" : u.department === "Field" ? "Regional Sourcing Squad" : "Core Operations",
+                secondaryManagerName: null,
+                team: u.department ?? emp?.department ?? null,
                 directReportsCount: directReports.length,
                 directReports: directReports.map((d) => ({ id: d.id, name: d.name, role: d.role })),
                 activeJobsCount: assignedJobs.length,
                 activeCandidatesCount: assignedApps.length,
                 placementsCount: userPlacements.length,
                 pendingTasksCount: userTasks.length,
-                workMode: "Hybrid (Mumbai HQ)",
-                employmentType: "Full Time",
+                workMode: emp?.workMode ? `${({ OFFICE: "Office", HYBRID: "Hybrid", REMOTE: "Remote" } as const)[emp.workMode]}${emp.location ? ` (${emp.location})` : ""}` : null,
+                employmentType: emp ? emp.employmentType.replaceAll("_", " ").toLowerCase().replace(/^./, (c) => c.toUpperCase()) : null,
             };
         });
 
@@ -98,9 +100,9 @@ export async function POST(request: Request) {
         role: body.role as UserRole,
         status: "ACTIVE",
         avatarUrl: null,
-        department: body.department ?? "Talent Acquisition",
-        designation: body.designation ?? "Talent Partner",
-        location: body.location ?? "Mumbai",
+        department: body.department || null,
+        designation: body.designation || null,
+        location: body.location || null,
         reportingTo: manager?.id ?? null,
         joinedAt: new Date().toISOString(),
         deactivatedAt: null,
@@ -108,7 +110,7 @@ export async function POST(request: Request) {
     // Admin may set a password; otherwise a one-time temporary password is issued and shown once
     let tempPassword: string | null = null;
     if (body.password) {
-        const err = passwordPolicyError(String(body.password));
+        const err = passwordPolicyError(String(body.password), securityPolicy(me.orgId).minPasswordLength);
         if (err) return NextResponse.json({ error: err }, { status: 400 });
         newUser.passwordHash = hashPassword(String(body.password));
     } else {
@@ -141,7 +143,7 @@ export async function PATCH(request: Request) {
     if ("error" in auth) return auth.error;
     const me = auth.user;
 
-    const { id, role, status, department, designation, reportingTo, location, phone, resetPassword } = await request.json();
+    const { id, role, status, department, designation, reportingTo, location, phone, resetPassword, resetMfa, unlock, signOut } = await request.json();
     const user = users.find((u) => u.id === id && u.orgId === me.orgId);
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
@@ -156,6 +158,21 @@ export async function PATCH(request: Request) {
         addAudit({ orgId: me.orgId, actorUserId: me.id, actorRole: me.role, action: "PASSWORD_RESET", entity: "User", entityId: user.id, detail: `Temporary password issued for ${user.name}` });
         addNotification({ orgId: me.orgId, userId: user.id, title: "Password reset", message: `${me.name} reset your password. Sign in with the temporary password they share, then change it.`, link: null });
         return NextResponse.json({ success: true, tempPassword, name: user.name, email: user.email });
+    }
+    // Security actions (Super Admin only): clear two-step sign-in, lift a lockout, sign out everywhere
+    if (resetMfa || unlock || signOut) {
+        if (me.role !== "SUPER_ADMIN") return NextResponse.json({ error: "Only the Super Admin can change sign-in security" }, { status: 403 });
+        if (user.id === me.id && resetMfa) return NextResponse.json({ error: "You cannot reset your own two-step sign-in" }, { status: 400 });
+        const done: string[] = [];
+        if (resetMfa) {
+            user.mfaEnabled = false; user.mfaSecretEnc = null; user.mfaPendingSecretEnc = null;
+            revokeUserSessions(user);
+            done.push("two-step sign-in reset (set up again at next sign-in)");
+        }
+        if (unlock) { user.lockedUntil = null; user.failedLoginAttempts = 0; done.push("account unlocked"); }
+        if (signOut && !resetMfa) { revokeUserSessions(user); done.push("signed out of all devices"); }
+        addAudit({ orgId: me.orgId, actorUserId: me.id, actorRole: me.role, action: resetMfa ? "MFA_RESET" : unlock ? "ACCOUNT_UNLOCKED" : "SESSIONS_REVOKED", entity: "User", entityId: user.id, detail: `${user.name}: ${done.join("; ")}` });
+        return NextResponse.json({ success: true, ...publicUser(user) });
     }
     if (user.id === me.id && ((role && role !== user.role) || (status && status !== user.status))) {
         return NextResponse.json({ error: "You cannot change your own role or status" }, { status: 403 });
@@ -197,6 +214,7 @@ export async function PATCH(request: Request) {
         user.status = status as UserStatus;
         action = status === "SUSPENDED" ? "USER_SUSPENDED" : status === "EXITED" ? "USER_EXITED" : "USER_REACTIVATED";
         user.deactivatedAt = status === "EXITED" || status === "SUSPENDED" ? new Date().toISOString() : null;
+        if (status !== "ACTIVE") revokeUserSessions(user);
     }
     if (department !== undefined && department !== user.department) { changes.push(`department → ${department}`); user.department = department; }
     if (designation !== undefined && designation !== user.designation) { changes.push(`designation → ${designation}`); user.designation = designation; }

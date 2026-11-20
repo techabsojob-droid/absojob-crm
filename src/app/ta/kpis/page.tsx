@@ -8,6 +8,8 @@ import { ErrorState, SkeletonPulse } from "@/components/shared/UIStates";
 import { btn, downloadText, inputCls, toCsv } from "@/components/finance/kit";
 import { InlineBar, KpiTrendChart } from "@/components/ta/team/charts";
 import { api } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
+import { kpiSection } from "@/lib/access";
 
 type Counts = Record<string, number>;
 interface Person { id: string; name: string; role: string; designation: string | null }
@@ -46,6 +48,8 @@ export default function RecruiterKpisPage() {
     const [trendKpi, setTrendKpi] = useState("submitted");
 
     const qs = new URLSearchParams({ from, to, granularity, recruiterId, clientId, jobId }).toString();
+    const { user } = useAuth();
+    const section = kpiSection(user?.role);
     const { data, isLoading, isError, error, refetch, isFetching } = useQuery<Data>({ queryKey: ["ta-kpis", qs], queryFn: () => api(`/api/ta/kpis?${qs}`), placeholderData: (prev) => prev });
 
     const jobs = useMemo(() => (data?.options.jobs ?? []).filter((j) => clientId === "ALL" || j.clientId === clientId), [data, clientId]);
@@ -65,13 +69,13 @@ export default function RecruiterKpisPage() {
         ["Recruiter", "Role", ...kpis.map((k) => k.label)],
         ...data.recruiters.map((r) => [r.name, r.role.replace("TA_", ""), ...kpis.map((k) => r.totals[k.key] ?? 0)]),
         ["Total", "", ...kpis.map((k) => data.totals[k.key] ?? 0)],
-    ]), `recruiter-kpis-${data.range.from}-to-${data.range.to}.csv`);
+    ]), `${section.fileSlug}-${data.range.from}-to-${data.range.to}.csv`);
 
     return (
         <div className="space-y-6">
             <PageHeader
-                title={data.canCompare ? "Recruiter KPIs" : "My KPIs"}
-                subtitle="Sourcing to joining, counted live from calls, pipeline moves, submissions, interviews and offers"
+                title={section.title}
+                subtitle={section.subtitle}
                 action={<button onClick={exportCsv} className={btn.ghost}><Download size={13} className="inline mr-1" />Export CSV</button>}
             />
 

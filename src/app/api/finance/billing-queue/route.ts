@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { invoices, placements } from "@/lib/mock/data";
 import { billItems, billingQueue, placementFee, billingOf, clientById } from "@/lib/mock/finance";
 import { bad, body, requireFinance, respond } from "@/lib/mock/fin/http";
+import { invoiceTat, missingInvoiceDetails } from "@/lib/invoicing-details";
 
 // GET: everything billable (joined placements, offer milestones, timesheets, re-billable expenses)
 // plus billed placements that fell through inside the guarantee window
@@ -13,7 +14,17 @@ export async function GET() {
     return NextResponse.json({
         items: billingQueue(me.orgId).map((i) => {
             const c = clientById(me.orgId, i.clientId);
-            return { ...i, currency: c ? billingOf(c).currency : "INR", creditHold: !!c?.creditHold };
+            const p = i.placementId ? org.find((x) => x.id === i.placementId) : undefined;
+            return {
+                ...i, currency: c ? billingOf(c).currency : "INR", creditHold: !!c?.creditHold,
+                // Candidate information for invoicing (placements only)
+                candidate: p && i.type === "PLACEMENT" ? {
+                    placementId: p.id, candidateName: p.candidateName, employeeCode: p.employeeCode ?? null, workLocation: p.workLocation ?? null,
+                    joiningDate: p.joiningDate.slice(0, 10), offeredPosition: p.offeredPosition, grade: p.grade ?? null, offeredSalaryLpa: p.offeredSalaryLpa,
+                    employeeType: p.employeeType ?? null,
+                    tatDays: invoiceTat(p.joiningDate, null).days, missing: missingInvoiceDetails(p),
+                } : null,
+            };
         }),
         atRisk: org
             .filter((p) => (p.invoiceId || p.invoiceNumber) && (["NO_SHOW", "CANCELLED"].includes(p.joiningStatus) || ["REPLACEMENT_REQUESTED", "REPLACEMENT_IN_PROGRESS"].includes(p.replacementStatus)))

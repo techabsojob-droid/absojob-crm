@@ -3,6 +3,8 @@ import { requireRole } from "@/lib/mock/server";
 import { MOCK_PASSWORD, addAudit } from "@/lib/mock/data";
 import { hashPassword, passwordPolicyError, verifyPassword } from "@/lib/password";
 import { dbEnabled } from "@/lib/db/sync";
+import { SESSION_COOKIE } from "@/lib/mock/data";
+import { issueSessionCookie, revokeUserSessions, securityPolicy } from "@/lib/security";
 
 // PATCH: change own password (current password required)
 export async function PATCH(request: Request) {
@@ -13,11 +15,16 @@ export async function PATCH(request: Request) {
     try { b = await request.json(); } catch { return NextResponse.json({ error: "Invalid request" }, { status: 400 }); }
     const currentOk = me.passwordHash ? verifyPassword(String(b.currentPassword ?? ""), me.passwordHash) : !dbEnabled() && b.currentPassword === MOCK_PASSWORD;
     if (!currentOk) return NextResponse.json({ error: "Current password is incorrect" }, { status: 400 });
-    const err = passwordPolicyError(b.newPassword);
+    const err = passwordPolicyError(b.newPassword, securityPolicy(me.orgId).minPasswordLength);
     if (err) return NextResponse.json({ error: err }, { status: 400 });
     if (b.newPassword === b.currentPassword) return NextResponse.json({ error: "Choose a different password" }, { status: 400 });
     me.passwordHash = hashPassword(b.newPassword);
     me.passwordChangedAt = new Date().toISOString();
-    addAudit({ orgId: me.orgId, actorUserId: me.id, actorRole: me.role, action: "PASSWORD_CHANGED", entity: "User", entityId: me.id, detail: "Password changed" });
-    return NextResponse.json({ success: true });
+    // Sign out every other device; this browser gets a fresh session
+    revokeUserSessions(me);
+    addAudit({ orgId: me.orgId, actorUserId: me.id, actorRole: me.role, action: "PASSWORD_CHANGED", entity: "User", entityId: me.id, detail: "Password changed; other sessions signed out" });
+    const res = NextResponse.json({ success: true });
+    const cookie = await issueSessionCookie(me);
+    res.cookies.set(SESSION_COOKIE, cookie.value, cookie.options);
+    return res;
 }

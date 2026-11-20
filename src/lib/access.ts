@@ -51,3 +51,19 @@ export function workspaceOfPath(pathname: string): Workspace | null {
     }
     return null;
 }
+
+/** Name and description of the KPI section for the viewer's role (sidebar, page title, export). */
+export function kpiSection(role: UserRole | null | undefined): { title: string; hint: string; subtitle: string; fileSlug: string } {
+    if (role === "TA_RECRUITER") return {
+        title: "My KPIs", hint: "Your KPIs: daily, weekly, monthly", fileSlug: "my-kpis",
+        subtitle: "Your numbers from sourcing to joining, counted live from your calls, pipeline moves, submissions, interviews and offers",
+    };
+    if (role === "TA_MANAGER") return {
+        title: "Team KPIs", hint: "Your team's KPIs, recruiter by recruiter", fileSlug: "team-kpis",
+        subtitle: "Your team from sourcing to joining, counted live from calls, pipeline moves, submissions, interviews and offers",
+    };
+    return {
+        title: "Recruitment KPIs", hint: "Every recruiter's KPIs: daily, weekly, monthly", fileSlug: "recruitment-kpis",
+        subtitle: "All recruiters from sourcing to joining, counted live from calls, pipeline moves, submissions, interviews and offers",
+    };
+}

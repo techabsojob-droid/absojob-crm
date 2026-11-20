@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { useFoldedNav } from "./useFoldedNav";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -17,6 +18,7 @@ import {
     SlidersHorizontal, KeyRound, UserCheck, X, LucideIcon
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import WorkspaceSwitcher from "./WorkspaceSwitcher";
 import type { UserRole } from "@/lib/types";
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
@@ -618,8 +620,6 @@ export default function HrmisSidebar({
     const [expandedGroupIds, setExpandedGroupIds] = useState<Record<string, boolean>>({});
 
     // ─── Workspace Switcher State ─────────────────────────────────────────────
-    const [workspaceOpen, setWorkspaceOpen] = useState(false);
-    const workspaceRef = useRef<HTMLDivElement>(null);
 
     // ─── Search Palette Modal State (⌘K) ──────────────────────────────────────
     const [searchOpen, setSearchOpen] = useState(false);
@@ -743,22 +743,10 @@ export default function HrmisSidebar({
                 setSearchOpen((prev) => !prev);
             } else if (e.key === "Escape") {
                 setSearchOpen(false);
-                setWorkspaceOpen(false);
             }
         }
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, []);
-
-    // ─── Click Outside Handler for Workspace Dropdown ─────────────────────────
-    useEffect(() => {
-        function handleClickOutside(e: MouseEvent) {
-            if (workspaceRef.current && !workspaceRef.current.contains(e.target as Node)) {
-                setWorkspaceOpen(false);
-            }
-        }
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
     // ─── Role-Based Filter ───────────────────────────────────────────────────
@@ -860,6 +848,15 @@ export default function HrmisSidebar({
         return false;
     };
 
+    // Sections fold like the other workspaces; the current page's section reopens on arrival
+    const activeSection = filteredSections.find((sec) => sec.items.some(isGroupActive))?.sectionTitle;
+    const fold = useFoldedNav("hr", activeSection);
+    const sectionCount = (sec: HrmisNavSection) => sec.items.reduce((n, i) => {
+        const own = i.badgeKey ? badgeCounts[i.badgeKey] ?? 0 : 0;
+        const kids = (i.children ?? []).reduce((m, c) => m + (c.badgeKey ? badgeCounts[c.badgeKey] ?? 0 : 0), 0);
+        return n + (Number(own) || 0) + (Number(kids) || 0);
+    }, 0);
+
     const sidebarWidth = collapsed ? COLLAPSED_W : EXPANDED_W;
 
     return (
@@ -884,17 +881,15 @@ export default function HrmisSidebar({
                 }}
                 aria-label="HRMIS Sidebar Navigation"
             >
-                {/* ─── Header: Brand + Workspace Switcher ──────────────────────── */}
+                {/* ─── Header: Brand ──────────────────────── */}
                 <div
-                    ref={workspaceRef}
                     className="relative shrink-0 border-b border-neutral-100 bg-white"
                 >
                     <div
-                        onClick={() => !collapsed && setWorkspaceOpen((prev) => !prev)}
-                        className={`flex items-center gap-3 py-4 cursor-pointer hover:bg-neutral-50/80 transition-colors ${
+                        className={`flex items-center gap-3 py-4 ${
                             collapsed ? "justify-center px-2" : "px-5"
                         }`}
-                        title={collapsed ? "AbsoJob HRMIS" : "Switch workspace"}
+                        title="AbsoJob HRMIS"
                     >
                         {/* Logo Mark */}
                         <div className="sidebar-logo w-8 h-8 bg-accent rounded-md flex items-center justify-center text-white text-[13px] font-bold tracking-tight shrink-0">
@@ -917,57 +912,13 @@ export default function HrmisSidebar({
                                         Enterprise HR Suite
                                     </p>
                                 </div>
-                                <ChevronDown
-                                    size={15}
-                                    className={`text-neutral-400 transition-transform shrink-0 ${
-                                        workspaceOpen ? "rotate-180 text-primary" : ""
-                                    }`}
-                                />
                             </div>
                         )}
                     </div>
 
-                    {/* Workspace Switcher Dropdown */}
-                    {workspaceOpen && !collapsed && (
-                        <div className="sidebar-pop absolute top-full left-3 right-3 mt-1.5 bg-white rounded-2xl shadow-2xl border border-neutral-100 py-2 z-[70] animate-fade-in origin-top">
-                            <p className="px-3.5 py-1.5 text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
-                                Switch Workspace
-                            </p>
-                            <div className="space-y-0.5 px-1.5">
-                                <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-primary/10 text-primary font-bold text-xs">
-                                    <span className="flex items-center gap-2">
-                                        <Building2 size={15} /> HRMIS (Current)
-                                    </span>
-                                    <div className="w-2 h-2 rounded-full bg-primary" />
-                                </div>
-                                <Link
-                                    href="/admin/dashboard"
-                                    onClick={() => setWorkspaceOpen(false)}
-                                    className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-neutral-50 text-neutral-700 font-medium text-xs transition-colors"
-                                >
-                                    <Briefcase size={15} className="text-neutral-400" />
-                                    Recruitment CRM
-                                </Link>
-                                <Link
-                                    href="/ta/dashboard"
-                                    onClick={() => setWorkspaceOpen(false)}
-                                    className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-neutral-50 text-neutral-700 font-medium text-xs transition-colors"
-                                >
-                                    <Target size={15} className="text-neutral-400" />
-                                    Talent Acquisition
-                                </Link>
-                                <Link
-                                    href="/portal/dashboard"
-                                    onClick={() => setWorkspaceOpen(false)}
-                                    className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-neutral-50 text-neutral-700 font-medium text-xs transition-colors"
-                                >
-                                    <ExternalLink size={15} className="text-neutral-400" />
-                                    Employee Self-Service
-                                </Link>
-                            </div>
-                        </div>
-                    )}
                 </div>
+
+                <WorkspaceSwitcher narrow={collapsed && !mobileOpen} />
 
                 {/* ─── Quick Search Bar (⌘K Trigger) ──────────────────────────── */}
                 {!collapsed && (
@@ -1042,18 +993,27 @@ export default function HrmisSidebar({
                     )}
 
                     {/* ── MASTER NAVIGATION SECTIONS ── */}
-                    {filteredSections.map((section, sIdx) => (
+                    {filteredSections.map((section, sIdx) => {
+                        const open = collapsed || fold.isOpen(section.sectionTitle);
+                        const hidden = open ? 0 : sectionCount(section);
+                        return (
                         <div key={sIdx} className="space-y-1">
-                            {/* Section Header */}
+                            {/* Section Header: click to fold / unfold */}
                             {!collapsed ? (
-                                <p className="px-3 pb-1 text-[10px] font-extrabold uppercase tracking-wider text-neutral-400">
-                                    {section.sectionTitle}
-                                </p>
+                                <button type="button" onClick={() => fold.toggle(section.sectionTitle)} aria-expanded={open} aria-controls={`hr-sec-${sIdx}`}
+                                    title={open ? `Hide ${section.sectionTitle.toLowerCase()}` : `Show ${section.sectionTitle.toLowerCase()}`}
+                                    className="w-full flex items-center gap-1.5 px-3 pb-1 pt-0.5 text-[10px] font-extrabold uppercase tracking-wider text-neutral-400 hover:text-neutral-700 cursor-pointer">
+                                    <span className="flex-1 text-left truncate">{section.sectionTitle}</span>
+                                    {hidden > 0 && <span className="px-1.5 rounded bg-amber-50 text-amber-700 border border-amber-200 text-[9px] normal-case tracking-normal">{hidden}</span>}
+                                    <ChevronDown size={12} aria-hidden className={`shrink-0 transition-transform duration-200 ${open ? "" : "-rotate-90"}`} />
+                                </button>
                             ) : (
                                 <div className="h-px bg-neutral-100 my-2 mx-2" />
                             )}
 
                             {/* Section Items */}
+                            <div id={`hr-sec-${sIdx}`} className={`grid transition-[grid-template-rows] duration-200 ease-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
+                            <div className="overflow-hidden space-y-1" inert={!open}>
                             {section.items.map((item) => {
                                 const Icon = item.icon;
                                 const isGroupOpen = !!expandedGroupIds[item.id];
@@ -1198,8 +1158,11 @@ export default function HrmisSidebar({
                                     </div>
                                 );
                             })}
+                            </div>
+                            </div>
                         </div>
-                    ))}
+                        );
+                    })}
                 </nav>
 
                 {/* ─── Footer: User Profile & Actions ─────────────────────────── */}

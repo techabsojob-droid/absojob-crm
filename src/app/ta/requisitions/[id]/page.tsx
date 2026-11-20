@@ -14,6 +14,7 @@ import {
 import { JobOverview, JobIconButton } from "@/components/shared/JobOverview";
 import { toast } from "sonner";
 import { PageHeader, StatCard, Badge, SectionCard, ModalShell, EmptyState, inr } from "@/components/shared/ui";
+import JobExportMenu from "@/components/shared/JobExportMenu";
 import { SkeletonPulse } from "@/components/shared/UIStates";
 import { RelatedTasks } from "@/components/tasks/TaskWidgets";
 import { LogCallModal, CALL_STATUS, CALL_NEXT_ACTION } from "@/components/ta/CallLog";
@@ -270,6 +271,7 @@ export default function TaRequisitionDetailPage({ params }: { params: Promise<{ 
                         {canManage && !["CLOSED", "CANCELLED", "FULFILLED"].includes(job.status) && (
                             <button onClick={() => setDialog("cancel")} className="px-3.5 py-2 border border-red-200 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 flex items-center gap-1.5"><X size={14} /> Cancel</button>
                         )}
+                        <JobExportMenu jobId={job.id} />
                         <Link
                             href={`/ta/pipeline?jobId=${job.id}`}
                             className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs"
@@ -996,7 +998,7 @@ export default function TaRequisitionDetailPage({ params }: { params: Promise<{ 
                     <SectionCard title="Commercials">
                         <dl className="grid grid-cols-[160px_1fr] gap-y-2.5 text-xs">
                             <dt className="text-neutral-500">Billing type</dt><dd className="font-semibold text-neutral-800">{optLabel(BILLING_TYPES, job.billingType) || "—"}</dd>
-                            <dt className="text-neutral-500">Placement fee</dt><dd className="text-neutral-800">{job.placementFeePct != null ? `${job.placementFeePct}%` : "—"}</dd>
+                            {job.placementFeePct != null && <><dt className="text-neutral-500">Placement fee</dt><dd className="text-neutral-800">{job.placementFeePct}%</dd></>}
                             <dt className="text-neutral-500">Contract type</dt><dd className="text-neutral-800">{optLabel(CONTRACT_TYPES, job.contractType) || "—"}</dd>
                             <dt className="text-neutral-500">Replacement guarantee</dt><dd className="text-neutral-800">{job.replacementGuaranteeDays != null ? `${job.replacementGuaranteeDays} days` : "—"}</dd>
                             <dt className="text-neutral-500">Account manager</dt><dd className="text-neutral-800">{job.accountManagerName || "—"}</dd>

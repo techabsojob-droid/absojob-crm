@@ -6,6 +6,7 @@ import {
     receipts, recurringInvoices, timesheets, contractAssignments, users,
 } from "../data";
 import { notifyRoles } from "../pipeline";
+import { missingInvoiceDetails } from "@/lib/invoicing-details";
 import {
     addDays, billingOf, clientById, daysBetween, defaultBankAccountId, feeForCtc, fyOf, gstFor, nextDocNumber, periodLockError,
     round2, sendEmail, settingsFor, today,
@@ -608,7 +609,7 @@ function offerBilledFor(p: PlacementRecord): number {
 
 export function placementFee(p: PlacementRecord) {
     const client = clientById(p.orgId, p.clientId);
-    return feeForCtc(client, p.offeredSalaryLpa);
+    return feeForCtc(client, p.offeredSalaryLpa, p.orgId);
 }
 
 export function billingQueue(orgId: string): BillableItem[] {
@@ -621,7 +622,7 @@ export function billingQueue(orgId: string): BillableItem[] {
         if (amount <= 0) return;
         items.push({
             key: `plc:${p.id}`, type: "PLACEMENT", clientId: p.clientId, clientName: p.clientName, placementId: p.id, recruiterName: p.recruiterName,
-            description: `Placement fee — ${p.candidateName}, ${p.jobTitle} (₹${p.offeredSalaryLpa} LPA, ${basis})${already ? `, balance after ₹${already.toLocaleString("en-IN")} billed on offer` : ""}, joined ${p.joiningDate}`,
+            description: `Placement fee — ${p.candidateName}${p.employeeCode ? ` (Emp. code ${p.employeeCode})` : ""}, ${p.offeredPosition || p.jobTitle}${p.grade ? `, grade ${p.grade}` : ""}${p.employeeType ? `, ${p.employeeType}` : ""}${p.workLocation ? `, ${p.workLocation}` : ""} (₹${p.offeredSalaryLpa} LPA, ${basis})${already ? `, balance after ₹${already.toLocaleString("en-IN")} billed on offer` : ""}, joined ${p.joiningDate}`,
             amount, basis: already ? "joining balance" : basis, date: p.joiningDate,
         });
     });
@@ -673,6 +674,14 @@ export function billItems(actor: User, keys: string[], opts: { send?: boolean; f
     if (!picked.length || picked.length !== keys.length) return fail("Some items are no longer billable — refresh the queue", 409);
     const clientIds = new Set(picked.map((p) => p.clientId));
     if (clientIds.size > 1) return fail("Select items of one client per invoice", 400);
+    // Clients need the candidate's details on a placement invoice
+    const incomplete = picked
+        .filter((p) => p.type === "PLACEMENT" && p.placementId)
+        .map((p) => placements.find((x) => x.id === p.placementId))
+        .filter((p): p is PlacementRecord => !!p && missingInvoiceDetails(p).length > 0);
+    if (incomplete.length) {
+        return fail(`Add the invoicing details first — ${incomplete.map((p) => `${p.candidateName}: ${missingInvoiceDetails(p).join(", ")}`).join("; ")}`, 422);
+    }
     const offers = picked.filter((p) => p.type === "OFFER_MILESTONE");
     const milestone: BillingMilestone = picked.every((p) => p.type === "TIMESHEET") ? "TIMESHEET"
         : picked.every((p) => p.type === "REBILL_EXPENSE") ? "REBILL"

@@ -60,6 +60,17 @@ export default function AdminCandidatesPage() {
     ];
     const currentPreset = savedViews.find((v) => v.id === activeView)?.preset || "";
 
+    // Real recruiters for the "assign recruiter" bulk action
+    const { data: recruiterOptions = [] } = useQuery<{ id: string; name: string; role: string; designation?: string | null; status: string }[]>({
+        queryKey: ["assignable-recruiters"],
+        enabled: bulkActionOpen,
+        queryFn: async () => {
+            const r = await fetch("/api/admin/users");
+            const list = r.ok ? await r.json() : [];
+            return (Array.isArray(list) ? list : []).filter((u: { role: string; status: string }) => ["TA_RECRUITER", "TA_MANAGER"].includes(u.role) && u.status === "ACTIVE");
+        },
+    });
+
     const { data: candidates, isLoading } = useQuery({
         queryKey: [
             "admin-candidates", q, stageFilter, sourceFilter, statusFilter,
@@ -748,7 +759,7 @@ export default function AdminCandidatesPage() {
                                                                 )}
                                                             </div>
                                                             <p className="text-[11px] text-neutral-500 truncate mt-0.5">
-                                                                {c.currentDesignation || "Engineer"}
+                                                                {c.currentDesignation || "—"}
                                                                 {c.currentCompany && ` at ${c.currentCompany}`}
                                                                 {c.location && ` · ${c.location}`}
                                                             </p>
@@ -902,7 +913,7 @@ export default function AdminCandidatesPage() {
                                                             {c.name}
                                                         </button>
                                                         <p className="text-[10px] text-neutral-500 mt-0.5">
-                                                            {c.currentCompany || "Company"} · {c.totalExperienceYears}y exp
+                                                            {c.currentCompany || "—"} · {c.totalExperienceYears}y exp
                                                         </p>
                                                     </div>
                                                     <span className="text-[10px] font-bold text-primary bg-primary/5 px-2 py-0.5 rounded">
@@ -1162,13 +1173,14 @@ Kavita Iyer, kavita.i@example.com, 9833344455, Wipro, AWS;Docker;Kubernetes, 5, 
                             <select
                                 onChange={(e) => {
                                     const val = e.target.value;
-                                    setBulkActionPayload({ recruiterId: val, recruiterName: val === "usr-ta1" ? "Neha Sharma" : "Rahul Saxena" });
+                                    setBulkActionPayload({ recruiterId: val, recruiterName: recruiterOptions.find((u) => u.id === val)?.name ?? "" });
                                 }}
                                 className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-xs font-semibold"
                             >
                                 <option value="">Choose Recruiter...</option>
-                                <option value="usr-ta1">Neha Sharma (Sr. Recruiter)</option>
-                                <option value="usr-ta2">Rahul Saxena (Technical Recruiter)</option>
+                                {recruiterOptions.map((u) => (
+                                    <option key={u.id} value={u.id}>{u.name} ({u.designation || (u.role === "TA_MANAGER" ? "TA Manager" : "Recruiter")})</option>
+                                ))}
                             </select>
                         </div>
                     )}
@@ -1233,7 +1245,7 @@ Kavita Iyer, kavita.i@example.com, 9833344455, Wipro, AWS;Docker;Kubernetes, 5, 
                             <div>
                                 <h3 className="text-xl font-black text-neutral-900">{quickViewCandidate.name}</h3>
                                 <p className="text-xs font-semibold text-primary mt-0.5">
-                                    {quickViewCandidate.currentDesignation || "Engineer"} at {quickViewCandidate.currentCompany || "Company"}
+                                    {quickViewCandidate.currentDesignation || "—"}{quickViewCandidate.currentCompany ? ` at ${quickViewCandidate.currentCompany}` : ""}
                                 </p>
                                 <p className="text-xs text-neutral-400 mt-1 flex items-center gap-1">
                                     <Building2 size={12} /> {quickViewCandidate.location || "Location not set"}

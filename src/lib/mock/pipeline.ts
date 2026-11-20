@@ -6,6 +6,7 @@
 import type { Application, ApprovalRequest, Client, JobRequisition, ReferralStatus, Task, User, UserRole } from "@/lib/types";
 import { newActivity, nextTaskKey } from "@/lib/tasks/rules";
 import { addAudit, addNotification, applications, approvals, candidates, clients, commissionLedger, jobs, nextIds, placements, referrals, taskActivity, tasks, users } from "./data";
+import { commissionTermsFor } from "@/lib/org-settings";
 
 export function notifyRoles(
     orgId: string,
@@ -51,8 +52,10 @@ export function markApplicationJoined(app: Application, actor: User, joinDate: s
         const recruiter = users.find((u) => u.id === app.recruiterId);
         const acceptedOffer = cand.offers?.find((o) => o.jobId === job.id && o.status === "ACCEPTED");
         const offeredSalaryLpa = acceptedOffer?.offeredCtcLpa ?? cand.expectedCtcLpa ?? 0;
-        const commissionRate = client?.billing?.feePercent ?? client?.commissionRate ?? 8.33;
-        const guaranteeDays = client?.billing?.guaranteeDays ?? 90;
+        // Client's agreed terms first, else Settings › Finance commission rules for this job type
+        const terms = commissionTermsFor(app.orgId, job.employmentType);
+        const commissionRate = client?.billing?.feePercent ?? client?.commissionRate ?? terms.ratePercent;
+        const guaranteeDays = client?.billing?.guaranteeDays ?? terms.guaranteePeriodDays;
 
         placements.unshift({
             id: `plc-${crypto.randomUUID().slice(0, 8)}`,
@@ -78,6 +81,9 @@ export function markApplicationJoined(app: Application, actor: User, joinDate: s
             guaranteeEndDate: new Date(new Date(joinDate).getTime() + guaranteeDays * 86400000).toISOString().split("T")[0],
             replacementStatus: "NO_REPLACEMENT",
             notes: null,
+            // Invoicing details: location from the job; employee code, grade and FLS/NFLS come from the client after joining
+            workLocation: job.location ?? null,
+            employeeCode: null, grade: null, employeeType: null,
             createdAt: now,
         });
     }

@@ -5,6 +5,7 @@ import { notifyRoles } from "@/lib/mock/pipeline";
 import { PAN_RE, IFSC_RE } from "@/lib/mock/finance";
 import { payeeProfiles } from "@/lib/mock/data";
 import { dbErrorResponse, syncRequest } from "@/lib/db/request";
+import { securityPolicy } from "@/lib/security";
 
 // Simple in-memory throttle per IP (10 attempts / 10 min)
 const attempts = new Map<string, number[]>();
@@ -27,6 +28,9 @@ export async function POST(request: Request) {
     let b: Record<string, any>;
     try { b = await request.json(); } catch { return NextResponse.json({ error: "Invalid request" }, { status: 400 }); }
 
+    const policy = securityPolicy(organizations.find((o) => o.slug === (b.org || "absojob"))?.id ?? organizations[0].id);
+    if (policy.maintenanceMode) return NextResponse.json({ error: "Partner sign-up is paused while the CRM is in maintenance. Please try again later." }, { status: 503 });
+
     const name = String(b.name ?? "").trim();
     const email = String(b.email ?? "").trim().toLowerCase();
     const phone = String(b.phone ?? "").replace(/[^\d+]/g, "");
@@ -41,7 +45,7 @@ export async function POST(request: Request) {
     if (!b.bankAccountNumber && !b.upiId) return NextResponse.json({ error: "Add a bank account or UPI ID for payouts" }, { status: 400 });
     if (b.bankAccountNumber && (!/^\d{9,18}$/.test(String(b.bankAccountNumber)) || !ifsc)) return NextResponse.json({ error: "Enter a 9–18 digit account number with its IFSC" }, { status: 400 });
     if (b.upiId && !/^[\w.-]{2,}@[a-zA-Z]{2,}$/.test(String(b.upiId))) return NextResponse.json({ error: "Invalid UPI ID" }, { status: 400 });
-    const pwErr = passwordPolicyError(b.password);
+    const pwErr = passwordPolicyError(b.password, policy.minPasswordLength);
     if (pwErr) return NextResponse.json({ error: pwErr }, { status: 400 });
     if (!b.acceptAgreement) return NextResponse.json({ error: "Please accept the partner agreement" }, { status: 400 });
     if (users.some((u) => u.email.toLowerCase() === email)) return NextResponse.json({ error: "An account with this email already exists" }, { status: 409 });

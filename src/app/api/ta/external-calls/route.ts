@@ -5,7 +5,7 @@ import { candidates, clients, externalCalls, jobs, tasks, users, addAudit, nextI
 import { bad, body } from "@/lib/mock/fin/http";
 import { isRecruitmentManager, teamPickList, teamScopeIds } from "@/lib/mock/pipeline";
 import { csvDownload } from "@/lib/csv";
-import { CALL_INTERESTS, CALL_PURPOSES, CALL_STATUSES, EXTERNAL_SOURCES as SOURCES, isEmail, istDay, lastTen, list, num, parseCall, pick, text } from "@/lib/calls";
+import { CALL_INTERESTS, CALL_PURPOSES, EXTERNAL_SOURCES as SOURCES, isEmail, istDay, lastTen, list, num, parseCall, pick, statusFilter, text } from "@/lib/calls";
 import type { ExternalCallLog } from "@/lib/types";
 
 const label = (s: string | null | undefined) => (s ? s.replace(/_/g, " ").toLowerCase() : "");
@@ -60,7 +60,7 @@ export async function GET(request: Request) {
     const from = date(q.get("from"));
     const to = date(q.get("to"));
     if (from && to && from > to) return bad("'From' date must be before 'To' date");
-    const status = pick(CALL_STATUSES, q.get("status"));
+    const status = statusFilter(q.get("status")); // one status, or NOT_REACHED
     const interest = pick(CALL_INTERESTS, q.get("interest"));
     const purpose = pick(CALL_PURPOSES, q.get("purpose"));
     const source = pick(SOURCES, q.get("source"));
@@ -75,7 +75,7 @@ export async function GET(request: Request) {
         .filter((c) => !recruiterId || c.recruiterId === recruiterId)
         .filter((c) => !from || istDay(c.calledAt) >= from)
         .filter((c) => !to || istDay(c.calledAt) <= to)
-        .filter((c) => !status || c.callStatus === status)
+        .filter((c) => !status || status(c.callStatus))
         .filter((c) => !interest || c.candidateInterest === interest)
         .filter((c) => !purpose || c.purpose === purpose)
         .filter((c) => !source || c.source === source)
@@ -182,6 +182,13 @@ export async function POST(request: Request) {
         createdAt: now,
     };
 
+    // This call takes care of my earlier call-back reminders for this number that are due by now
+    const today = istDay(now);
+    const sameNumber = new Set(externalCalls.filter((c) => c.orgId === me.orgId && lastTen(c.phone) === lastTen(phone)).map((c) => c.id));
+    const closed = tasks.filter((t) => t.orgId === me.orgId && t.type === "FOLLOW_UP" && !t.completed && !!t.relatedId && sameNumber.has(t.relatedId)
+        && t.assignedToId === me.id && (!t.dueDate || t.dueDate <= today));
+    for (const t of closed) { t.completed = true; t.status = "DONE"; t.completedAt = now; }
+
     if (row.followUpDate) {
         row.followUpTaskId = nextIds.task();
         tasks.push({
@@ -199,5 +206,5 @@ export async function POST(request: Request) {
         orgId: me.orgId, actorUserId: me.id, actorRole: me.role, action: "EXTERNAL_CALL_LOGGED", entity: "ExternalCall", entityId: row.id,
         detail: `${row.callType.toLowerCase()} call to ${personName} (${label(source)}) — ${label(row.callStatus)}`,
     });
-    return NextResponse.json(enrich(row), { status: 201 });
+    return NextResponse.json({ ...enrich(row), closedFollowUps: closed.length }, { status: 201 });
 }

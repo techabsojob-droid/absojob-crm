@@ -478,7 +478,7 @@ export default function HrDashboardPage() {
                                         <span className="font-mono font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
                                             {emp.checkIn}
                                         </span>
-                                        <p className="text-[10px] text-neutral-400 mt-0.5">+{emp.delayMinutes}m delay</p>
+                                        {emp.delayMinutes != null && <p className="text-[10px] text-neutral-400 mt-0.5">+{emp.delayMinutes}m delay</p>}
                                     </div>
                                 </div>
                             ))}

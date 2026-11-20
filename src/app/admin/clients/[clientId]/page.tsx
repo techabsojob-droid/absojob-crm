@@ -23,8 +23,8 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ client
     // 12 Client 360° Tabs
     const [activeTab, setActiveTab] = useState<
         "overview" | "jobs" | "candidates" | "interviews" | "offers" |
-        "placements" | "finance" | "contacts" | "documents" | "communication" |
-        "notes" | "compliance"
+        "placements" | "finance" | "contacts" | "terms" | "communication" |
+        "notes"
     >("overview");
 
     const [jobModalOpen, setJobModalOpen] = useState(false);
@@ -65,6 +65,23 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ client
             if (!res.ok) throw new Error("Client not found");
             return res.json();
         },
+    });
+
+    // Internal note → saved on the client record
+    const addNoteMutation = useMutation({
+        mutationFn: async (text: string) => {
+            const res = await fetch(`/api/admin/clients/${clientId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ addNote: text }) });
+            const d = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(d.error || "Could not save the note");
+            return d;
+        },
+        onSuccess: () => {
+            toast.success("Note saved.");
+            setNoteModalOpen(false);
+            setNewNote("");
+            qc.invalidateQueries({ queryKey: ["client-details", clientId] });
+        },
+        onError: (e: Error) => toast.error(e.message),
     });
 
     // Create Job Mutation
@@ -135,7 +152,7 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ client
         );
     }
 
-    const { client, stats, jobs = [], candidates = [], interviews = [], placements = [], invoices = [], contacts = [], documents = [], communications = [], notes = [], tasks = [] } = data;
+    const { client, stats, jobs = [], candidates = [], interviews = [], placements = [], invoices = [], contacts = [], terms = null, communications = [], notes = [] } = data;
 
     // Derived offers
     const offers = candidates.filter((c: any) => ["OFFER_SENT", "OFFER_ACCEPTED", "JOINED"].includes(c.stage));
@@ -251,9 +268,9 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ client
                         <AlertCircle size={16} />
                     </div>
                     <div>
-                        <h4 className="text-xs font-bold text-neutral-900">Operational Health Check: Active Velocity</h4>
+                        <h4 className="text-xs font-bold text-neutral-900">Pipeline check</h4>
                         <p className="text-[11px] text-neutral-600">
-                            {jobs.length > 0 ? `${jobs.length} open jobs with ${candidates.length} candidate applications in pipeline.` : "No open jobs. Ready for requisition intake."}
+                            {stats.openJobs > 0 ? `${stats.openJobs} open job${stats.openJobs > 1 ? "s" : ""} with ${stats.inPipeline} candidate${stats.inPipeline === 1 ? "" : "s"} in the pipeline.` : "No open jobs. Ready for requisition intake."}
                         </p>
                     </div>
                 </div>
@@ -284,10 +301,9 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ client
                     { key: "placements", label: `Placements (${placements.length})`, icon: Award },
                     { key: "finance", label: `Finance & Invoices (${invoices.length})`, icon: IndianRupee },
                     { key: "contacts", label: `Contacts (${contacts.length})`, icon: Users },
-                    { key: "documents", label: `Documents (${documents.length})`, icon: FileText },
                     { key: "communication", label: `Communication (${communications.length})`, icon: MessageSquare },
-                    { key: "notes", label: "Notes & Activity", icon: CheckSquare },
-                    { key: "compliance", label: "Compliance", icon: ShieldCheck },
+                    { key: "notes", label: `Notes (${notes.length})`, icon: CheckSquare },
+                    { key: "terms", label: "Terms & Credit", icon: ShieldCheck },
                 ].map((t) => (
                     <button
                         key={t.key}
@@ -310,26 +326,27 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ client
                     <RelatedTasks relatedType="CLIENT" relatedId={clientId} recordName={client.companyName} />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/* Primary Contact */}
-                        <SectionCard title="Primary Point of Contact" subtitle="Verified executive representative">
+                        <SectionCard title="Primary Point of Contact" subtitle="Client-side contact">
                             <div className="space-y-2 text-xs">
                                 <p className="text-sm font-bold text-neutral-900">{client.contactPerson}</p>
-                                <p className="text-neutral-500 font-medium">VP of People & Talent Acquisition</p>
                                 <div className="space-y-1 pt-1 text-neutral-600">
                                     <p className="flex items-center gap-2"><Mail size={13} className="text-neutral-400" /> <a href={`mailto:${client.contactEmail}`} className="text-primary hover:underline">{client.contactEmail}</a></p>
-                                    <p className="flex items-center gap-2"><Phone size={13} className="text-neutral-400" /> {client.contactPhone || "+91 98200 44551"}</p>
+                                    <p className="flex items-center gap-2"><Phone size={13} className="text-neutral-400" /> {client.contactPhone || "—"}</p>
                                 </div>
                             </div>
                         </SectionCard>
 
                         {/* Assigned Account Rep */}
-                        <SectionCard title="Assigned Account Manager" subtitle="Internal AbsoJob TA squad lead">
+                        <SectionCard title="Assigned Account Manager" subtitle="Owns this client internally">
                             <div className="space-y-2 text-xs">
+                                {client.accountManagerName ? (<>
                                 <p className="text-sm font-bold text-neutral-900">{client.accountManagerName}</p>
-                                <p className="text-neutral-500 font-medium">Senior Account Director</p>
+                                {client.accountManagerDesignation && <p className="text-neutral-500 font-medium">{client.accountManagerDesignation}</p>}
                                 <div className="space-y-1 pt-1 text-neutral-600">
-                                    <p className="flex items-center gap-2"><Mail size={13} className="text-neutral-400" /> {client.accountManagerEmail}</p>
-                                    <p className="flex items-center gap-2"><Phone size={13} className="text-neutral-400" /> {client.accountManagerPhone}</p>
+                                    <p className="flex items-center gap-2"><Mail size={13} className="text-neutral-400" /> {client.accountManagerEmail || "—"}</p>
+                                    <p className="flex items-center gap-2"><Phone size={13} className="text-neutral-400" /> {client.accountManagerPhone || "—"}</p>
                                 </div>
+                                </>) : <p className="text-neutral-500">No account manager assigned yet. Use Edit to assign one.</p>}
                             </div>
                         </SectionCard>
 
@@ -361,7 +378,7 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ client
                                         </div>
                                         <div className="text-right">
                                             <span className="text-xs font-bold text-neutral-700">{j.inPipeline || 0} in pipeline</span>
-                                            <p className="text-[10px] text-neutral-400">Target close in 20d</p>
+                                            {j.closeDate && <p className="text-[10px] text-neutral-400">Target close {new Date(j.closeDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</p>}
                                         </div>
                                     </div>
                                 ))}
@@ -449,7 +466,7 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ client
                                             <td className="px-3 py-3.5 font-medium text-neutral-700">{c.jobTitle}</td>
                                             <td className="px-3 py-3.5 text-neutral-600">{c.experience} yrs</td>
                                             <td className="px-3 py-3.5"><Badge value={c.stage} /></td>
-                                            <td className="px-3 py-3.5 font-bold text-emerald-600">{c.matchScore}%</td>
+                                            <td className="px-3 py-3.5 font-bold text-emerald-600">{c.matchScore != null ? `${c.matchScore}%` : "—"}</td>
                                             <td className="px-5 py-3.5 text-right">
                                                 <Link href={`/admin/candidates/${c.candidateId}`} className="text-xs text-primary font-bold hover:underline">
                                                     View 360°
@@ -510,10 +527,10 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ client
                                             <span className="font-bold text-neutral-900 text-xs">{off.candidateName}</span>
                                             <Badge value={off.stage} />
                                         </div>
-                                        <p className="text-[11px] text-neutral-500 mt-0.5">{off.jobTitle} · Offered: ₹{off.offeredCtcLpa || 16} LPA</p>
+                                        <p className="text-[11px] text-neutral-500 mt-0.5">{off.jobTitle} · Offered: {off.offeredCtcLpa != null ? `₹${off.offeredCtcLpa} LPA` : "not recorded"}</p>
                                     </div>
                                     <div className="text-right">
-                                        <span className="text-xs font-bold text-emerald-600">Joining Expected</span>
+                                        <span className="text-xs font-bold text-emerald-600">{off.stage === "JOINED" ? "Joined" : off.joiningDate ? `Joining ${new Date(off.joiningDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}` : "Joining date not set"}</span>
                                     </div>
                                 </div>
                             ))}
@@ -565,11 +582,11 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ client
                 <div className="space-y-4">
                     <div className="grid grid-cols-3 gap-4">
                         <StatCard label="Total Invoiced" value={inr(stats.totalInvoiced || 0)} icon={IndianRupee} tone="primary" />
-                        <StatCard label="Paid Received" value={inr(stats.totalIncome || 0)} icon={CheckCircle2} tone="emerald" />
+                        <StatCard label="Payments Received" value={inr(stats.totalIncome || 0)} icon={CheckCircle2} tone="emerald" />
                         <StatCard label="Outstanding Due" value={inr(stats.pendingReceivables || 0)} icon={Clock} tone={stats.pendingReceivables > 0 ? "amber" : "neutral"} />
                     </div>
 
-                    <SectionCard title="Invoices & Placement Billing" subtitle="Commercial billing records with GST breakdowns">
+                    <SectionCard title="Invoices & Placement Billing" subtitle="From the Finance workspace · amounts include GST" action={<Link href={`/finance/invoices?clientId=${clientId}`} className="text-xs font-bold text-primary hover:underline">Open in Finance</Link>}>
                         {invoices.length === 0 ? (
                             <EmptyState icon={IndianRupee} message="No invoices generated for this client." />
                         ) : (
@@ -582,6 +599,7 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ client
                                             <th className="px-3 py-3">Issue Date</th>
                                             <th className="px-3 py-3">Due Date</th>
                                             <th className="px-3 py-3">Total Amount</th>
+                                            <th className="px-3 py-3">Balance Due</th>
                                             <th className="px-5 py-3 text-right">Payment Status</th>
                                         </tr>
                                     </thead>
@@ -592,7 +610,8 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ client
                                                 <td className="px-3 py-3.5 text-neutral-700">{inv.jobTitle}</td>
                                                 <td className="px-3 py-3.5 text-neutral-500">{new Date(inv.issueDate).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })}</td>
                                                 <td className="px-3 py-3.5 text-neutral-500">{inv.dueDate ? new Date(inv.dueDate).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" }) : "—"}</td>
-                                                <td className="px-3 py-3.5 font-bold text-neutral-900">{inr(inv.total)}</td>
+                                                <td className="px-3 py-3.5 font-bold text-neutral-900">{inr(inv.total)}{inv.kind === "CREDIT_NOTE" && <span className="ml-1 text-[10px] font-medium text-neutral-400">credit note</span>}</td>
+                                                <td className="px-3 py-3.5 font-semibold text-neutral-700">{inv.balance ? inr(inv.balance) : "—"}</td>
                                                 <td className="px-5 py-3.5 text-right"><Badge value={inv.status} /></td>
                                             </tr>
                                         ))}
@@ -607,8 +626,8 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ client
             {/* TAB: CONTACTS */}
             {activeTab === "contacts" && (
                 <SectionCard
-                    title="Client Key Stakeholders & Contacts"
-                    subtitle="HR leaders, technical hiring managers, and accounts billing representatives"
+                    title="Client Contacts"
+                    subtitle="Primary contact (edit the client to change) and billing mailboxes (set in Finance › Client Billing)"
                 >
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {contacts.map((cnt: any) => (
@@ -621,42 +640,10 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ client
                                         </span>
                                     )}
                                 </div>
-                                <p className="text-[11px] text-neutral-500 font-medium">{cnt.jobTitle} · {cnt.department}</p>
+                                <p className="text-[11px] text-neutral-500 font-medium">{cnt.jobTitle}</p>
                                 <div className="space-y-1 pt-1 text-xs text-neutral-600">
                                     <p className="flex items-center gap-2"><Mail size={13} className="text-neutral-400" /> <a href={`mailto:${cnt.email}`} className="text-primary hover:underline">{cnt.email}</a></p>
-                                    <p className="flex items-center gap-2"><Phone size={13} className="text-neutral-400" /> {cnt.phone}</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </SectionCard>
-            )}
-
-            {/* TAB: DOCUMENTS */}
-            {activeTab === "documents" && (
-                <SectionCard title="Legal & Commercial Documents" subtitle="Executed MSAs, signed NDAs, rate cards, and billing agreements">
-                    <div className="space-y-3">
-                        {documents.map((doc: any) => (
-                            <div key={doc.id} className="p-4 bg-white rounded-2xl border border-neutral-200/80 flex items-center justify-between gap-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center text-primary shrink-0">
-                                        <FileText size={18} />
-                                    </div>
-                                    <div>
-                                        <h4 className="text-xs font-bold text-neutral-900">{doc.name}</h4>
-                                        <span className="text-[10px] text-neutral-400 font-medium">Uploaded by {doc.uploadedBy} on {doc.uploadDate} · {doc.fileSize}</span>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="px-2 py-0.5 text-[10px] font-bold bg-emerald-50 text-emerald-700 rounded-md border border-emerald-200">
-                                        Active Contract
-                                    </span>
-                                    <button
-                                        onClick={() => toast.info("Downloading contract copy...")}
-                                        className="p-2 text-neutral-500 hover:text-primary rounded-lg border border-neutral-200 hover:bg-neutral-50"
-                                    >
-                                        <Download size={14} />
-                                    </button>
+                                    {cnt.phone && <p className="flex items-center gap-2"><Phone size={13} className="text-neutral-400" /> {cnt.phone}</p>}
                                 </div>
                             </div>
                         ))}
@@ -666,82 +653,103 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ client
 
             {/* TAB: COMMUNICATION */}
             {activeTab === "communication" && (
-                <SectionCard title="Corporate Communication Logs" subtitle="Phone logs, email interactions, and meeting summaries with client team">
+                <SectionCard title="Communication Log" subtitle="Calls, emails and meetings logged from Recruitment › My Clients">
+                    {communications.length === 0 ? <EmptyState icon={MessageSquare} message="Nothing logged with this client yet." /> : (
                     <div className="space-y-3">
                         {communications.map((comm: any) => (
                             <div key={comm.id} className="p-4 bg-neutral-50 rounded-2xl border border-neutral-200/60 space-y-1.5">
                                 <div className="flex items-center justify-between">
                                     <span className="text-[10px] font-black uppercase px-2 py-0.5 bg-neutral-200 text-neutral-700 rounded">
-                                        {comm.type}
+                                        {comm.type} · {comm.direction === "INCOMING" ? "from client" : "to client"}
                                     </span>
-                                    <span className="text-[10px] text-neutral-400 font-medium">{comm.date}</span>
+                                    <span className="text-[10px] text-neutral-400 font-medium">{new Date(comm.date).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
                                 </div>
                                 <h4 className="text-xs font-bold text-neutral-900">{comm.subject}</h4>
-                                <p className="text-[11px] text-neutral-600 leading-relaxed">{comm.summary}</p>
+                                <p className="text-[11px] text-neutral-600 leading-relaxed whitespace-pre-line">{comm.summary}</p>
                                 <p className="text-[10px] text-neutral-400 font-medium pt-1">
-                                    Logged by <strong>{comm.userName}</strong> with <strong>{comm.contactName}</strong>
+                                    Logged by <strong>{comm.userName}</strong>{comm.nextFollowUpDate && <> · follow up {comm.nextFollowUpDate}</>}
                                 </p>
                             </div>
                         ))}
                     </div>
+                    )}
                 </SectionCard>
             )}
 
             {/* TAB: NOTES & ACTIVITY */}
             {activeTab === "notes" && (
                 <SectionCard
-                    title="Internal Recruiter Notes & Timeline"
-                    subtitle="Confidential operational notes visible only to internal agency members"
+                    title="Internal Notes"
+                    subtitle="Visible to your team only, never to the client"
                     action={
                         <button onClick={() => setNoteModalOpen(true)} className="text-xs font-bold text-primary hover:underline">
                             + Add Note
                         </button>
                     }
                 >
+                    {notes.length === 0 && !client.notes ? <EmptyState icon={CheckSquare} message="No notes yet." /> : (
                     <div className="space-y-3">
+                        {client.notes && (
+                            <div className="p-4 bg-amber-50/50 rounded-2xl border border-amber-200/60 space-y-1">
+                                <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded">Notes from client profile</span>
+                                <p className="text-xs text-neutral-700 leading-relaxed pt-1 whitespace-pre-line">{client.notes}</p>
+                            </div>
+                        )}
                         {notes.map((n: any) => (
                             <div key={n.id} className="p-4 bg-neutral-50 rounded-2xl border border-neutral-200/60 space-y-1">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">
-                                        {n.category}
-                                    </span>
-                                    <span className="text-[10px] text-neutral-400">{n.createdAt}</span>
+                                    <span className="text-[10px] font-medium text-neutral-500">By <strong>{n.authorName}</strong></span>
+                                    <span className="text-[10px] text-neutral-400">{new Date(n.createdAt).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
                                 </div>
-                                <p className="text-xs text-neutral-700 leading-relaxed pt-1">{n.text}</p>
-                                <p className="text-[10px] text-neutral-400 font-medium pt-1">Author: <strong>{n.authorName}</strong></p>
+                                <p className="text-xs text-neutral-700 leading-relaxed pt-1 whitespace-pre-line">{n.text}</p>
                             </div>
                         ))}
                     </div>
+                    )}
                 </SectionCard>
             )}
 
-            {/* TAB: COMPLIANCE */}
-            {activeTab === "compliance" && (
-                <SectionCard title="Client Governance & Compliance" subtitle="Statutory agreements, anti-bribery policies, and credit protection">
+            {/* TAB: TERMS & CREDIT (billing profile + live invoices) */}
+            {activeTab === "terms" && terms && (
+                <div className="space-y-4">
+                    {terms.onHold && (
+                        <div className="p-3 rounded-xl border border-red-200 bg-red-50 text-xs text-red-800">
+                            <strong>On credit hold:</strong> {terms.holdReasons.join("; ")}
+                        </div>
+                    )}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-200/60 space-y-1 text-xs">
-                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                                Verified
-                            </span>
-                            <h4 className="font-bold text-neutral-900 pt-1">Master Services Agreement (MSA)</h4>
-                            <p className="text-neutral-500">Valid through March 2027 with standard non-solicit clause.</p>
-                        </div>
-                        <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-200/60 space-y-1 text-xs">
-                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                                Active
-                            </span>
-                            <h4 className="font-bold text-neutral-900 pt-1">Replacement Guarantee Terms</h4>
-                            <p className="text-neutral-500">90-day replacement window on candidate non-performance or voluntary exit.</p>
-                        </div>
-                        <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-200/60 space-y-1 text-xs">
-                            <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                                Monitored
-                            </span>
-                            <h4 className="font-bold text-neutral-900 pt-1">Credit Protection Rating</h4>
-                            <p className="text-neutral-500">Rating A+ based on 100% on-time payment track record across 4 previous invoices.</p>
-                        </div>
+                        <SectionCard title="Fee" subtitle="How placements are billed">
+                            <div className="space-y-1.5 text-xs text-neutral-700">
+                                <p className="text-sm font-bold text-neutral-900">
+                                    {terms.feeModel === "FLAT" ? (terms.flatFee != null ? inr(terms.flatFee) + " flat" : "Flat fee (not set)")
+                                        : terms.feeModel === "SLAB" ? `Slabs: ${terms.feeSlabs.map((sl: any) => `${sl.percent}% up to ${sl.uptoLpa} LPA`).join(", ") || "not set"}`
+                                        : terms.feePercent != null ? `${terms.feePercent}% of CTC` : "Not set"}
+                                </p>
+                                <p>{terms.splitOnOfferPct > 0 ? `${terms.splitOnOfferPct}% billed on offer, rest on joining` : "100% billed on joining"}</p>
+                                <p>Replacement guarantee: <strong>{terms.guaranteeDays} days</strong></p>
+                            </div>
+                        </SectionCard>
+                        <SectionCard title="Credit" subtitle="Payment terms and exposure">
+                            <div className="space-y-1.5 text-xs text-neutral-700">
+                                <p>Credit period: <strong>{terms.creditDays != null ? `${terms.creditDays} days` : "—"}</strong></p>
+                                <p>Credit limit: <strong>{terms.creditLimit ? inr(terms.creditLimit) : "No limit set"}</strong></p>
+                                <p>Outstanding now: <strong>{inr(terms.outstanding)}</strong></p>
+                                <p>Oldest overdue: <strong>{terms.maxOverdueDays ? `${terms.maxOverdueDays} days` : "nothing overdue"}</strong></p>
+                            </div>
+                        </SectionCard>
+                        <SectionCard title="Payment record" subtitle="From paid invoices">
+                            <div className="space-y-1.5 text-xs text-neutral-700">
+                                {terms.paidInvoices === 0 ? <p className="text-neutral-500">No invoices paid yet.</p> : (<>
+                                    <p className="text-sm font-bold text-neutral-900">{Math.round((terms.paidOnTime / terms.paidInvoices) * 100)}% paid on time</p>
+                                    <p>{terms.paidOnTime} of {terms.paidInvoices} paid invoices were paid by the due date</p>
+                                </>)}
+                                <p className="pt-1">GSTIN: <strong>{terms.gstin || "not set"}</strong></p>
+                                {terms.billingAddress && <p className="text-neutral-500">{terms.billingAddress}</p>}
+                            </div>
+                        </SectionCard>
                     </div>
-                </SectionCard>
+                    <p className="text-[11px] text-neutral-400">Fee, guarantee, credit limit and GSTIN are edited in Finance › Client Billing.</p>
+                </div>
             )}
 
             {/* Post Job Modal */}
@@ -970,14 +978,11 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ client
                                 Cancel
                             </button>
                             <button
-                                onClick={() => {
-                                    toast.success("Note saved to client record.");
-                                    setNoteModalOpen(false);
-                                    setNewNote("");
-                                }}
+                                disabled={!newNote.trim() || addNoteMutation.isPending}
+                                onClick={() => addNoteMutation.mutate(newNote)}
                                 className="px-4 py-2 text-xs font-medium bg-primary text-white rounded-md shadow hover:bg-primary-dark"
                             >
-                                Save Note
+                                {addNoteMutation.isPending ? "Saving…" : "Save Note"}
                             </button>
                         </div>
                     </div>

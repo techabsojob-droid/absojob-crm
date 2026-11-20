@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { addAudit } from "@/lib/mock/data";
+import { addAudit, organizationSettingsSeed } from "@/lib/mock/data";
 import { GSTIN_RE, IFSC_RE, PAN_RE, settingsFor } from "@/lib/mock/finance";
 import { bad, body, requireFinance } from "@/lib/mock/fin/http";
 import type { BankAccount } from "@/lib/types";
@@ -64,6 +64,12 @@ export async function PATCH(request: Request) {
         if ((!next || (s.lockedUntil && next < s.lockedUntil)) && me.role !== "SUPER_ADMIN") return bad("Only the Super Admin can reopen a closed period", 403);
         s.lockedUntil = next;
         changed.push(`lockedUntil=${next ?? "open"}`);
+    }
+    // Admin Settings hold the same GST rate and credit period; keep them in step
+    const org = organizationSettingsSeed[me.orgId];
+    if (org) {
+        if (changed.includes("gstRate")) org.taxGstRatePercent = s.gstRate;
+        if (changed.includes("defaultCreditDays")) org.defaultCreditPeriodDays = s.defaultCreditDays;
     }
     addAudit({ orgId: me.orgId, actorUserId: me.id, actorRole: me.role, action: "FINANCE_SETTINGS_UPDATED", entity: "FinanceSettings", entityId: me.orgId, detail: changed.join(", ") || "no changes" });
     return NextResponse.json(s);

@@ -10,6 +10,13 @@ const FIT: CallRoleFit[] = ["STRONG_FIT", "GOOD_FIT", "AVERAGE_FIT", "NOT_FIT"];
 const YNM: CallYesNoMaybe[] = ["YES", "NO", "MAYBE"];
 const ACTIONS: CallNextAction[] = ["SCHEDULE_TECH_INTERVIEW", "SCHEDULE_HR_INTERVIEW", "SHARE_WITH_CLIENT", "CALL_BACK", "SEND_JD", "FOLLOW_UP", "COLLECT_DOCUMENTS", "REJECT", "NO_ACTION"];
 const MAX_DURATION_MINS = 600;
+/** Default note for calls that didn't connect. */
+const STATUS_NOTE: Record<CallStatus, string> = {
+    CONNECTED: "", NOT_ANSWERED: "No answer", BUSY: "Line busy", SWITCHED_OFF: "Phone switched off",
+    CALL_BACK: "Asked to call back later", WRONG_NUMBER: "Wrong number",
+};
+/** Statuses where the person wasn't reached (for the "Not reached" filter). */
+export const NOT_REACHED: CallStatus[] = ["NOT_ANSWERED", "BUSY", "SWITCHED_OFF", "CALL_BACK", "WRONG_NUMBER"];
 const DAY = 86400000;
 
 export const pick = <T extends string>(list: T[], v: unknown): T | null => (list.includes(v as T) ? (v as T) : null);
@@ -68,8 +75,9 @@ export function parseCall(b: Record<string, unknown>): { ok: true; call: ParsedC
     if (!callStatus) return fail("Call status is required");
     if (b.purpose && !pick(CALL_PURPOSES, b.purpose)) return fail("Unknown call purpose");
     const purpose = pick(CALL_PURPOSES, b.purpose) ?? "OTHER";
-    const remarks = text(b.remarks, 5000);
-    if (!remarks) return fail("Recruiter remarks are required");
+    // A note is required after a real conversation; for unanswered calls the status says it all
+    const remarks = text(b.remarks, 5000) ?? (callStatus === "CONNECTED" ? null : STATUS_NOTE[callStatus]);
+    if (!remarks) return fail("Add a short note about what was discussed");
     const calledAt = b.calledAt ? new Date(String(b.calledAt)) : new Date();
     if (Number.isNaN(+calledAt)) return fail("Invalid call date / time");
     if (+calledAt > Date.now() + 5 * 60_000) return fail("Call date / time cannot be in the future");
@@ -136,3 +144,10 @@ export function parseCall(b: Record<string, unknown>): { ok: true; call: ParsedC
 
 /** Calls are dated on the team's working day (IST). */
 export const istDay = (iso: string) => new Date(+new Date(iso) + 330 * 60000).toISOString().slice(0, 10);
+
+/** Status filter: one status, or NOT_REACHED for every call that didn't connect. */
+export function statusFilter(v: string | null): ((s: string) => boolean) | null {
+    if (v === "NOT_REACHED") return (s) => (NOT_REACHED as string[]).includes(s);
+    const one = pick(CALL_STATUSES, v);
+    return one ? (s) => s === one : null;
+}

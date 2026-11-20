@@ -1,5 +1,6 @@
 // ─── Requisition create / update from the wizard (server) ─────
 import { NextResponse } from "next/server";
+import { defaultSlaDays } from "@/lib/org-settings";
 import type { JobAssignmentRecord, JobOpeningItem, JobRequisition, User } from "@/lib/types";
 import { approvals, organizationSettingsSeed, users, nextIds } from "@/lib/mock/data";
 import { canCreateForClient, createApproval, isRecruitmentManager, notifyJobAssignment } from "@/lib/mock/pipeline";
@@ -24,7 +25,8 @@ export function needsApproval(me: User) {
 }
 
 const nameOf = (id: string) => users.find((u) => u.id === id)?.name ?? id;
-const slaDaysFor = (closeDate: string | null | undefined) => (closeDate ? Math.max(1, Math.ceil((+new Date(`${closeDate}T23:59:59+05:30`) - Date.now()) / DAY)) : 30);
+/** Days to the target close date, else the Settings default SLA. */
+const slaDaysFor = (closeDate: string | null | undefined, orgId: string) => (closeDate ? Math.max(1, Math.ceil((+new Date(`${closeDate}T23:59:59+05:30`) - Date.now()) / DAY)) : defaultSlaDays(orgId));
 
 function openApproval(job: JobRequisition, me: User) {
     createApproval({
@@ -96,8 +98,8 @@ export async function createRequisition(me: User, body: Record<string, unknown>)
         // The requester is on the team of their own request so they can see it
         assignedTas: manager ? team : [me.id],
         published: false, publishedAt: null, publishedById: null,
-        slaDays: slaDaysFor(v.targetCloseDate),
-        sla: { slaDays: slaDaysFor(v.targetCloseDate), slaStartDate: now, status: "ON_TRACK" },
+        slaDays: slaDaysFor(v.targetCloseDate, me.orgId),
+        sla: { slaDays: slaDaysFor(v.targetCloseDate, me.orgId), slaStartDate: now, status: "ON_TRACK" },
         openingsList: Array.from({ length: openings }, (_, i): JobOpeningItem => ({ id: `opn-${crypto.randomUUID().slice(0, 8)}`, openingNumber: i + 1, status: "OPEN", notes: "Initialized with requisition" })),
         requirementVersions: [{
             version: 1, openings, salaryMinLpa: v.salaryMinLpa ?? 0, salaryMaxLpa: v.salaryMaxLpa ?? 0,
@@ -209,7 +211,7 @@ export async function updateRequisition(me: User, existing: JobRequisition, body
         updates.openingsList = list.map((o, i) => ({ ...o, openingNumber: i + 1 }));
     }
     if (updates.targetCloseDate !== existing.targetCloseDate) {
-        updates.slaDays = slaDaysFor(updates.targetCloseDate);
+        updates.slaDays = slaDaysFor(updates.targetCloseDate, existing.orgId);
         updates.sla = { ...(existing.sla ?? { slaStartDate: existing.createdAt, status: "ON_TRACK" }), slaDays: updates.slaDays };
     }
 

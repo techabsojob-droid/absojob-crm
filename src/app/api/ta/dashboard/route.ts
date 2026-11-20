@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { defaultSlaDays } from "@/lib/org-settings";
 import { requireRole } from "@/lib/mock/server";
 import {
     jobs, clients, applications, candidates, interviews, tasks, users,
@@ -96,7 +97,7 @@ export async function GET(request: Request) {
     const enrichedRequisitions = activeJobs.map((j) => {
         const client = clients.find((c) => c.id === j.clientId);
         const daysOpen = Math.max(1, Math.floor((now.getTime() - new Date(j.createdAt).getTime()) / 86400000));
-        const effectiveSla = j.slaDays || 30;
+        const effectiveSla = j.slaDays || defaultSlaDays(j.orgId);
         const daysRemaining = effectiveSla - daysOpen;
         const jobApps = orgApps.filter((a) => a.jobId === j.id);
         const inPipe = jobApps.filter((a) => ACTIVE_STAGES.includes(a.stage)).length;

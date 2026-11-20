@@ -454,7 +454,10 @@ select:focus-visible {
 }
 
 /* Headings */
-h1, h2, h3, h4 { color: #1A2638; letter-spacing: -0.01em; }
+/* In the base layer so utility classes (e.g. text-white on dark panels) win */
+@layer base {
+  h1, h2, h3, h4 { color: #1A2638; letter-spacing: -0.01em; }
+}
 
 /* Card Shadow Utility - Premium Elevation */
 .card-shadow {
