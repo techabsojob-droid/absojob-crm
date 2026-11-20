@@ -37,9 +37,7 @@ export default function TeamPage() {
         department: "Talent Acquisition",
         designation: "Recruiter / Talent Partner",
         reportingTo: "",
-        location: "Mumbai",
-        workMode: "Hybrid (Mumbai HQ)",
-        employmentType: "Full Time",
+        location: "",
     });
 
     const { data: team = [], isLoading } = useQuery<any[]>({
@@ -71,8 +69,7 @@ export default function TeamPage() {
             setForm({
                 name: "", email: "", phone: "", role: "TA_RECRUITER",
                 department: "Talent Acquisition", designation: "Recruiter / Talent Partner",
-                reportingTo: "", location: "Mumbai", workMode: "Hybrid (Mumbai HQ)",
-                employmentType: "Full Time",
+                reportingTo: "", location: "",
             });
             qc.invalidateQueries({ queryKey: ["team"] });
         },
@@ -330,7 +327,7 @@ export default function TeamPage() {
                                     <div className="p-2.5 bg-neutral-50 rounded-xl text-[11px] text-neutral-600 space-y-1">
                                         <p className="flex items-center gap-1.5 truncate">
                                             <UserCheck size={12} className="text-primary shrink-0" />
-                                            <span>Reports to: <strong>{u.reportingToName || "Aarav Mehta (Root)"}</strong></span>
+                                            <span>Reports to: <strong>{u.reportingToName || "—"}</strong></span>
                                         </p>
                                         <p className="flex items-center gap-1.5 text-neutral-400 text-[10px]">
                                             <Building2 size={12} className="shrink-0" />
@@ -418,7 +415,7 @@ export default function TeamPage() {
                                             </td>
                                             <td className="px-3 py-3.5"><Badge value={u.role} /></td>
                                             <td className="px-3 py-3.5 text-neutral-600 font-medium">{u.department} · {u.team}</td>
-                                            <td className="px-3 py-3.5 text-neutral-700 font-semibold">{u.reportingToName || "Aarav Mehta (Root)"}</td>
+                                            <td className="px-3 py-3.5 text-neutral-700 font-semibold">{u.reportingToName || "—"}</td>
                                             <td className="px-3 py-3.5 font-bold text-neutral-800">{u.directReportsCount}</td>
                                             <td className="px-3 py-3.5"><Badge value={u.status} /></td>
                                             <td className="px-5 py-3.5 text-right">

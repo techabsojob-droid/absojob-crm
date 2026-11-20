@@ -8,6 +8,7 @@ import {
     FilePlus2, Clock, Gauge, Crosshair
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { kpiSection } from "@/lib/access";
 
 const MANAGER_ONLY = new Set(["/ta/approvals", "/ta/reports", "/ta/partners", "/ta/requisitions/new"]);
 
@@ -44,7 +45,7 @@ const TA_NAV_GROUPS: NavGroup[] = [
         groupTitle: "TEAM",
         items: [
             { label: "Attendance & Leave", icon: Clock, href: "/ta/attendance", tooltipHint: "Check in / out, apply leave, team attendance and approvals" },
-            { label: "Recruiter KPIs", icon: Gauge, href: "/ta/kpis", tooltipHint: "Recruiter-wise KPIs: daily, weekly, monthly" },
+            { label: "KPIs", icon: Gauge, href: "/ta/kpis", tooltipHint: "KPIs: daily, weekly, monthly" }, // renamed per role below
             { label: "Targets", icon: Crosshair, href: "/ta/targets", tooltipHint: "Monthly targets, achievement % and shortfall" },
         ],
     },
@@ -61,8 +62,13 @@ const TA_NAV_GROUPS: NavGroup[] = [
 export default function TaLayoutClient({ children }: { children: React.ReactNode }) {
     const { user } = useAuth();
     // Recruiters don't approve requisitions; hide manager-only entries for them
-    const groups = user?.role === "TA_RECRUITER"
-        ? TA_NAV_GROUPS.map((g) => ({ ...g, items: g.items.filter((i) => !MANAGER_ONLY.has(i.href)) }))
-        : TA_NAV_GROUPS;
+    // The KPI entry is named for what this person sees (their own, their team's or everyone's)
+    const kpi = kpiSection(user?.role);
+    const groups = TA_NAV_GROUPS.map((g) => ({
+        ...g,
+        items: g.items
+            .filter((i) => user?.role !== "TA_RECRUITER" || !MANAGER_ONLY.has(i.href))
+            .map((i) => (i.href === "/ta/kpis" ? { ...i, label: kpi.title, tooltipHint: kpi.hint } : i)),
+    }));
     return <AppShell groups={groups}>{children}</AppShell>;
 }

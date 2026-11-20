@@ -15,9 +15,10 @@ export function verifyPassword(plain: string, stored: string): boolean {
     return a.length === b.length && timingSafeEqual(a, b);
 }
 
-/** Minimum policy: 8+ chars with a letter and a number. */
-export function passwordPolicyError(pw: string): string | null {
-    if (typeof pw !== "string" || pw.length < 8) return "Password must be at least 8 characters";
+/** Password policy: at least `minLength` characters (Settings › Security, never below 8) with a letter and a number. */
+export function passwordPolicyError(pw: string, minLength = 8): string | null {
+    const min = Math.max(8, Math.min(64, Math.round(minLength) || 8));
+    if (typeof pw !== "string" || pw.length < min) return `Password must be at least ${min} characters`;
     if (!/[A-Za-z]/.test(pw) || !/\d/.test(pw)) return "Password must contain a letter and a number";
     if (pw.length > 128) return "Password is too long";
     return null;

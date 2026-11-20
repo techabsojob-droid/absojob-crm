@@ -33,6 +33,17 @@ export interface User {
   deactivatedAt?: string | null;
   passwordHash?: string | null; // scrypt$salt$hash — set when the user chooses a password
   passwordChangedAt?: string | null;
+  // Security (enforced from Settings › Security)
+  /** Sessions issued before this time are signed out (password reset, admin action). */
+  sessionsRevokedAt?: string | null;
+  failedLoginAttempts?: number;
+  /** Login refused until this time after too many failed attempts. */
+  lockedUntil?: string | null;
+  mfaEnabled?: boolean;
+  /** TOTP secret, encrypted with the server's session secret. */
+  mfaSecretEnc?: string | null;
+  /** Secret generated during enrolment, kept until the first code is confirmed. */
+  mfaPendingSecretEnc?: string | null;
 }
 
 // ─── Clients (companies whose positions we fill) ──────────────
@@ -1380,6 +1391,14 @@ export interface PlacementRecord {
   guaranteeEndDate: string;
   replacementStatus: ReplacementStatus;
   notes?: string | null;
+  // Candidate information the client needs on the invoice
+  /** The client's employee ID for the joined candidate. */
+  employeeCode?: string | null;
+  /** Work location at the client. */
+  workLocation?: string | null;
+  grade?: string | null;
+  /** FLS = front-line staff, NFLS = non front-line staff. */
+  employeeType?: "FLS" | "NFLS" | null;
   createdAt: string;
 }
 

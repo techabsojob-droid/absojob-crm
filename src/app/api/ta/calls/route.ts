@@ -6,7 +6,7 @@ import { bad, body } from "@/lib/mock/fin/http";
 import { canAccessJobId, canWorkOnApplication, isRecruitmentManager, teamPickList, teamScopeIds } from "@/lib/mock/pipeline";
 import { csvDownload } from "@/lib/csv";
 import type { CallActivity } from "@/lib/types";
-import { CALL_INTERESTS, CALL_PURPOSES, CALL_STATUSES, istDay, parseCall, pick } from "@/lib/calls";
+import { CALL_INTERESTS, CALL_PURPOSES, CALL_STATUSES, istDay, parseCall, pick, statusFilter } from "@/lib/calls";
 
 const STATUSES = CALL_STATUSES;
 const INTEREST = CALL_INTERESTS;
@@ -70,7 +70,7 @@ export async function GET(request: Request) {
     const from = date(q.get("from"));
     const to = date(q.get("to"));
     if (from && to && from > to) return bad("'From' date must be before 'To' date");
-    const status = pick(STATUSES, q.get("status"));
+    const status = statusFilter(q.get("status")); // one status, or NOT_REACHED
     const interest = pick(INTEREST, q.get("interest"));
     const purpose = pick(PURPOSES, q.get("purpose"));
     const recruiterId = team ? q.get("recruiterId") : null;
@@ -83,7 +83,7 @@ export async function GET(request: Request) {
         .filter((c) => !recruiterId || c.recruiterId === recruiterId)
         .filter((c) => !from || istDay(c.calledAt) >= from)
         .filter((c) => !to || istDay(c.calledAt) <= to)
-        .filter((c) => !status || c.callStatus === status)
+        .filter((c) => !status || status(c.callStatus))
         .filter((c) => !interest || c.candidateInterest === interest)
         .filter((c) => !purpose || c.purpose === purpose)
         .map(enrich)
@@ -165,6 +165,12 @@ export async function POST(request: Request) {
         createdAt: now,
     };
 
+    // This call takes care of my earlier reminders to call this candidate that are due by now
+    const today = istDay(now);
+    const closed = tasks.filter((t) => t.orgId === me.orgId && t.type === "FOLLOW_UP" && !t.completed && t.relatedType === "CANDIDATE"
+        && t.relatedId === cand.id && t.assignedToId === me.id && (!t.dueDate || t.dueDate <= today));
+    for (const t of closed) { t.completed = true; t.status = "DONE"; t.completedAt = now; }
+
     if (call.followUpDate) {
         const job = app ? jobs.find((j) => j.id === app.jobId) : undefined;
         call.followUpTaskId = nextIds.task();
@@ -208,5 +214,5 @@ export async function POST(request: Request) {
         orgId: me.orgId, actorUserId: me.id, actorRole: me.role, action: "CANDIDATE_CALLED", entity: "Candidate", entityId: cand.id,
         detail: `${call.callType.toLowerCase()} call — ${callStatus.replace(/_/g, " ").toLowerCase()} (${purpose.replace(/_/g, " ").toLowerCase()})${changed.length ? `; updated ${changed.join(", ")}` : ""}`,
     });
-    return NextResponse.json(enrich(call), { status: 201 });
+    return NextResponse.json({ ...enrich(call), closedFollowUps: closed.length }, { status: 201 });
 }

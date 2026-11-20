@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { stageSlaHours } from "@/lib/org-settings";
 import { requireRole } from "@/lib/mock/server";
 import { applications, candidates, jobs, clients, interviews, users, referrals, addAudit, addNotification, nextIds } from "@/lib/mock/data";
 import { fitScore } from "@/lib/fit";
@@ -21,6 +22,7 @@ export async function GET(request: Request) {
     let list = applications.filter((a) => canWorkOnApplication(me, a));
     if (mineOnly) list = list.filter((a) => a.recruiterId === me.id);
 
+    const stageSla = stageSlaHours(me.orgId);
     let enriched = list.map((a) => {
         const c = candidates.find((x) => x.id === a.candidateId)!;
         const j = jobs.find((x) => x.id === a.jobId)!;
@@ -29,6 +31,7 @@ export async function GET(request: Request) {
         return {
             ...a,
             recruiterName: users.find((u) => u.id === a.recruiterId)?.name ?? "Unassigned",
+            stageSlaHours: stageSla[a.stage] ?? 0,
             openOfferId: openOffer?.id ?? null,
             openOfferCtcLpa: openOffer?.offeredCtcLpa ?? null,
             openOfferStatus: openOffer?.status ?? null,

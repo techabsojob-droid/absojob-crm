@@ -3,6 +3,7 @@ import "./globals.css";
 import { AuthProvider } from "@/lib/auth";
 import QueryProvider from "@/providers/QueryProvider";
 import { Toaster } from "sonner";
+import SessionWatcher from "@/components/shared/SessionWatcher";
 
 export const metadata: Metadata = {
   title: "AbsoJob — Recruitment CRM",
@@ -20,6 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body suppressHydrationWarning>
         <QueryProvider>
           <AuthProvider>{children}</AuthProvider>
+          <SessionWatcher />
           <Toaster position="bottom-right" richColors />
         </QueryProvider>
       </body>

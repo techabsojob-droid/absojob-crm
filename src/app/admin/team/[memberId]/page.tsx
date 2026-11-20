@@ -1,4 +1,6 @@
 "use client";
+import { workspacesFor, WORKSPACE_LABEL } from "@/lib/access";
+import { OPEN_JOB_STATUSES } from "@/lib/requisition-options";
 
 import { use, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -15,6 +17,17 @@ import { StatCard, Badge, SectionCard, ModalShell, EmptyState } from "@/componen
 import { useAuth } from "@/lib/auth";
 import { TempPasswordDialog, type IssuedLogin } from "@/components/shared/TempPasswordDialog";
 import { KeyRound } from "lucide-react";
+
+// What each role can do, matching the access rules in src/lib/access.ts and the API role checks
+const ROLE_PERMISSIONS: Record<string, { scope: string; can: string[]; cannot: string[] }> = {
+    SUPER_ADMIN: { scope: "Whole organisation", can: ["Every workspace: Admin, Recruitment, HRMIS, Finance", "Users, roles, settings, security and integrations", "Approve requisitions, offers and payouts", "See all money, salary and audit data"], cannot: [] },
+    TA_MANAGER: { scope: "Their clients and their team's requisitions", can: ["Create and approve requisitions", "Assign recruiters, see team KPIs and targets", "Manage candidates, interviews, offers and placements", "Approve team attendance and leave"], cannot: ["Organisation settings and security", "Finance workspace and invoices", "Salary data of others"] },
+    TA_RECRUITER: { scope: "Openings assigned to them", can: ["Source and add candidates", "Log calls and move candidates in the pipeline", "Schedule interviews and submit profiles", "See their own KPIs and targets"], cannot: ["Create or approve requisitions", "Other recruiters' pipelines and reports", "Settings, finance and salary data"] },
+    HR_ADMIN: { scope: "All employees (HRMIS)", can: ["Employees, onboarding, documents and exits", "Leave, attendance, payroll and performance", "Approve HR requests"], cannot: ["Admin console and recruitment", "Finance workspace"] },
+    FINANCE_ADMIN: { scope: "Money (Finance workspace)", can: ["Billing queue, invoices, receipts and credit notes", "Payables, expenses, payroll disbursement", "Books, bank reconciliation, GST & TDS"], cannot: ["Admin console, recruitment and HRMIS", "Changing users or roles"] },
+    AGENT: { scope: "Their own referrals", can: ["Refer candidates and track their status", "See their payouts"], cannot: ["Any staff workspace"] },
+    EMPLOYEE: { scope: "Their own records", can: ["Attendance, leave, payslips and documents", "Raise HR requests"], cannot: ["Any admin, recruitment, HR or finance workspace"] },
+};
 
 export default function Employee360ProfilePage({
     params,
@@ -50,6 +63,9 @@ export default function Employee360ProfilePage({
         attendance?: any[];
         leaves?: any[];
         promotions?: any[];
+        leaveBalances?: any[];
+        documents?: any[] | null;
+        employeeRecord?: { id: string; code: string; department: string; designation: string } | null;
         compensation?: any;
         pipeline?: any;
     }>({
@@ -76,6 +92,25 @@ export default function Employee360ProfilePage({
             return d;
         },
         onSuccess: (d) => setIssued({ name: d.name, email: d.email, password: d.tempPassword }),
+        onError: (e: Error) => toast.error(e.message),
+    });
+
+    // Sign-in security (Super Admin): reset two-step sign-in, unlock, sign out everywhere
+    const securityMutation = useMutation({
+        mutationFn: async (action: "resetMfa" | "unlock" | "signOut") => {
+            const res = await fetch("/api/admin/users", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: memberId, [action]: true }),
+            });
+            const d = await res.json();
+            if (!res.ok) throw new Error(d.error ?? "Could not update sign-in security");
+            return action;
+        },
+        onSuccess: (action) => {
+            toast.success(action === "resetMfa" ? "Two-step sign-in reset. They set it up again at their next sign-in." : action === "unlock" ? "Account unlocked." : "Signed out of all devices.");
+            qc.invalidateQueries({ queryKey: ["employee-360", memberId] });
+        },
         onError: (e: Error) => toast.error(e.message),
     });
 
@@ -290,7 +325,7 @@ export default function Employee360ProfilePage({
                                             className="font-bold text-emerald-800 hover:text-emerald-950 underline underline-offset-2 flex items-center gap-0.5"
                                             title="Click to view manager's profile"
                                         >
-                                            {user.reportingToName || "Reporting Manager"}
+                                            {user.reportingToName || "No manager set"}
                                             <ExternalLink className="w-3 h-3 text-emerald-600 inline" />
                                         </Link>
                                     ) : (
@@ -339,6 +374,26 @@ export default function Employee360ProfilePage({
                                 <KeyRound className="w-3.5 h-3.5" />
                                 Reset password
                             </button>
+                        )}
+
+                        {viewer?.role === "SUPER_ADMIN" && viewer?.id !== memberId && (
+                            <select
+                                aria-label="Sign-in security"
+                                value=""
+                                disabled={securityMutation.isPending}
+                                onChange={(e) => {
+                                    const a = e.target.value as "resetMfa" | "unlock" | "signOut";
+                                    const ask = a === "resetMfa" ? `Reset ${user.name}'s two-step sign-in? They'll set up a new authenticator at their next sign-in.`
+                                        : a === "unlock" ? `Unlock ${user.name}'s account?` : `Sign ${user.name} out of every device?`;
+                                    if (a && confirm(ask)) securityMutation.mutate(a);
+                                }}
+                                className="text-xs font-semibold text-gray-700 bg-white border border-gray-300 hover:border-gray-400 px-2.5 py-2 rounded-xl shadow-sm outline-none"
+                            >
+                                <option value="">Sign-in security{user.mfaEnabled ? " · 2-step on" : ""}{user.accountLocked ? " · locked" : ""}</option>
+                                <option value="signOut">Sign out everywhere</option>
+                                {user.accountLocked && <option value="unlock">Unlock account</option>}
+                                {user.mfaEnabled && <option value="resetMfa">Reset two-step sign-in</option>}
+                            </select>
                         )}
 
                         <button
@@ -745,12 +800,8 @@ export default function Employee360ProfilePage({
                                 <div className="flex justify-between py-1.5 border-b border-gray-100">
                                     <span className="text-gray-500">Joining Date</span>
                                     <span className="font-semibold text-gray-900">
-                                        {user.joiningDate ? new Date(user.joiningDate).toLocaleDateString() : "Jan 15, 2024"}
+                                        {user.joiningDate ? new Date(user.joiningDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
                                     </span>
-                                </div>
-                                <div className="flex justify-between py-1.5 border-b border-gray-100">
-                                    <span className="text-gray-500">Probation End Date</span>
-                                    <span className="font-semibold text-gray-900">Confirmed (Apr 15, 2024)</span>
                                 </div>
                                 <div className="flex justify-between py-1.5 border-b border-gray-100 items-center">
                                     <span className="text-gray-500">Reports To (Primary)</span>
@@ -794,36 +845,23 @@ export default function Employee360ProfilePage({
                         </div>
                     </SectionCard>
 
-                    <SectionCard title="Work Location & Work Mode" subtitle="Physical and remote arrangements">
-                        <div className="space-y-4 text-xs">
-                            <div className="p-4 bg-emerald-50/60 rounded-xl border border-emerald-100">
-                                <div className="flex items-center gap-2 text-emerald-900 font-bold">
-                                    <MapPin className="w-4 h-4 text-emerald-600" />
-                                    Mumbai Headquarters
-                                </div>
-                                <p className="text-gray-600 text-xs mt-1">
-                                    AbsoJob Global Hub, Level 8, Platina Tower, Bandra Kurla Complex (BKC), Mumbai, Maharashtra 400051.
-                                </p>
+                    <SectionCard title="Work Location & Work Mode" subtitle="From the employee's HR record">
+                        <div className="space-y-3 text-xs">
+                            <div className="flex justify-between py-1.5 border-b border-gray-100">
+                                <span className="text-gray-500">Location</span>
+                                <span className="font-semibold text-gray-900 flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-gray-400" />{user.location || "—"}</span>
                             </div>
-
-                            <div className="space-y-3 pt-2">
-                                <div className="flex justify-between py-1.5 border-b border-gray-100">
-                                    <span className="text-gray-500">Work Policy</span>
-                                    <span className="font-semibold text-gray-900">Hybrid (3 Days Office / 2 Days Remote)</span>
-                                </div>
-                                <div className="flex justify-between py-1.5 border-b border-gray-100">
-                                    <span className="text-gray-500">Shift Timing</span>
-                                    <span className="font-semibold text-gray-900">{user.shift || "—"}</span>
-                                </div>
-                                <div className="flex justify-between py-1.5 border-b border-gray-100">
-                                    <span className="text-gray-500">Workstation ID</span>
-                                    <span className="font-mono text-gray-900">WS-BKC-042</span>
-                                </div>
-                                <div className="flex justify-between py-1.5">
-                                    <span className="text-gray-500">Access Keycard</span>
-                                    <span className="font-mono text-gray-900">#HID-992014</span>
-                                </div>
+                            <div className="flex justify-between py-1.5 border-b border-gray-100">
+                                <span className="text-gray-500">Work Mode</span>
+                                <span className="font-semibold text-gray-900">{user.workModeType || "—"}</span>
                             </div>
+                            <div className="flex justify-between py-1.5">
+                                <span className="text-gray-500">Shift Timing</span>
+                                <span className="font-semibold text-gray-900">{user.shift || "—"}</span>
+                            </div>
+                            {!data.employeeRecord && (
+                                <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">No HR employee record is linked to this login yet, so location and work mode are blank. Add them in HRMIS › Employees.</p>
+                            )}
                         </div>
                     </SectionCard>
                 </div>
@@ -867,9 +905,6 @@ export default function Employee360ProfilePage({
                                                 </p>
                                             </div>
                                         </div>
-                                        <p className="text-[11px] text-gray-500 mt-3 pt-3 border-t border-emerald-100">
-                                            Responsible for daily approvals, leave sign-offs, KPI appraisals, and compensation reviews.
-                                        </p>
                                     </Link>
                                 ) : (
                                     <div className="p-4 bg-emerald-50/50 rounded-xl border border-emerald-200">
@@ -877,17 +912,14 @@ export default function Employee360ProfilePage({
                                             <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 flex items-center gap-1">
                                                 <Network className="w-3.5 h-3.5" /> Primary / Solid-Line Manager
                                             </span>
-                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border bg-emerald-50 text-emerald-800 border-emerald-200">
-                                                Leadership Tier
-                                            </span>
                                         </div>
                                         <div className="flex items-center gap-3">
                                             <div className="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm">
-                                                AM
+                                                —
                                             </div>
                                             <div>
-                                                <h4 className="text-sm font-bold text-gray-900">Organization Top Level</h4>
-                                                <p className="text-xs text-gray-500">Reports to Board of Directors</p>
+                                                <h4 className="text-sm font-bold text-gray-900">No manager set</h4>
+                                                <p className="text-xs text-gray-500">Top of the reporting line</p>
                                             </div>
                                         </div>
                                     </div>
@@ -921,32 +953,9 @@ export default function Employee360ProfilePage({
                                                 </p>
                                             </div>
                                         </div>
-                                        <p className="text-[11px] text-gray-500 mt-3 pt-3 border-t border-purple-100">
-                                            Guides client delivery strategy, quality audits, enterprise hiring best practices, and escalations.
-                                        </p>
                                     </Link>
                                 ) : (
-                                    <div className="p-4 bg-purple-50/50 rounded-xl border border-purple-200">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <span className="text-[10px] font-bold uppercase tracking-wider text-purple-800 flex items-center gap-1">
-                                                <Users className="w-3.5 h-3.5" /> Secondary / Dotted-Line Functional Manager
-                                            </span>
-                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border bg-purple-50 text-purple-700 border-purple-200">
-                                                Functional / Matrix
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold text-sm">
-                                                {(user.secondaryManagerName || "AM").slice(0, 2).toUpperCase()}
-                                            </div>
-                                            <div>
-                                                <h4 className="text-sm font-bold text-gray-900">
-                                                    {user.secondaryManagerName || "None assigned"}
-                                                </h4>
-                                                <p className="text-xs text-gray-500">Functional Head</p>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <p className="px-4 py-3 rounded-xl border border-dashed border-gray-200 text-xs text-gray-500">No dotted-line / functional manager assigned.</p>
                                 )}
                             </div>
                         </SectionCard>
@@ -993,23 +1002,28 @@ export default function Employee360ProfilePage({
                         </SectionCard>
                     </div>
 
-                    {/* Department and Team Affiliations */}
-                    <SectionCard title="Department & Squad Membership" subtitle="Cross-functional alignment">
+                    {/* Department and client coverage, from real records */}
+                    <SectionCard title="Department & Client Coverage" subtitle="From the HR record and the openings assigned to this person">
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
                                 <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Department</span>
-                                <p className="text-sm font-bold text-gray-900 mt-1">{user.department}</p>
-                                <p className="text-[11px] text-gray-500 mt-0.5">Talent Acquisition Division</p>
+                                <p className="text-sm font-bold text-gray-900 mt-1">{user.department || "—"}</p>
+                                <p className="text-[11px] text-gray-500 mt-0.5">{user.designation || "—"}</p>
                             </div>
                             <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Primary Squad</span>
-                                <p className="text-sm font-bold text-gray-900 mt-1">{user.team || "—"}</p>
-                                <p className="text-[11px] text-gray-500 mt-0.5">Product & Engineering Accounts</p>
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Assigned Openings</span>
+                                <p className="text-sm font-bold text-gray-900 mt-1">{jobs.length}</p>
+                                <p className="text-[11px] text-gray-500 mt-0.5">{jobs.filter((j: any) => OPEN_JOB_STATUSES.includes(j.status)).length} open right now</p>
                             </div>
                             <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Matrix Focus</span>
-                                <p className="text-sm font-bold text-gray-900 mt-1">Full-Stack & Cloud Hiring</p>
-                                <p className="text-[11px] text-gray-500 mt-0.5">High-velocity delivery</p>
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Clients Handled</span>
+                                {(() => {
+                                    const names = [...new Set(candidates.map((c: any) => c.clientName).filter((n: string) => n && n !== "—"))] as string[];
+                                    return <>
+                                        <p className="text-sm font-bold text-gray-900 mt-1">{names.length}</p>
+                                        <p className="text-[11px] text-gray-500 mt-0.5 truncate" title={names.join(", ")}>{names.slice(0, 3).join(", ") || "No candidates yet"}{names.length > 3 ? ` +${names.length - 3}` : ""}</p>
+                                    </>;
+                                })()}
                             </div>
                         </div>
                     </SectionCard>
@@ -1023,17 +1037,17 @@ export default function Employee360ProfilePage({
                         <div className="p-4 bg-white border border-gray-200 rounded-xl shadow-sm">
                             <p className="text-xs font-semibold text-gray-500">Pipeline Candidates</p>
                             <p className="text-2xl font-bold text-gray-900 mt-1">{candidates.length}</p>
-                            <p className="text-xs text-emerald-600 mt-1">Across {jobs.length} active jobs</p>
+                            <p className="text-xs text-emerald-600 mt-1">Across {jobs.length} assigned openings</p>
                         </div>
                         <div className="p-4 bg-white border border-gray-200 rounded-xl shadow-sm">
                             <p className="text-xs font-semibold text-gray-500">Scheduled Interviews</p>
                             <p className="text-2xl font-bold text-purple-700 mt-1">{interviews.length}</p>
-                            <p className="text-xs text-gray-500 mt-1">Technical & Client rounds</p>
+                            <p className="text-xs text-gray-500 mt-1">{interviews.filter((iv: any) => ["SCHEDULED", "RESCHEDULED"].includes(iv.status)).length} still scheduled</p>
                         </div>
                         <div className="p-4 bg-white border border-gray-200 rounded-xl shadow-sm">
                             <p className="text-xs font-semibold text-gray-500">Joined / Placements</p>
                             <p className="text-2xl font-bold text-emerald-600 mt-1">{placements.length}</p>
-                            <p className="text-xs text-gray-500 mt-1">100% onboarding compliance</p>
+                            <p className="text-xs text-gray-500 mt-1">{placements.filter((pl: any) => pl.joiningStatus === "JOINED").length} joined · {placements.filter((pl: any) => pl.joiningStatus === "JOINING_PENDING").length} pending</p>
                         </div>
                     </div>
 
@@ -1061,7 +1075,7 @@ export default function Employee360ProfilePage({
                                                 <td className="py-3 px-4 text-gray-600">{c.jobTitle || "Role"}</td>
                                                 <td className="py-3 px-4">
                                                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border bg-blue-50 text-blue-700 border-blue-200">
-                                                        {c.stage || "INTERVIEW"}
+                                                        {c.stage || "—"}
                                                     </span>
                                                 </td>
                                                 <td className="py-3 px-4">
@@ -1137,22 +1151,22 @@ export default function Employee360ProfilePage({
                         <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100">
                             <p className="text-[10px] font-bold uppercase text-blue-800 tracking-wider">Present Days</p>
                             <p className="text-2xl font-extrabold text-blue-700 mt-1">{metrics.presentDays ?? 0}</p>
-                            <span className="text-[10px] text-blue-600 font-medium">Office / Hybrid</span>
+                            <span className="text-[10px] text-blue-600 font-medium">Incl. WFH and late</span>
                         </div>
                         <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100">
                             <p className="text-[10px] font-bold uppercase text-amber-800 tracking-wider">Late Check-Ins</p>
                             <p className="text-2xl font-extrabold text-amber-700 mt-1">{metrics.lateArrivalsCount ?? 0}</p>
-                            <span className="text-[10px] text-amber-600 font-medium">Avg delay: 14 min</span>
+                            <span className="text-[10px] text-amber-600 font-medium">{metrics.avgLateMinutes != null ? `Avg delay: ${metrics.avgLateMinutes} min` : "No late check-ins"}</span>
                         </div>
                         <div className="p-4 bg-purple-50 rounded-2xl border border-purple-100">
-                            <p className="text-[10px] font-bold uppercase text-purple-800 tracking-wider">Approved Leaves</p>
+                            <p className="text-[10px] font-bold uppercase text-purple-800 tracking-wider">Days on Leave</p>
                             <p className="text-2xl font-extrabold text-purple-700 mt-1">{metrics.leaveDays ?? 0}</p>
-                            <span className="text-[10px] text-purple-600 font-medium">Casual / Sick</span>
+                            <span className="text-[10px] text-purple-600 font-medium">Past 30 days</span>
                         </div>
                         <div className="p-4 bg-red-50 rounded-2xl border border-red-100">
                             <p className="text-[10px] font-bold uppercase text-red-800 tracking-wider">Absences</p>
                             <p className="text-2xl font-extrabold text-red-700 mt-1">{metrics.absentDays ?? 0}</p>
-                            <span className="text-[10px] text-red-600 font-medium">Zero unexcused</span>
+                            <span className="text-[10px] text-red-600 font-medium">{metrics.halfDays ? `+ ${metrics.halfDays} half day${metrics.halfDays > 1 ? "s" : ""}` : "Past 30 days"}</span>
                         </div>
                     </div>
 
@@ -1174,7 +1188,7 @@ export default function Employee360ProfilePage({
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-100">
-                                                {data.attendance.slice(0, 10).map((att: any) => (
+                                                {[...data.attendance].sort((a: any, b: any) => String(b.date).localeCompare(String(a.date))).slice(0, 10).map((att: any) => (
                                                     <tr key={att.id} className="hover:bg-gray-50">
                                                         <td className="py-2.5 px-4 font-medium text-gray-900">{att.date}</td>
                                                         <td className="py-2.5 px-4 font-mono text-gray-600">
@@ -1197,25 +1211,22 @@ export default function Employee360ProfilePage({
 
                         {/* Leave Balance & Requests */}
                         <div className="space-y-6">
-                            <SectionCard title="Leave Balance" subtitle="Annual allocation summary">
-                                <div className="space-y-3 text-xs">
-                                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                                        <span className="font-medium text-gray-700">Casual Leave (CL)</span>
-                                        <span className="font-bold text-gray-900">8 / 12 Days remaining</span>
+                            <SectionCard title="Leave Balance" subtitle="This year, from the leave policy and approved leave">
+                                {(data.leaveBalances ?? []).length === 0 ? (
+                                    <p className="text-xs text-gray-500">{data.employeeRecord ? "No leave policy applies to this employee." : "No HR employee record is linked to this login."}</p>
+                                ) : (
+                                    <div className="space-y-3 text-xs">
+                                        {(data.leaveBalances ?? []).map((b: any, i: number, all: any[]) => (
+                                            <div key={b.type} className={`flex justify-between items-center gap-3 py-2 ${i < all.length - 1 ? "border-b border-gray-100" : ""}`}>
+                                                <span className="font-medium text-gray-700">{b.label}</span>
+                                                <span className="font-bold text-gray-900 text-right">
+                                                    {b.allowance == null ? `${b.used} used` : `${b.available} / ${b.allowance} left`}
+                                                    {b.pending > 0 && <span className="block text-[10px] font-medium text-amber-600">{b.pending} pending approval</span>}
+                                                </span>
+                                            </div>
+                                        ))}
                                     </div>
-                                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                                        <span className="font-medium text-gray-700">Sick Leave (SL)</span>
-                                        <span className="font-bold text-gray-900">6 / 8 Days remaining</span>
-                                    </div>
-                                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                                        <span className="font-medium text-gray-700">Earned Leave (EL)</span>
-                                        <span className="font-bold text-gray-900">14 Days accrued</span>
-                                    </div>
-                                    <div className="flex justify-between items-center py-2">
-                                        <span className="font-medium text-gray-700">Comp Off</span>
-                                        <span className="font-bold text-gray-900">1 Day available</span>
-                                    </div>
-                                </div>
+                                )}
                             </SectionCard>
 
                             <SectionCard title="Recent Leave Requests" subtitle="Applied leaves and approver notes">
@@ -1371,100 +1382,82 @@ export default function Employee360ProfilePage({
                 <div className="space-y-4">
                     <SectionCard
                         title="Employee Document Repository"
-                        subtitle="Verified onboarding documents, contracts, and identity proofs"
+                        subtitle="From the HRMIS document vault"
                     >
+                        {data.documents == null ? (
+                            <p className="text-xs text-gray-500">Only HR and Super Admin can see another person&rsquo;s documents.</p>
+                        ) : data.documents.length === 0 ? (
+                            <p className="text-xs text-gray-500">{data.employeeRecord ? "No documents uploaded yet. Add them in HRMIS › Documents." : "No HR employee record is linked to this login."}</p>
+                        ) : (
                         <div className="space-y-3">
-                            {[
-                                { name: "Signed_Offer_Letter_Employment_Agreement.pdf", size: "2.4 MB", date: "Jan 12, 2024", type: "Contract" },
-                                { name: "Government_ID_Aadhaar_PAN_Verification.pdf", size: "1.1 MB", date: "Jan 12, 2024", type: "KYC / ID" },
-                                { name: "Confidentiality_NDA_IP_Assignment_2024.pdf", size: "850 KB", date: "Jan 14, 2024", type: "Legal NDA" },
-                            ].map((doc, idx) => (
+                            {data.documents.map((doc: any) => (
                                 <div
-                                    key={idx}
-                                    className="p-3.5 bg-white border border-gray-200 rounded-xl flex items-center justify-between hover:border-emerald-300 transition-colors"
+                                    key={doc.id}
+                                    className="p-3.5 bg-white border border-gray-200 rounded-xl flex items-center justify-between gap-3 hover:border-emerald-300 transition-colors"
                                 >
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold shrink-0">
                                             <FileText className="w-4 h-4" />
                                         </div>
-                                        <div>
-                                            <p className="text-xs font-bold text-gray-900">{doc.name}</p>
+                                        <div className="min-w-0">
+                                            <p className="text-xs font-bold text-gray-900 truncate">{doc.title}</p>
                                             <p className="text-[11px] text-gray-400">
-                                                {doc.size} • Uploaded {doc.date} • <span className="text-emerald-700 font-semibold">{doc.type}</span>
+                                                {doc.fileSize ? `${doc.fileSize} • ` : ""}Uploaded {new Date(doc.uploadedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })} • <span className="text-emerald-700 font-semibold">{String(doc.category).replaceAll("_", " ").toLowerCase()}</span>
                                             </p>
                                         </div>
                                     </div>
-                                    <button
-                                        onClick={() => toast.success(`Downloading ${doc.name}`)}
-                                        className="p-2 text-gray-400 hover:text-emerald-600 rounded-lg hover:bg-gray-50 transition-colors"
-                                    >
-                                        <Download className="w-4 h-4" />
-                                    </button>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <Badge value={doc.status} />
+                                        <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" title="Open document"
+                                            className="p-2 text-gray-400 hover:text-emerald-600 rounded-lg hover:bg-gray-50 transition-colors">
+                                            <Download className="w-4 h-4" />
+                                        </a>
+                                    </div>
                                 </div>
                             ))}
                         </div>
+                        )}
                     </SectionCard>
                 </div>
             )}
 
             {/* 8. ACCESS & PERMISSIONS */}
             {activeTab === "permissions" && (
-                <div className="space-y-6">
-                    <SectionCard title="Assigned System Role & Permissions" subtitle="Enterprise role-based access control (RBAC)">
-                        <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-between mb-4">
-                            <div>
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">System Role</span>
-                                <h4 className="text-base font-bold text-gray-900 mt-0.5">{user.role}</h4>
-                                <p className="text-xs text-gray-500 mt-0.5">
-                                    Access scope: <span className="font-semibold text-emerald-600">Assigned Records & Squad Requisitions</span>
-                                </p>
-                            </div>
-                            <Badge value={user.role} />
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                            <div className="p-3 border border-gray-200 rounded-xl">
-                                <h5 className="font-bold text-gray-900 flex items-center gap-2 mb-2">
-                                    <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Candidate Management
-                                </h5>
-                                <ul className="space-y-1 text-gray-600 list-disc list-inside">
-                                    <li>Create and import candidates</li>
-                                    <li>Edit assigned candidates & resumes</li>
-                                    <li>Schedule interviews and log notes</li>
-                                </ul>
-                            </div>
-
-                            <div className="p-3 border border-gray-200 rounded-xl">
-                                <h5 className="font-bold text-gray-900 flex items-center gap-2 mb-2">
-                                    <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Job Requisitions
-                                </h5>
-                                <ul className="space-y-1 text-gray-600 list-disc list-inside">
-                                    <li>View assigned client openings</li>
-                                    <li>Submit candidate shortlists</li>
-                                    <li>Track candidate stage pipelines</li>
-                                </ul>
-                            </div>
-
-                            <div className="p-3 border border-gray-200 rounded-xl">
-                                <h5 className="font-bold text-gray-900 flex items-center gap-2 mb-2">
-                                    <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Placement & Offers
-                                </h5>
-                                <ul className="space-y-1 text-gray-600 list-disc list-inside">
-                                    <li>Draft placement records</li>
-                                    <li>Request offer approval from TA Manager</li>
-                                </ul>
-                            </div>
-
-                            <div className="p-3 border border-gray-200 rounded-xl bg-gray-50/50">
-                                <h5 className="font-bold text-gray-400 flex items-center gap-2 mb-2">
-                                    <AlertCircle className="w-4 h-4 text-gray-400" /> Restricted Access
-                                </h5>
-                                <ul className="space-y-1 text-gray-400 list-disc list-inside">
-                                    <li>Organization-wide financial settings</li>
-                                    <li>User invitation & privilege delegation</li>
-                                </ul>
-                            </div>
-                        </div>
+                <div className="space-y-4">
+                    <SectionCard title="Assigned System Role & Permissions" subtitle="What this role can open and do (role-based access)">
+                        {(() => {
+                            const perm = ROLE_PERMISSIONS[user.role] ?? { scope: "—", can: [], cannot: [] };
+                            const spaces = workspacesFor(user.role);
+                            return (
+                                <div className="space-y-4 text-xs">
+                                    <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 flex items-start justify-between gap-3">
+                                        <div>
+                                            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">System Role</span>
+                                            <h4 className="text-base font-bold text-gray-900 mt-0.5">{user.role.replaceAll("_", " ")}</h4>
+                                            <p className="text-xs text-gray-500 mt-0.5">Access scope: <span className="font-semibold text-emerald-700">{perm.scope}</span></p>
+                                        </div>
+                                        <Badge value={user.role} />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">Workspaces</p>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {spaces.map((w) => <span key={w} className="px-2 py-1 rounded-md border border-gray-200 bg-white font-semibold text-gray-700">{WORKSPACE_LABEL[w]}</span>)}
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="p-4 rounded-xl border border-emerald-100 bg-emerald-50/40">
+                                            <h5 className="font-bold text-gray-900 flex items-center gap-2 mb-2"><CheckCircle2 className="w-4 h-4 text-emerald-600" /> Can</h5>
+                                            <ul className="list-disc pl-5 space-y-1 text-gray-600">{perm.can.map((c) => <li key={c}>{c}</li>)}</ul>
+                                        </div>
+                                        <div className="p-4 rounded-xl border border-gray-200 bg-gray-50">
+                                            <h5 className="font-bold text-gray-500 flex items-center gap-2 mb-2"><AlertCircle className="w-4 h-4 text-gray-400" /> Cannot</h5>
+                                            {perm.cannot.length ? <ul className="list-disc pl-5 space-y-1 text-gray-500">{perm.cannot.map((c) => <li key={c}>{c}</li>)}</ul> : <p className="text-gray-500">No restrictions: full access.</p>}
+                                        </div>
+                                    </div>
+                                    <p className="text-[11px] text-gray-400">To change access, change the role from the Team list.</p>
+                                </div>
+                            );
+                        })()}
                     </SectionCard>
                 </div>
             )}

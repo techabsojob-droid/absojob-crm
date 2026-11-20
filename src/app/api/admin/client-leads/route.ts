@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { defaultCommissionRate, defaultCreditDays } from "@/lib/org-settings";
 import { requireRole } from "@/lib/mock/server";
 import { clientLeads, clients } from "@/lib/mock/data";
 import { addAudit } from "@/lib/mock/data";
@@ -46,14 +47,14 @@ export async function POST(request: Request) {
             contactPerson: body.contactPerson,
             email: body.email,
             phone: body.phone,
-            industry: body.industry || "Technology",
-            location: body.location || "Mumbai",
+            industry: body.industry || "Other",
+            location: body.location || "",
             leadSource: body.leadSource || "OUTBOUND",
             assignedToName: body.assignedToName || me.name,
             assignedToId: body.assignedToId || me.id,
             stage: body.stage || "NEW",
-            expectedPositions: Number(body.expectedPositions) || 5,
-            expectedAnnualValueLpa: Number(body.expectedAnnualValueLpa) || 20,
+            expectedPositions: Number(body.expectedPositions) || 0,
+            expectedAnnualValueLpa: Number(body.expectedAnnualValueLpa) || 0,
             priority: body.priority || "MEDIUM",
             nextFollowUpDate: body.nextFollowUpDate || new Date(Date.now() + 3 * 86400000).toISOString().split("T")[0],
             notes: body.notes || "",
@@ -98,8 +99,8 @@ export async function PATCH(request: Request) {
                 address: item.location,
                 status: "ACTIVE",
                 agreementUrl: null,
-                commissionRate: 8.33,
-                creditDays: 30,
+                commissionRate: defaultCommissionRate(me.orgId),
+                creditDays: defaultCreditDays(me.orgId),
                 accountManagerId: me.id,
                 estimatedValue: `₹${item.expectedAnnualValueLpa}L`,
                 notes: `Converted from lead ${item.id}. ${item.notes}`,

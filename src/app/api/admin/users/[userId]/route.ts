@@ -2,11 +2,12 @@ import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/mock/server";
 import {
     users, jobs, candidates, clients, applications, interviews, placements, tasks, auditLogs, attendance, leaveRequests,
-    promotions, salaryRevisions, shifts,
+    promotions, salaryRevisions, shifts, documents,
 } from "@/lib/mock/data";
 import { employeeForUser } from "@/lib/mock/identity";
 import { fyRevenue, pipelineMetrics } from "@/lib/metrics";
 import { statusOf } from "@/lib/tasks";
+import { leaveBalancesFor } from "@/lib/mock/ess";
 
 const WORK_MODE = { OFFICE: "Office", HYBRID: "Hybrid", REMOTE: "Remote" } as const;
 const EMPLOYMENT = { FULL_TIME: "Full-Time Permanent", PART_TIME: "Part-Time", CONTRACT: "Contract", INTERN: "Intern" } as Record<string, string>;
@@ -92,16 +93,29 @@ export async function GET(
 
     const shift = emp?.shiftId ? shifts.find((s) => s.id === emp.shiftId) : shifts.find((s) => s.orgId === user.orgId && s.status === "ACTIVE");
     const employeeCode = emp?.employeeId ?? null;
+    const lateMinutes = lateArrivals.map((a) => a.lateByMinutes ?? 0).filter((m) => m > 0);
+
+    // HR document vault entries for this person (HR / Super Admin, or the person themself)
+    const canSeeDocs = ["SUPER_ADMIN", "HR_ADMIN"].includes(me.role) || me.id === user.id;
+    const userDocs = canSeeDocs && emp
+        ? documents.filter((d) => d.orgId === me.orgId && d.employeeId === emp.id).sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt))
+        : null;
 
     return NextResponse.json({
         user: {
             ...user,
             passwordHash: undefined,
+            mfaSecretEnc: undefined,
+            mfaPendingSecretEnc: undefined,
+            mfaEnabled: !!user.mfaEnabled,
+            accountLocked: !!user.lockedUntil && Date.parse(user.lockedUntil) > Date.now(),
             employeeId: employeeCode,
             reportingToName: primaryManager?.name ?? null,
             reportingToRole: primaryManager?.role ?? null,
             secondaryManagerName: null,
             team: user.department ?? emp?.department ?? null,
+            location: emp?.location ?? user.location ?? null,
+            workModeType: emp?.workMode ? WORK_MODE[emp.workMode] : null,
             workMode: emp?.workMode ? `${WORK_MODE[emp.workMode]}${emp.location ? ` (${emp.location})` : ""}` : null,
             employmentType: emp ? EMPLOYMENT[emp.employmentType] ?? emp.employmentType : null,
             joiningDate: emp?.joiningDate ?? user.joinedAt,
@@ -131,6 +145,7 @@ export async function GET(
             halfDays: halfDayCount,
             leaveDays: leaveCount,
             lateArrivalsCount: lateArrivals.length,
+            avgLateMinutes: lateMinutes.length ? Math.round(lateMinutes.reduce((a, b) => a + b, 0) / lateMinutes.length) : null,
             billingContributionInr: billing.amount,
             billingPeriod: billing.label,
         },
@@ -146,5 +161,7 @@ export async function GET(
         leaves: userLeaves,
         promotions: promotionHistory,
         compensation,
+        leaveBalances: emp ? leaveBalancesFor(user).filter((b) => b.allowance !== null || b.used > 0 || b.pending > 0) : [],
+        documents: userDocs,
     });
 }

@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
+import { defaultCommissionRate, defaultCreditDays } from "@/lib/org-settings";
 import { requireRole } from "@/lib/mock/server";
-import { jobs, applications, users, nextIds, commissionLedger } from "@/lib/mock/data";
+import { jobs, applications, users, nextIds, clientCommunications } from "@/lib/mock/data";
+import { creditStatusOf } from "@/lib/mock/finance";
+import { OPEN_JOB_STATUSES } from "@/lib/requisition-options";
 import { getClientsFromDb, createClientInDb, logAudit } from "@/lib/supabase/db";
 import type { Client, ClientStatus } from "@/lib/types";
 import { accessibleClientIds, mappedClientIds, validTaManagerIds } from "@/lib/mock/pipeline";
@@ -17,7 +20,7 @@ export async function GET(request: Request) {
     let list = dbClients.map((c) => {
         const clientJobs = jobs.filter((j) => j.clientId === c.id);
         const clientApps = applications.filter((a) => clientJobs.some((j) => j.id === a.jobId));
-        const activeJobsCount = clientJobs.filter((j) => ["APPROVED", "SOURCING", "INTERVIEWING", "OFFER_STAGE"].includes(j.status)).length;
+        const activeJobsCount = clientJobs.filter((j) => (OPEN_JOB_STATUSES as readonly string[]).includes(j.status)).length;
         const totalOpenings = clientJobs.reduce((acc, j) => acc + (j.openings || 1), 0);
         const placementsCount = clientApps.filter((a) => a.stage === "JOINED").length;
         const pipelineCount = clientApps.filter((a) => !["JOINED", "REJECTED", "BACKED_OUT", "NOT_INTERESTED", "WITHDRAWN"].includes(a.stage)).length;
@@ -37,15 +40,20 @@ export async function GET(request: Request) {
             healthReason = "Service agreement pending contract signature";
         }
 
-        // Mock financial status if user is super admin
-        const clientInvoices = commissionLedger.filter((l) => l.clientId === c.id);
-        const outstandingAmount = clientInvoices
-            .filter((inv) => inv.status === "PENDING" || inv.status === "APPROVED")
-            .reduce((sum, inv) => sum + inv.amountInr, 0);
+        // Balance due on the Finance workspace's open invoices (INR, incl. GST)
+        const outstandingAmount = creditStatusOf(c.orgId, c.id).outstanding;
+
+        // Most recent real activity on the account
+        const lastActivityAt = [
+            c.updatedAt, c.createdAt,
+            ...clientJobs.map((j) => j.updatedAt),
+            ...clientApps.map((a) => a.updatedAt),
+            ...clientCommunications.filter((m) => m.clientId === c.id).map((m) => m.createdAt),
+        ].filter(Boolean).sort().at(-1) ?? null;
 
         return {
             ...c,
-            accountManagerName: users.find((u) => u.id === c.accountManagerId)?.name ?? "Aarav Mehta",
+            accountManagerName: users.find((u) => u.id === c.accountManagerId)?.name ?? null,
             taManagerIds: c.taManagerIds ?? [],
             taManagerNames: (c.taManagerIds ?? []).map((id) => users.find((u) => u.id === id)?.name).filter(Boolean),
             openJobs: activeJobsCount,
@@ -53,12 +61,11 @@ export async function GET(request: Request) {
             totalOpenings,
             placements: placementsCount,
             inPipeline: pipelineCount,
-            lastActivity: "2 hours ago",
+            lastActivityAt,
             healthState,
             healthReason,
             outstandingAmount,
             paymentStatus: outstandingAmount > 0 ? "PAYMENT_DUE" : "SETTLED",
-            tags: c.industry === "Healthcare" ? ["Healthcare", "High Priority"] : c.industry === "Fintech" ? ["Fintech", "Enterprise"] : ["Technology"],
         };
     });
 
@@ -73,7 +80,7 @@ export async function GET(request: Request) {
             c.contactPerson.toLowerCase().includes(q) ||
             c.contactEmail.toLowerCase().includes(q) ||
             c.industry.toLowerCase().includes(q) ||
-            c.accountManagerName.toLowerCase().includes(q) ||
+            (c.accountManagerName ?? "").toLowerCase().includes(q) ||
             (c.address ?? "").toLowerCase().includes(q)
         );
     }
@@ -111,8 +118,8 @@ export async function POST(request: Request) {
         address: body.address ?? null,
         status: (body.status as ClientStatus) ?? "ONBOARDING",
         agreementUrl: null,
-        commissionRate: Number(body.commissionRate) || 8.33,
-        creditDays: Number(body.creditDays) || 30,
+        commissionRate: Number(body.commissionRate) || defaultCommissionRate(me.orgId),
+        creditDays: Number(body.creditDays) || defaultCreditDays(me.orgId),
         accountManagerId: body.accountManagerId || me.id,
         // A TA Manager who onboards a client is mapped to it; Super Admin can map TA Managers directly
         taManagerIds: me.role === "SUPER_ADMIN"

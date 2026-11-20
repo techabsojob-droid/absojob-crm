@@ -117,6 +117,30 @@ export default function AdminSettingsControlCenter() {
         onError: () => toast.error("Failed to save changes"),
     });
 
+    // Danger zone actions take effect at once (no separate Save)
+    const dangerMutation = useMutation({
+        mutationFn: async (payload: any) => {
+            const res = await fetch("/api/admin/settings", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || "Action failed");
+            return data;
+        },
+        onSuccess: (data: any, payload: any) => {
+            if (payload.action === "FLUSH_SESSIONS") {
+                toast.success(`Signed out ${data.affected ?? "all"} non-Super-Admin account(s). They must sign in again.`);
+            } else {
+                toast.success(payload.maintenanceMode ? "Maintenance mode is on. Only Super Admins can use the CRM." : "Maintenance mode is off. Everyone can sign in again.");
+            }
+            setForm((prev: any) => ({ ...prev, maintenanceMode: data.settings?.maintenanceMode, maintenanceReason: data.settings?.maintenanceReason, sessionsRevokedAt: data.settings?.sessionsRevokedAt }));
+            qc.invalidateQueries({ queryKey: ["admin-settings"] });
+        },
+        onError: (e: Error) => toast.error(e.message),
+    });
+
     const handleFormChange = (key: string, val: any) => {
         setForm((prev: any) => ({ ...prev, [key]: val }));
         setIsDirty(true);
@@ -225,7 +249,7 @@ export default function AdminSettingsControlCenter() {
         { id: "notifications", label: "Notification Channels", icon: Bell, group: "COMMUNICATION" },
         { id: "security", label: "Security & Access Policy", icon: Shield, group: "GOVERNANCE" },
         { id: "integrations", label: "Integrations & Webhooks", icon: Globe, group: "SYSTEM" },
-        { id: "database", label: "Database & Health", icon: Database, group: "SYSTEM" },
+        { id: "database", label: "Database, Backup & Health", icon: Database, group: "SYSTEM" },
         { id: "danger", label: "Danger Zone", icon: ShieldAlert, group: "SYSTEM" },
     ];
 
@@ -237,7 +261,7 @@ export default function AdminSettingsControlCenter() {
                     <h1 className="text-[22px] leading-tight font-semibold tracking-tight text-neutral-900 flex items-center gap-2">
                         Settings & Administration
                         <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-primary/10 text-primary">
-                            {form.plan || "ENTERPRISE"}
+                            {form.plan || "—"}
                         </span>
                     </h1>
                     <p className="text-[13px] text-neutral-500 mt-1">
@@ -573,6 +597,7 @@ export default function AdminSettingsControlCenter() {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
                                 <label className="block p-3.5 bg-neutral-50 rounded-xl border border-neutral-200">
                                     <span className="font-bold text-neutral-700 block mb-1">Default Requisition SLA (Days)</span>
+                                    <span className="block mb-1 text-neutral-500">Used when a job has no target close date.</span>
                                     <input
                                         type="number"
                                         value={form.defaultSlaDays || 30}
@@ -640,7 +665,7 @@ export default function AdminSettingsControlCenter() {
                         <div className="bg-white p-6 rounded-2xl border border-neutral-200/80 shadow-xs space-y-4">
                             <div>
                                 <h2 className="text-lg font-extrabold text-neutral-900">Pipeline Stages & Stage Transition SLA</h2>
-                                <p className="text-xs text-neutral-500">Configure candidate progression stages, order, and maximum allowable stay duration.</p>
+                                <p className="text-xs text-neutral-500">Maximum hours a candidate should stay in each stage. The pipeline flags candidates who go past it. 0 = no limit. Stage names and order are fixed by the pipeline.</p>
                             </div>
 
                             <div className="space-y-2.5">
@@ -656,12 +681,31 @@ export default function AdminSettingsControlCenter() {
                                                     <span className="font-mono text-[10px] text-neutral-400">({stg.code})</span>
                                                 </div>
                                                 <p className="text-neutral-500 text-[11px]">
-                                                    SLA: <strong>{stg.slaHours > 0 ? `${stg.slaHours} hours` : "No limit"}</strong>
-                                                    {stg.requiresFeedback ? " · Requires Interviewer Score" : ""}
+                                                    SLA: <strong>{stg.active !== false && stg.slaHours > 0 ? `${stg.slaHours} hours (${Math.round((stg.slaHours / 24) * 10) / 10} days)` : "No limit"}</strong>
                                                 </p>
                                             </div>
                                         </div>
-                                        <Badge value="ACTIVE" />
+                                        <div className="flex items-center gap-3">
+                                            <label className="flex items-center gap-1.5">
+                                                <span className="text-neutral-500">SLA hours</span>
+                                                <input
+                                                    type="number"
+                                                    min={0}
+                                                    max={8760}
+                                                    value={stg.slaHours ?? 0}
+                                                    onChange={(e) => handleFormChange("pipelineStages", (form.pipelineStages || []).map((x: any) => x.code === stg.code ? { ...x, slaHours: Number(e.target.value) } : x))}
+                                                    className="w-20 px-2 py-1 rounded-lg border border-neutral-200 bg-white font-bold outline-none"
+                                                />
+                                            </label>
+                                            <label className="flex items-center gap-1.5 text-neutral-600">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={stg.active !== false}
+                                                    onChange={(e) => handleFormChange("pipelineStages", (form.pipelineStages || []).map((x: any) => x.code === stg.code ? { ...x, active: e.target.checked } : x))}
+                                                />
+                                                SLA on
+                                            </label>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -723,7 +767,7 @@ export default function AdminSettingsControlCenter() {
                             <div className="flex items-center justify-between">
                                 <div>
                                     <h2 className="text-lg font-extrabold text-neutral-900">Finance & Dynamic Commission Rules</h2>
-                                    <p className="text-xs text-neutral-500">Configurable fee structures, guarantee replacement windows, and bank payout details.</p>
+                                    <p className="text-xs text-neutral-500">Standard % is the default for new clients. Commission rules (for all clients) set the fee and guarantee when a client has no agreed rate. GST and credit days are shared with Finance › Settings.</p>
                                 </div>
                                 <button
                                     onClick={() => setCommRuleModalOpen(true)}
@@ -830,10 +874,10 @@ export default function AdminSettingsControlCenter() {
                         <div className="bg-white p-6 rounded-2xl border border-neutral-200/80 shadow-xs space-y-4">
                             <div>
                                 <h2 className="text-lg font-extrabold text-neutral-900">Security Policies & Authentication Rules</h2>
-                                <p className="text-xs text-neutral-500">Enforce enterprise MFA, session expiration, and brute-force lockout safeguards.</p>
+                                <p className="text-xs text-neutral-500">Enforced at sign-in and on every request. Changes apply after you save.</p>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                                 <label className="block p-3.5 bg-neutral-50 rounded-xl border border-neutral-200">
                                     <span className="font-bold text-neutral-700 block mb-1">MFA Enforcement Policy</span>
                                     <select
@@ -845,24 +889,42 @@ export default function AdminSettingsControlCenter() {
                                         <option value="ADMINS_ONLY">Required for Admins & Managers</option>
                                         <option value="ALL_USERS">Enforced for Everyone</option>
                                     </select>
+                                    <span className="block mt-1.5 text-neutral-500">Users who need it set up an authenticator app at their next sign-in. Admins &amp; Managers = Super Admin, HR, Finance and TA Managers.</span>
+                                </label>
+                                <label className="block p-3.5 bg-neutral-50 rounded-xl border border-neutral-200">
+                                    <span className="font-bold text-neutral-700 block mb-1">Minimum Password Length</span>
+                                    <input
+                                        type="number"
+                                        min={8}
+                                        max={64}
+                                        value={form.minPasswordLength || 8}
+                                        onChange={(e) => handleFormChange("minPasswordLength", Number(e.target.value))}
+                                        className="w-full px-3 py-1.5 rounded-lg border border-neutral-200 bg-white font-bold outline-none"
+                                    />
+                                    <span className="block mt-1.5 text-neutral-500">8–64. Applies to new and changed passwords. Must also include a letter and a number.</span>
                                 </label>
                                 <label className="block p-3.5 bg-neutral-50 rounded-xl border border-neutral-200">
                                     <span className="font-bold text-neutral-700 block mb-1">Session Inactive Timeout (Mins)</span>
                                     <input
                                         type="number"
+                                        min={5}
                                         value={form.sessionTimeoutMinutes || 120}
                                         onChange={(e) => handleFormChange("sessionTimeoutMinutes", Number(e.target.value))}
                                         className="w-full px-3 py-1.5 rounded-lg border border-neutral-200 bg-white font-bold outline-none"
                                     />
+                                    <span className="block mt-1.5 text-neutral-500">Signed out after this long without clicking or typing. Background refreshes don&apos;t count.</span>
                                 </label>
                                 <label className="block p-3.5 bg-neutral-50 rounded-xl border border-neutral-200">
                                     <span className="font-bold text-neutral-700 block mb-1">Failed Attempts Before Lockout</span>
                                     <input
                                         type="number"
-                                        value={form.failedLoginLockoutAttempts || 5}
+                                        min={0}
+                                        max={20}
+                                        value={form.failedLoginLockoutAttempts ?? 5}
                                         onChange={(e) => handleFormChange("failedLoginLockoutAttempts", Number(e.target.value))}
                                         className="w-full px-3 py-1.5 rounded-lg border border-neutral-200 bg-white font-bold outline-none"
                                     />
+                                    <span className="block mt-1.5 text-neutral-500">Account locks for 15 minutes. 0 turns lockout off. Unlock early from the team member&apos;s profile.</span>
                                 </label>
                             </div>
                         </div>
@@ -902,6 +964,33 @@ export default function AdminSettingsControlCenter() {
                     {/* SECTION 12: DATABASE HEALTH & CONSOLE (Part 37 & 38) */}
                     {activeCategory === "database" && (
                         <div className="space-y-6">
+                            {/* Full backup export */}
+                            <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 shadow-xs">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                    <div className="flex items-start gap-3">
+                                        <div className="p-2.5 bg-navy/5 text-navy rounded-xl"><Download size={22} /></div>
+                                        <div>
+                                            <h2 className="text-base font-extrabold text-neutral-900">Backup &amp; Export</h2>
+                                            <p className="text-xs text-neutral-500 max-w-xl">
+                                                Download every record of your organisation: users, clients, openings, candidates, HR, payroll, finance, tasks and audit log.
+                                                Passwords and two-step sign-in secrets are never included. Each download is recorded in the Audit Log.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2 shrink-0">
+                                        <a href="/api/admin/backup?format=json" download
+                                            className="flex items-center gap-1.5 px-3.5 py-2 rounded-md bg-navy text-white text-xs font-semibold hover:bg-navy/90">
+                                            <Download size={13} /> Full backup (JSON)
+                                        </a>
+                                        <a href="/api/admin/backup?format=xlsx" download
+                                            className="flex items-center gap-1.5 px-3.5 py-2 rounded-md border border-neutral-200 text-neutral-700 text-xs font-semibold hover:bg-neutral-50">
+                                            <Download size={13} /> Excel (one sheet per table)
+                                        </a>
+                                    </div>
+                                </div>
+                                <p className="mt-3 text-[11px] text-neutral-400">JSON is the complete copy (includes uploaded files) — keep it safe. Excel is for reading and analysis.</p>
+                            </div>
+
                             {/* Supabase Status Card */}
                             <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 shadow-xs space-y-4">
                                 <div className="flex items-center justify-between">
@@ -1026,13 +1115,21 @@ export default function AdminSettingsControlCenter() {
                                 <div className="p-4 bg-white rounded-xl border border-red-200 flex items-center justify-between text-xs">
                                     <div>
                                         <p className="font-extrabold text-neutral-900">Maintenance Mode</p>
-                                        <p className="text-neutral-500">Temporarily freeze all external candidate submissions and portal logins.</p>
+                                        <p className="text-neutral-500">Blocks sign-ins, partner sign-ups and every action for everyone except Super Admins. Others see a maintenance page.</p>
+                                        <input
+                                            type="text"
+                                            value={form.maintenanceReason || ""}
+                                            onChange={(e) => handleFormChange("maintenanceReason", e.target.value)}
+                                            placeholder="Message shown to users (optional)"
+                                            className="mt-2 w-full max-w-md px-3 py-1.5 rounded-lg border border-neutral-200 bg-white outline-none"
+                                        />
                                     </div>
                                     <button
+                                        disabled={dangerMutation.isPending}
                                         onClick={() => {
                                             const updated = !form.maintenanceMode;
-                                            handleFormChange("maintenanceMode", updated);
-                                            toast.info(updated ? "Maintenance mode enabled." : "Maintenance mode disabled.");
+                                            if (updated && !window.confirm("Turn on maintenance mode? Everyone except Super Admins is signed out of the CRM until you turn it off.")) return;
+                                            dangerMutation.mutate({ maintenanceMode: updated, maintenanceReason: form.maintenanceReason || "" });
                                         }}
                                         className={`px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-colors ${
                                             form.maintenanceMode ? "bg-red-600 text-white border-red-600" : "bg-white text-neutral-700 border-neutral-200 hover:bg-neutral-50"
@@ -1045,10 +1142,17 @@ export default function AdminSettingsControlCenter() {
                                 <div className="p-4 bg-white rounded-xl border border-red-200 flex items-center justify-between text-xs">
                                     <div>
                                         <p className="font-extrabold text-neutral-900">Flush Active User Sessions</p>
-                                        <p className="text-neutral-500">Force re-authentication for all active logged-in recruiters and agents.</p>
+                                        <p className="text-neutral-500">Signs out everyone except Super Admins on every device. They must sign in again.</p>
+                                        {form.sessionsRevokedAt && (
+                                            <p className="text-neutral-400 mt-1">Last done {new Date(form.sessionsRevokedAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</p>
+                                        )}
                                     </div>
                                     <button
-                                        onClick={() => toast.success("All non-admin sessions invalidated.")}
+                                        disabled={dangerMutation.isPending}
+                                        onClick={() => {
+                                            if (!window.confirm("Sign out every non-Super-Admin user now?")) return;
+                                            dangerMutation.mutate({ action: "FLUSH_SESSIONS" });
+                                        }}
                                         className="px-3.5 py-1.5 bg-red-600 text-white rounded-xl text-xs font-bold hover:bg-red-700 transition-colors"
                                     >
                                         Force Signout

@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
+import { integrationCatalog } from "@/lib/integrations";
 import { requireRole } from "@/lib/mock/server";
 import {
     users, clients, jobs, applications, candidates, commissionLedger,
-    interviews, referrals, tasks, auditLogs, notifications, integrationServices, ACTIVE_STAGES,
+    interviews, referrals, tasks, auditLogs, notifications, ACTIVE_STAGES, invoices,
 } from "@/lib/mock/data";
+import { balanceDue, creditStatusOf, inrOf, isOpen } from "@/lib/mock/finance";
+import { OPEN_JOB_STATUSES } from "@/lib/requisition-options";
 
 export async function GET(request: Request) {
     const auth = await requireRole("SUPER_ADMIN", "TA_MANAGER", "TA_RECRUITER");
@@ -32,6 +35,26 @@ export async function GET(request: Request) {
     const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
     const prevMonthStart = new Date(monthStart); prevMonthStart.setMonth(prevMonthStart.getMonth() - 1);
 
+    // Period picked on the dashboard: revenue and joinings are counted inside it, and compared with the period before
+    const period = new URL(request.url).searchParams.get("period") ?? "THIS_MONTH";
+    const range = periodRange(period);
+    const billable = orgLedger.filter((l) => l.type !== "REFERRAL_INCENTIVE" && l.status !== "CANCELLED");
+    const inRange = (iso: string | null | undefined, from: Date, to: Date) => !!iso && new Date(iso) >= from && new Date(iso) < to;
+    const revenuePeriod = billable.filter((l) => inRange(l.createdAt, range.from, range.to)).reduce((s, l) => s + l.amountInr, 0);
+    const revenuePrevPeriod = billable.filter((l) => inRange(l.createdAt, range.prevFrom, range.from)).reduce((s, l) => s + l.amountInr, 0);
+    const joinedInPeriod = orgApps.filter((a) => a.stage === "JOINED" && inRange(a.actualJoinDate || a.updatedAt, range.from, range.to)).length;
+
+    // Billed vs collected, last 6 calendar months (IST)
+    const revenueTrend = Array.from({ length: 6 }, (_, i) => {
+        const start = new Date(); start.setDate(1); start.setHours(0, 0, 0, 0); start.setMonth(start.getMonth() - (5 - i));
+        const end = new Date(start); end.setMonth(end.getMonth() + 1);
+        return {
+            month: start.toLocaleDateString("en-IN", { month: "short" }),
+            revenue: billable.filter((l) => l.amountInr > 0 && inRange(l.createdAt, start, end)).reduce((n, l) => n + l.amountInr, 0),
+            collections: billable.filter((l) => l.status === "PAID" && inRange(l.paidAt ?? null, start, end)).reduce((n, l) => n + l.amountInr, 0),
+        };
+    });
+
     const revenueThisMonth = orgLedger
         .filter((l) => l.type !== "REFERRAL_INCENTIVE" && l.status !== "CANCELLED" && new Date(l.createdAt) >= monthStart)
         .reduce((s, l) => s + l.amountInr, 0);
@@ -44,24 +67,23 @@ export async function GET(request: Request) {
         .filter((l) => l.type !== "REFERRAL_INCENTIVE" && l.status !== "CANCELLED")
         .reduce((s, l) => s + l.amountInr, 0);
 
-    const pendingReceivables = orgLedger
-        .filter((l) => l.type === "PLACEMENT_COMMISSION" && ["PENDING", "APPROVED"].includes(l.status))
-        .reduce((s, l) => s + l.amountInr, 0);
-
-    // Aging receivables
+    // Receivables: balance due on the Finance workspace's open invoices (INR, incl. GST), same as Finance shows
     const now = Date.now();
+    const openInvoices = invoices.filter((i) => i.orgId === me.orgId && isOpen(i));
+    const todayStr = new Date(now + 5.5 * 3600000).toISOString().slice(0, 10); // IST date
+    let pendingReceivables = 0;
     let overdueReceivables = 0;
     const agingReceivables = { "0_30": 0, "31_60": 0, "61_90": 0, "90_plus": 0 };
-    orgLedger.filter((l) => l.type === "PLACEMENT_COMMISSION" && ["PENDING", "APPROVED"].includes(l.status)).forEach((l) => {
-        const ageDays = Math.floor((now - new Date(l.createdAt).getTime()) / 86400000);
-        if (l.dueDate && new Date(l.dueDate).getTime() < now) {
-            overdueReceivables += l.amountInr;
-        }
-        if (ageDays <= 30) agingReceivables["0_30"] += l.amountInr;
-        else if (ageDays <= 60) agingReceivables["31_60"] += l.amountInr;
-        else if (ageDays <= 90) agingReceivables["61_90"] += l.amountInr;
-        else agingReceivables["90_plus"] += l.amountInr;
-    });
+    for (const inv of openInvoices) {
+        const due = inrOf(inv, balanceDue(inv));
+        pendingReceivables += due;
+        if (inv.dueDate < todayStr) overdueReceivables += due;
+        const ageDays = Math.floor((Date.parse(todayStr) - Date.parse(inv.issueDate.slice(0, 10))) / 86400000);
+        if (ageDays <= 30) agingReceivables["0_30"] += due;
+        else if (ageDays <= 60) agingReceivables["31_60"] += due;
+        else if (ageDays <= 90) agingReceivables["61_90"] += due;
+        else agingReceivables["90_plus"] += due;
+    }
 
     // Detailed Recruitment Funnel with conversion rates
     const FUNNEL_STAGES = [
@@ -137,13 +159,16 @@ export async function GET(request: Request) {
         const cJobIds = cJobs.map((j) => j.id);
         const cApps = orgApps.filter((a) => cJobIds.includes(a.jobId));
         const cPlacements = cApps.filter((a) => a.stage === "JOINED").length;
-        const cOpenPositions = cJobs.filter((j) => !["CLOSED", "FULFILLED"].includes(j.status)).reduce((s, j) => s + (j.openings - j.filled), 0);
+        const cOpenJobs = cJobs.filter((j) => (OPEN_JOB_STATUSES as readonly string[]).includes(j.status));
+        const cOpenPositions = cOpenJobs.reduce((s, j) => s + Math.max(0, j.openings - j.filled), 0);
         const cLedger = orgLedger.filter((l) => l.clientId === c.id);
         const cRevenue = cLedger.reduce((s, l) => s + l.amountInr, 0);
-        const cReceivables = cLedger.filter((l) => ["PENDING", "APPROVED"].includes(l.status)).reduce((s, l) => s + l.amountInr, 0);
+        const credit = creditStatusOf(me.orgId, c.id);
+        const cReceivables = credit.outstanding;
 
+        // Payment risk = on credit hold or anything overdue (thresholds in Finance › Settings)
         let operationalStatus: "ACTIVE" | "NEEDS_ATTENTION" | "PAYMENT_RISK" | "INACTIVE" = "ACTIVE";
-        if (cReceivables > 100000) operationalStatus = "PAYMENT_RISK";
+        if (credit.onHold || credit.maxOverdue > 0) operationalStatus = "PAYMENT_RISK";
         else if (cOpenPositions > 0 && cApps.length === 0) operationalStatus = "NEEDS_ATTENTION";
         else if (c.status !== "ACTIVE") operationalStatus = "INACTIVE";
 
@@ -151,7 +176,7 @@ export async function GET(request: Request) {
             id: c.id,
             name: c.companyName,
             industry: c.industry,
-            openJobs: cJobs.filter((j) => !["CLOSED", "FULFILLED"].includes(j.status)).length,
+            openJobs: cOpenJobs.length,
             openPositions: cOpenPositions,
             candidatesSubmitted: cApps.length,
             placements: cPlacements,
@@ -196,7 +221,7 @@ export async function GET(request: Request) {
             type: "URGENT",
             title: "Overdue Placement Invoices",
             detail: `₹${(overdueReceivables / 1000).toFixed(0)}k is past payment due date. Follow-up required.`,
-            link: "/admin/finance",
+            link: "/finance/invoices",
         });
     }
 
@@ -229,7 +254,7 @@ export async function GET(request: Request) {
     // Data Quality & Compliance
     const dataQuality = {
         potentialDuplicates: orgCandidates.filter((c) => c.blacklisted || !c.resumeUrl).length,
-        incompleteProfiles: orgCandidates.filter((c) => (c.profileCompletionScore ?? 80) < 85).length,
+        incompleteProfiles: orgCandidates.filter((c) => c.profileCompletionScore != null && c.profileCompletionScore < 85).length,
         missingConsent: orgCandidates.filter((c) => !c.compliance?.dataProcessingConsent).length,
         expiredDocuments: 1,
     };
@@ -249,7 +274,12 @@ export async function GET(request: Request) {
             joiningPending,
             revenueThisMonth,
             revenuePrevMonth,
-            revenueGrowthPct: revenuePrevMonth > 0 ? Math.round(((revenueThisMonth - revenuePrevMonth) / revenuePrevMonth) * 100) : 18,
+            // null when there is nothing to compare with (no invented growth figure)
+            revenueGrowthPct: revenuePrevMonth > 0 ? Math.round(((revenueThisMonth - revenuePrevMonth) / revenuePrevMonth) * 100) : null,
+            period: range.label,
+            revenuePeriod,
+            revenuePeriodGrowthPct: revenuePrevPeriod > 0 ? Math.round(((revenuePeriod - revenuePrevPeriod) / revenuePrevPeriod) * 100) : null,
+            joinedInPeriod,
             totalRevenue,
             pendingReceivables,
             overdueReceivables,
@@ -258,6 +288,7 @@ export async function GET(request: Request) {
         todayOperations,
         funnel,
         pipelineAging,
+        revenueTrend,
         recruiterPerformance,
         clientHealth,
         alerts,
@@ -270,13 +301,13 @@ export async function GET(request: Request) {
         platformHealth: (() => {
             const pool = candidates.filter((c) => c.orgId === me.orgId && !c.archived);
             const consented = pool.filter((c) => c.compliance?.dataProcessingConsent).length;
-            const integ = integrationServices.filter((s) => s.orgId === me.orgId);
+            const integ = integrationCatalog();
             return {
                 consentPct: pool.length ? Math.round((consented / pool.length) * 100) : null,
                 consented, candidates: pool.length,
-                integrationsConnected: integ.filter((s) => s.status === "CONNECTED").length,
+                integrationsConnected: integ.filter((s) => s.availability === "LIVE").length,
                 integrationsTotal: integ.length,
-                integrationsNeedingAttention: integ.filter((s) => s.status === "NEEDS_ATTENTION" || s.status === "ERROR").length,
+                integrationsNeedingAttention: integ.filter((s) => s.availability === "NEEDS_SETUP").length,
             };
         })(),
         urgentJobs: activeJobs
@@ -306,3 +337,36 @@ export async function GET(request: Request) {
     });
 }
 
+
+/** Date range for the dashboard's period filter, plus the equally long period before it. */
+function periodRange(period: string): { from: Date; to: Date; prevFrom: Date; label: string } {
+    const now = new Date();
+    const day = new Date(now); day.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(day); tomorrow.setDate(day.getDate() + 1);
+    const back = (from: Date, to: Date) => new Date(from.getTime() - (to.getTime() - from.getTime()));
+    switch (period) {
+        case "TODAY": return { from: day, to: tomorrow, prevFrom: back(day, tomorrow), label: "Today" };
+        case "THIS_WEEK": {
+            const from = new Date(day); from.setDate(day.getDate() - ((day.getDay() + 6) % 7)); // Monday
+            return { from, to: tomorrow, prevFrom: new Date(from.getTime() - 7 * 86400000), label: "This week" };
+        }
+        case "LAST_MONTH": {
+            const from = new Date(day.getFullYear(), day.getMonth() - 1, 1), to = new Date(day.getFullYear(), day.getMonth(), 1);
+            return { from, to, prevFrom: new Date(day.getFullYear(), day.getMonth() - 2, 1), label: "Last month" };
+        }
+        case "THIS_QUARTER": {
+            const q = Math.floor(day.getMonth() / 3) * 3;
+            const from = new Date(day.getFullYear(), q, 1);
+            return { from, to: tomorrow, prevFrom: new Date(day.getFullYear(), q - 3, 1), label: "This quarter" };
+        }
+        case "THIS_FY": {
+            const y = day.getMonth() >= 3 ? day.getFullYear() : day.getFullYear() - 1; // April to March
+            const from = new Date(y, 3, 1);
+            return { from, to: tomorrow, prevFrom: new Date(y - 1, 3, 1), label: "This financial year" };
+        }
+        default: {
+            const from = new Date(day.getFullYear(), day.getMonth(), 1);
+            return { from, to: tomorrow, prevFrom: new Date(day.getFullYear(), day.getMonth() - 1, 1), label: "This month" };
+        }
+    }
+}

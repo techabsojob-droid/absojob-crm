@@ -56,7 +56,7 @@ export default function AdminJobsPage() {
         education: "B.Tech / B.E. / BCA / MCA",
         noticePeriodPreference: "Immediate to 30 Days",
         primaryRecruiterId: "",
-        slaDays: "30",
+        slaDays: "",
         tags: "Urgent",
         description: "",
         status: "APPROVED"
@@ -180,7 +180,7 @@ export default function AdminJobsPage() {
         setForm({
             clientId: job.clientId || "",
             title: job.title || "",
-            department: job.department || "Engineering",
+            department: job.department || "",
             location: job.location || "",
             workMode: job.workMode || "HYBRID",
             employmentType: job.employmentType || "FULL_TIME",
@@ -196,7 +196,7 @@ export default function AdminJobsPage() {
             education: job.education || "",
             noticePeriodPreference: job.noticePeriodPreference || "",
             primaryRecruiterId: job.primaryRecruiterId || job.assignedTas?.[0] || "",
-            slaDays: String(job.slaDays || "30"),
+            slaDays: job.slaDays ? String(job.slaDays) : "",
             tags: Array.isArray(job.tags) ? job.tags.join(", ") : (job.tags || ""),
             description: job.description || "",
             status: job.status || "APPROVED",
@@ -225,7 +225,7 @@ export default function AdminJobsPage() {
             education: "B.Tech / B.E. / BCA / MCA",
             noticePeriodPreference: "Immediate to 30 Days",
             primaryRecruiterId: "",
-            slaDays: "30",
+            slaDays: "",
             tags: "Urgent",
             description: "",
             status: "APPROVED",
@@ -1052,6 +1052,7 @@ export default function AdminJobsPage() {
                                         <input
                                             type="number"
                                             value={form.slaDays}
+                                            placeholder="Settings default"
                                             onChange={(e) => setForm({ ...form, slaDays: e.target.value })}
                                             className="mt-1 w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs focus:border-primary outline-none"
                                         />

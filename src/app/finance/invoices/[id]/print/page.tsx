@@ -13,6 +13,11 @@ interface Doc {
     company: { name: string; address: string; gstin: string; pan: string; state: string; lut: string; bankName: string; bankAccountNumber: string; bankIfsc: string };
     client: { name: string; billingAddress?: string | null; gstin?: string | null; stateCode?: string | null; stateName: string; country: string } | null;
     original: string | null;
+    /** Candidate information for invoicing, one row per placement on this invoice. */
+    placements?: {
+        id: string; candidateName: string; employeeCode: string | null; workLocation: string | null; joiningDate: string; designation: string;
+        grade: string | null; ctcLpa: number; employeeType: string | null; invoiceAmount: number | null; tatDays: number | null;
+    }[];
 }
 
 const words = (n: number): string => {
@@ -72,6 +77,38 @@ export default function PrintInvoice({ params }: { params: Promise<{ id: string 
                         {inv.lineItems.map((l, i) => <tr key={i} className="border-b border-neutral-200 align-top"><td className="py-2">{i + 1}</td><td className="py-2 pr-4">{l.description}</td><td>{l.sacCode ?? "998512"}</td><td className="text-right">{m(l.amount)}</td></tr>)}
                     </tbody>
                 </table>
+                {!!data.placements?.length && inv.kind === "INVOICE" && (
+                    <div className="mt-5">
+                        <p className="font-bold uppercase text-[10px] text-neutral-500 mb-1">Candidate details</p>
+                        <table className="w-full border-collapse text-[10.5px]">
+                            <thead>
+                                <tr className="border-y border-black text-left">
+                                    {["#", "Candidate name", "Emp. code", "Location", "DOJ", "Designation", "Grade", "CTC (LPA)", "FLS / NFLS", "Invoice amount", "TAT (days)"].map((h) => (
+                                        <th key={h} className={`py-1.5 pr-2 ${["CTC (LPA)", "Invoice amount", "TAT (days)"].includes(h) ? "text-right" : ""}`}>{h}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {data.placements.map((c, i) => (
+                                    <tr key={c.id} className="border-b border-neutral-200 align-top">
+                                        <td className="py-1.5 pr-2">{i + 1}</td>
+                                        <td className="py-1.5 pr-2">{c.candidateName}</td>
+                                        <td className="py-1.5 pr-2">{c.employeeCode ?? "—"}</td>
+                                        <td className="py-1.5 pr-2">{c.workLocation ?? "—"}</td>
+                                        <td className="py-1.5 pr-2 whitespace-nowrap">{c.joiningDate}</td>
+                                        <td className="py-1.5 pr-2">{c.designation}</td>
+                                        <td className="py-1.5 pr-2">{c.grade ?? "—"}</td>
+                                        <td className="py-1.5 pr-2 text-right">{c.ctcLpa}</td>
+                                        <td className="py-1.5 pr-2">{c.employeeType ?? "—"}</td>
+                                        <td className="py-1.5 pr-2 text-right whitespace-nowrap">{c.invoiceAmount != null ? m(c.invoiceAmount) : "—"}</td>
+                                        <td className="py-1.5 text-right">{c.tatDays ?? "—"}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        <p className="mt-1 text-[9.5px] text-neutral-500">Invoice amount is before GST. TAT = days from date of joining to this invoice&apos;s date.</p>
+                    </div>
+                )}
                 <div className="flex justify-end mt-3">
                     <table className="w-72">
                         <tbody>

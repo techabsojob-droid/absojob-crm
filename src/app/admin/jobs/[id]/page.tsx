@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader, StatCard, Badge, SectionCard, ModalShell, EmptyState, inr } from "@/components/shared/ui";
+import JobExportMenu from "@/components/shared/JobExportMenu";
 import { SkeletonPulse } from "@/components/shared/UIStates";
 import { RelatedTasks } from "@/components/tasks/TaskWidgets";
 import { JobOverview, JobIconButton } from "@/components/shared/JobOverview";
@@ -190,7 +191,7 @@ export default function Job360Page({ params }: { params: Promise<{ id: string }>
                                 </Link>
                                 <span className="text-neutral-300">·</span>
                                 <span className="flex items-center gap-1 text-neutral-600">
-                                    <MapPin size={12} /> {job.location || "Remote"} ({job.workMode || "HYBRID"})
+                                    <MapPin size={12} /> {job.location || "Location not set"}{job.workMode ? ` (${job.workMode})` : ""}
                                 </span>
                                 <span className="text-neutral-300">·</span>
                                 <span className="flex items-center gap-1 font-semibold text-neutral-700">
@@ -210,6 +211,7 @@ export default function Job360Page({ params }: { params: Promise<{ id: string }>
 
                     {/* Top Requisition Actions */}
                     <div className="flex items-center gap-2 flex-wrap">
+                        <JobExportMenu jobId={job.id} />
                         {job.status === "PENDING_APPROVAL" && (
                             <button
                                 onClick={() => patchMutation.mutate({ action: "approve" })}
@@ -262,7 +264,7 @@ export default function Job360Page({ params }: { params: Promise<{ id: string }>
                     </div>
                     <div className="bg-neutral-50 p-2.5 rounded-xl border border-neutral-200/50">
                         <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">TA Manager</span>
-                        <p className="font-extrabold text-neutral-900 mt-0.5">{job.taManagerName || "Amit Joshi"}</p>
+                        <p className="font-extrabold text-neutral-900 mt-0.5">{job.taManagerName || "—"}</p>
                     </div>
                     <div className="bg-neutral-50 p-2.5 rounded-xl border border-neutral-200/50">
                         <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">Account Manager</span>
@@ -885,8 +887,8 @@ export default function Job360Page({ params }: { params: Promise<{ id: string }>
                             </div>
 
                             <div className="p-4 bg-neutral-50 rounded-xl border border-neutral-200/60 space-y-2 text-neutral-700">
-                                <p>Education: <strong>{job.education || "Graduate / Professional Degree"}</strong></p>
-                                <p>Notice Period: <strong>{job.noticePeriodPreference || "Immediate to 30 Days"}</strong></p>
+                                <p>Education: <strong>{job.education || "Not specified"}</strong></p>
+                                <p>Notice Period: <strong>{job.noticePeriodPreference || "Not specified"}</strong></p>
                                 <p>Experience Range: <strong>{job.experienceMinYears} to {job.experienceMaxYears} Years</strong></p>
                                 <p>Compensation Band: <strong>₹{job.salaryMinLpa} – ₹{job.salaryMaxLpa} LPA</strong></p>
                             </div>
@@ -1034,13 +1036,13 @@ export default function Job360Page({ params }: { params: Promise<{ id: string }>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <div className="p-4 bg-neutral-50 rounded-xl border border-neutral-200/60">
                             <span className="text-[10px] font-bold text-neutral-400 uppercase">Standard Commission</span>
-                            <p className="text-lg font-black text-neutral-900 mt-1">8.33% (1 Month CTC)</p>
-                            <p className="text-[10px] text-neutral-400">Client agreed rate card</p>
+                            <p className="text-lg font-black text-neutral-900 mt-1">{job.feePercent ?? 8.33}% of CTC</p>
+                            <p className="text-[10px] text-neutral-400">Client rate, else the Settings commission rule</p>
                         </div>
                         <div className="p-4 bg-neutral-50 rounded-xl border border-neutral-200/60">
                             <span className="text-[10px] font-bold text-neutral-400 uppercase">Expected Requisition Revenue</span>
                             <p className="text-lg font-black text-emerald-600 mt-1">
-                                {inr(Math.round(((job.salaryMinLpa + job.salaryMaxLpa) / 2) * 100000 * 0.0833 * totalOpenings))}
+                                {inr(Math.round(((job.salaryMinLpa + job.salaryMaxLpa) / 2) * 100000 * ((job.feePercent ?? 8.33) / 100) * totalOpenings))}
                             </p>
                             <p className="text-[10px] text-neutral-400">On 100% position fulfillment</p>
                         </div>

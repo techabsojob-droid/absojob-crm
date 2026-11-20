@@ -28,10 +28,10 @@ export default function ClientsPage() {
         contactPerson: "",
         contactEmail: "",
         contactPhone: "",
-        address: "Mumbai",
-        commissionRate: "8.33",
-        creditDays: "30",
-        estimatedValue: "₹25L",
+        address: "",
+        commissionRate: "",
+        creditDays: "",
+        estimatedValue: "",
         notes: "",
     });
 
@@ -59,8 +59,8 @@ export default function ClientsPage() {
             setModalOpen(false);
             setForm({
                 companyName: "", industry: "IT Services", website: "", contactPerson: "",
-                contactEmail: "", contactPhone: "", address: "Mumbai", commissionRate: "8.33",
-                creditDays: "30", estimatedValue: "₹25L", notes: ""
+                contactEmail: "", contactPhone: "", address: "", commissionRate: "",
+                creditDays: "", estimatedValue: "", notes: ""
             });
             qc.invalidateQueries({ queryKey: ["clients"] });
         },
@@ -310,7 +310,7 @@ export default function ClientsPage() {
                             {/* Contact Person & Account Rep Details */}
                             <div className="space-y-1.5 text-xs text-neutral-500">
                                 <p className="flex items-center gap-2">
-                                    <UserCheck size={13} className="text-neutral-400" /> Account Manager: <strong className="text-neutral-700 font-semibold">{c.accountManagerName}</strong>
+                                    <UserCheck size={13} className="text-neutral-400" /> Account Manager: <strong className="text-neutral-700 font-semibold">{c.accountManagerName ?? "Not assigned"}</strong>
                                 </p>
                                 <p className="flex items-center gap-2">
                                     <Mail size={13} className="text-neutral-400" /> {c.contactPerson} · <a href={`mailto:${c.contactEmail}`} className="text-primary hover:underline">{c.contactEmail}</a>
@@ -421,6 +421,7 @@ export default function ClientsPage() {
                                 type="number"
                                 step="0.01"
                                 value={form.commissionRate}
+                                placeholder="Blank = default from Settings"
                                 onChange={(e) => setForm({ ...form, commissionRate: e.target.value })}
                                 className="mt-1 w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs focus:border-primary outline-none"
                             />
@@ -430,6 +431,7 @@ export default function ClientsPage() {
                             <input
                                 type="number"
                                 value={form.creditDays}
+                                placeholder="Blank = default from Settings"
                                 onChange={(e) => setForm({ ...form, creditDays: e.target.value })}
                                 className="mt-1 w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs focus:border-primary outline-none"
                             />

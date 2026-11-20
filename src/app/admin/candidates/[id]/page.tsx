@@ -65,7 +65,7 @@ export default function CandidateProfilePage() {
     const [submissionForm, setSubmissionForm] = useState({
         clientName: "",
         positionTitle: "",
-        submittedRateOrCtc: "₹18 LPA",
+        submittedRateOrCtc: "",
         clientFeedback: "",
         status: "SUBMITTED" as "SUBMITTED" | "SHORTLISTED" | "INTERVIEWING" | "REJECTED" | "OFFERED",
     });
@@ -249,7 +249,7 @@ export default function CandidateProfilePage() {
         }, {
             onSuccess: () => {
                 setSubmissionModalOpen(false);
-                setSubmissionForm({ clientName: "", positionTitle: "", submittedRateOrCtc: "₹18 LPA", clientFeedback: "", status: "SUBMITTED" });
+                setSubmissionForm({ clientName: "", positionTitle: "", submittedRateOrCtc: "", clientFeedback: "", status: "SUBMITTED" });
             }
         });
     };
@@ -333,7 +333,7 @@ export default function CandidateProfilePage() {
                     <div>
                         <div className="flex items-center gap-2.5 flex-wrap">
                             <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-neutral-100 text-neutral-600 border border-neutral-200">
-                                {candidate.candidateCode || "CAN-8901"}
+                                {candidate.candidateCode || candidate.id}
                             </span>
                             <h1 className="text-[22px] leading-tight font-semibold tracking-tight text-neutral-900 leading-tight">
                                 {candidate.name}
@@ -345,12 +345,12 @@ export default function CandidateProfilePage() {
                             {stats.currentStage === "JOINED" && <Badge value="JOINED" label="Placed Employee" />}
                         </div>
                         <p className="text-sm font-semibold text-primary mt-1 flex items-center gap-2 flex-wrap">
-                            {candidate.currentDesignation ?? "Professional"}
+                            {candidate.currentDesignation || "—"}
                             {candidate.currentCompany && <span className="text-neutral-400 font-normal">at {candidate.currentCompany}</span>}
                             {candidate.location && <span className="text-neutral-400 font-normal">· {candidate.location}</span>}
                             <span className="text-neutral-300">|</span>
                             <span className="text-xs text-neutral-500 font-normal">
-                                Owner: <strong className="text-neutral-700">{ownership?.assignedRecruiterName || "Neha Sharma"}</strong>
+                                Owner: <strong className="text-neutral-700">{ownership?.assignedRecruiterName || "Unassigned"}</strong>
                             </span>
                         </p>
                     </div>
@@ -644,11 +644,11 @@ export default function CandidateProfilePage() {
                                 <div className="bg-neutral-50 p-3 rounded-xl border border-neutral-100 space-y-2 text-xs">
                                     <div className="flex justify-between items-center">
                                         <span className="text-neutral-500">Assigned TA:</span>
-                                        <span className="font-bold text-neutral-900">{ownership?.assignedRecruiterName || "Neha Sharma"}</span>
+                                        <span className="font-bold text-neutral-900">{ownership?.assignedRecruiterName || "Unassigned"}</span>
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <span className="text-neutral-500">TA Manager:</span>
-                                        <span className="font-bold text-neutral-900">{ownership?.taManagerName || "Amit Joshi"}</span>
+                                        <span className="font-bold text-neutral-900">{ownership?.taManagerName || "—"}</span>
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <span className="text-neutral-500">Team:</span>

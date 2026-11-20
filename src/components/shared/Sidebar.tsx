@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useFoldedNav } from "./useFoldedNav";
+import WorkspaceSwitcher from "./WorkspaceSwitcher";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronsLeft, ChevronsRight, LogOut, X } from "lucide-react";
+import { ArrowUpRight, ChevronDown, ChevronsLeft, ChevronsRight, LogOut, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { roleHome } from "@/lib/types";
@@ -17,6 +19,8 @@ export interface NavItem {
     badgeKey?: "requisitions" | "pipeline" | "candidates" | "interviews" | "tasks" | "approvals" | "dataQuality" | "overdueInvoices" | "toBill" | "expensesPending" | "payrollAwaiting";
     badgeTone?: "red" | "amber" | "emerald" | "blue" | "neutral";
     tooltipHint?: string;
+    /** Opens another workspace (its own menu replaces this one). */
+    switchesWorkspace?: boolean;
 }
 
 export interface NavGroup {
@@ -72,6 +76,17 @@ export default function Sidebar({ items, groups, collapsed, onToggle, mobileOpen
 
     const narrow = collapsed && !mobileOpen; // icon-only rail (desktop collapsed)
 
+    // Category fold state, remembered per workspace (/ta, /admin…); the current page's category reopens on arrival
+    const workspace = resolvedGroups[0]?.items[0]?.href.split("/")[1] ?? "app";
+    const activeGroup = resolvedGroups.find((g) => g.groupTitle && g.items.some((i) => i.href === current));
+    const fold = useFoldedNav(workspace, activeGroup?.groupTitle);
+
+    const badgeOf = (item: NavItem) => {
+        const raw = item.badgeKey ? badges[item.badgeKey] : item.badge;
+        return raw !== undefined && raw !== null && (typeof raw === "string" || raw > 0) ? raw : undefined;
+    };
+    const alertOf = (item: NavItem) => (item.badgeKey === "tasks" && badges.hasOverdueTasks) || (item.badgeKey === "requisitions" && badges.hasSlaBreach) || item.badgeTone === "red";
+
     return (
         <>
             {mobileOpen && <div className="fixed inset-0 z-40 bg-navy-deep/50 lg:hidden" onClick={onCloseMobile} aria-hidden />}
@@ -95,20 +110,40 @@ export default function Sidebar({ items, groups, collapsed, onToggle, mobileOpen
                     {mobileOpen && <button onClick={onCloseMobile} className="ml-auto p-1.5 rounded-md text-[#94A6C3] hover:text-white hover:bg-white/10 lg:hidden" aria-label="Close menu"><X size={18} /></button>}
                 </div>
 
+                <WorkspaceSwitcher narrow={narrow} />
+
                 {/* Navigation */}
                 <nav className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar py-3">
-                    {resolvedGroups.map((grp, gi) => (
-                        <div key={gi} className={gi ? "mt-4" : ""}>
+                    {resolvedGroups.map((grp, gi) => {
+                        // The icon rail and untitled groups always show every item
+                        const foldable = !!grp.groupTitle && !narrow;
+                        const open = !foldable || fold.isOpen(grp.groupTitle!);
+                        const listId = `nav-group-${gi}`;
+                        // A folded category still shows the total of its numeric badges
+                        const hiddenCount = grp.items.reduce((n, i) => { const b = badgeOf(i); return n + (typeof b === "number" ? b : 0); }, 0);
+                        const hiddenAlert = grp.items.some((i) => badgeOf(i) !== undefined && alertOf(i));
+                        return (
+                        <div key={gi} className={gi ? (foldable ? "mt-2" : "mt-4") : ""}>
                             {grp.groupTitle && (narrow
                                 ? <div className="h-px bg-white/[0.07] mx-4 mb-2" />
-                                : <p className="px-5 pb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[#6A82A6]">{grp.groupTitle}</p>)}
-                            <ul className={narrow ? "px-2 space-y-0.5" : "px-3 space-y-0.5"}>
+                                : (
+                                    <button type="button" onClick={() => fold.toggle(grp.groupTitle!)} aria-expanded={open} aria-controls={listId}
+                                        title={open ? `Hide ${grp.groupTitle.toLowerCase()}` : `Show ${grp.groupTitle.toLowerCase()}`}
+                                        className="group/h w-full flex items-center gap-1.5 px-5 py-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[#6A82A6] hover:text-[#BDC9DC] cursor-pointer">
+                                        <span className="flex-1 text-left truncate">{grp.groupTitle}</span>
+                                        {!open && hiddenCount > 0 && (
+                                            <span className={`min-w-5 h-[18px] px-1.5 rounded text-[10.5px] font-semibold tabular-nums normal-case tracking-normal flex items-center justify-center ${hiddenAlert ? "bg-accent text-white" : "bg-white/10 text-[#DEE4EE]"}`}>{hiddenCount}</span>
+                                        )}
+                                        <ChevronDown size={13} aria-hidden className={`shrink-0 transition-transform duration-200 ${open ? "" : "-rotate-90"}`} />
+                                    </button>
+                                ))}
+                            <div id={listId} className={`grid transition-[grid-template-rows] duration-200 ease-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
+                            <ul className={`overflow-hidden ${narrow ? "px-2 space-y-0.5" : "px-3 space-y-0.5"}`} inert={!open}>
                                 {grp.items.map((item) => {
                                     const Icon = item.icon;
                                     const isActive = current === item.href;
-                                    const raw = item.badgeKey ? badges[item.badgeKey] : item.badge;
-                                    const badge = raw !== undefined && raw !== null && (typeof raw === "string" || raw > 0) ? raw : undefined;
-                                    const alert = (item.badgeKey === "tasks" && badges.hasOverdueTasks) || (item.badgeKey === "requisitions" && badges.hasSlaBreach) || item.badgeTone === "red";
+                                    const badge = badgeOf(item);
+                                    const alert = alertOf(item);
                                     return (
                                         <li key={item.href}>
                                             <Link
@@ -123,6 +158,7 @@ export default function Sidebar({ items, groups, collapsed, onToggle, mobileOpen
                                                 {isActive && <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r bg-accent" aria-hidden />}
                                                 <Icon size={17} strokeWidth={isActive ? 2.2 : 1.8} className={`shrink-0 ${isActive ? "text-white" : "text-[#94A6C3] group-hover:text-white"}`} />
                                                 {!narrow && <span className="flex-1 truncate">{item.label}</span>}
+                                                {!narrow && item.switchesWorkspace && <ArrowUpRight size={14} aria-label="opens another workspace" className="shrink-0 text-[#6A82A6] group-hover:text-white" />}
                                                 {!narrow && badge !== undefined && (
                                                     <span className={`min-w-5 h-5 px-1.5 rounded text-[11px] font-semibold tabular-nums flex items-center justify-center ${alert ? "bg-accent text-white" : "bg-white/10 text-[#DEE4EE]"}`}>{badge}</span>
                                                 )}
@@ -132,8 +168,10 @@ export default function Sidebar({ items, groups, collapsed, onToggle, mobileOpen
                                     );
                                 })}
                             </ul>
+                            </div>
                         </div>
-                    ))}
+                        );
+                    })}
                 </nav>
 
                 {/* Footer: who's signed in, sign out, collapse */}

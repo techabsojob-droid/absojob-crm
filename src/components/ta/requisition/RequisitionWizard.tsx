@@ -384,7 +384,6 @@ export default function RequisitionWizard({ jobId, duplicateOf }: { jobId?: stri
                                                 ...p, clientId: v,
                                                 // Prefill commercials and contact from the client's record when still empty
                                                 billingType: p.billingType || c?.defaults.billingType || "",
-                                                placementFeePct: p.placementFeePct || s(c?.defaults.placementFeePct),
                                                 replacementGuaranteeDays: p.replacementGuaranteeDays || s(c?.defaults.replacementGuaranteeDays),
                                                 ...(p.clientId !== v ? { clientContactName: c?.contacts[0]?.name ?? "", clientContactEmail: c?.contacts[0]?.email ?? "", clientContactPhone: c?.contacts[0]?.phone ?? "" } : {}),
                                             }));
@@ -578,9 +577,6 @@ export default function RequisitionWizard({ jobId, duplicateOf }: { jobId?: stri
                             <Field label="Client HR Email" error={errors.clientContactEmail}><input type="email" maxLength={160} {...bind("clientContactEmail")} placeholder="hr@client.com" className={inputCls(errors.clientContactEmail)} /></Field>
                             <Field label="Client HR Phone" error={errors.clientContactPhone}><input type="tel" maxLength={20} {...bind("clientContactPhone")} placeholder="+91 98765 43210" className={inputCls(errors.clientContactPhone)} /></Field>
                             <Field label="Billing Type"><select {...bind("billingType")} className={inputCls()}><option value="">Not set</option>{BILLING_TYPES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></Field>
-                            <Field label="Placement Fee (%)" error={errors.placementFeePct} hint={client?.defaults.placementFeePct != null ? `Client's standard fee: ${client.defaults.placementFeePct}%` : undefined}>
-                                <input type="number" min={0} max={100} step={0.01} {...bind("placementFeePct")} className={inputCls(errors.placementFeePct)} />
-                            </Field>
                             <Field label="Contract Type"><select {...bind("contractType")} className={inputCls()}><option value="">Not set</option>{CONTRACT_TYPES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></Field>
                             <Field label="Replacement Guarantee (days)" error={errors.replacementGuaranteeDays}><input type="number" min={0} max={365} step={1} {...bind("replacementGuaranteeDays")} className={inputCls(errors.replacementGuaranteeDays)} /></Field>
                             <Field label="Commercial Notes" className="sm:col-span-2"><textarea maxLength={2000} {...bind("commercialNotes")} className={textareaCls()} /></Field>
@@ -666,7 +662,7 @@ function Review({ f, o, clientName, jump, errors }: { f: F; o?: Options; clientN
         ] },
         { title: "Commercial Details", step: 4, rows: [
             ["Client contact", f.clientContactName], ["Client HR email", f.clientContactEmail], ["Client HR phone", f.clientContactPhone], ["Billing type", optLabel(BILLING_TYPES, f.billingType)],
-            ["Placement fee", f.placementFeePct ? `${f.placementFeePct}%` : ""], ["Contract type", optLabel(CONTRACT_TYPES, f.contractType)],
+            ["Contract type", optLabel(CONTRACT_TYPES, f.contractType)],
             ["Replacement guarantee", f.replacementGuaranteeDays ? `${f.replacementGuaranteeDays} days` : ""], ["Commercial notes", f.commercialNotes],
         ] },
     ];

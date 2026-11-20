@@ -2,49 +2,64 @@
 
 import { useQuery } from "@tanstack/react-query";
 import {
-    Building2, Briefcase, Users, Wallet, UserCheck, Clock,
-    TrendingUp, ClipboardCheck, ArrowRight, Flame, MapPin, Calendar,
-    ChevronRight, AlertTriangle, ShieldCheck, ShieldAlert, Award,
-    CheckCircle2, AlertCircle, RefreshCw, BarChart2, Layers, Search,
-    Filter, Download, Plus, FileText, PhoneCall, ExternalLink, Activity
+    Briefcase, ArrowRight, MapPin, Calendar, ChevronRight, AlertTriangle, AlertCircle, RefreshCw, Plus, CheckCircle2,
 } from "lucide-react";
 import Link from "next/link";
-import { PageHeader, StatCard, Badge, SectionCard, EmptyState, inr } from "@/components/shared/ui";
+import { Badge, SectionCard, EmptyState, inr } from "@/components/shared/ui";
 import { SkeletonPulse } from "@/components/shared/UIStates";
 import {
     ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, Legend
 } from "recharts";
 import { useState } from "react";
 import { MyWork } from "@/components/tasks/TaskWidgets";
+import { Kpi, KpiRow, OverviewTabs } from "@/components/shared/KpiStrip";
+
+type AdminTab = "today" | "positions" | "pipeline" | "team" | "clients" | "revenue" | "health";
+
+const PERIODS = [
+    ["TODAY", "Today"], ["THIS_WEEK", "This week"], ["THIS_MONTH", "This month"], ["LAST_MONTH", "Last month"],
+    ["THIS_QUARTER", "This quarter"], ["THIS_FY", "This financial year"],
+] as const;
+
+const lakh = (n: number) => (Math.abs(n) >= 100000 ? `₹${(n / 100000).toFixed(n >= 1e7 ? 0 : 1)}L` : inr(n));
+const greeting = () => { const h = new Date().getHours(); return h < 12 ? "morning" : h < 17 ? "afternoon" : "evening"; };
 
 export default function AdminDashboard() {
-    const [dateRange, setDateRange] = useState("THIS_MONTH");
-    const [teamFilter, setTeamFilter] = useState("ALL");
+    const [period, setPeriod] = useState("THIS_MONTH");
+    const [tab, setTab] = useState<AdminTab>("today");
 
-    const { data, isLoading, refetch } = useQuery({
-        queryKey: ["admin-dashboard", dateRange],
+    const { data, isLoading, isError, refetch, isFetching } = useQuery({
+        queryKey: ["admin-dashboard", period],
         queryFn: async () => {
-            const res = await fetch("/api/admin/dashboard");
+            const res = await fetch(`/api/admin/dashboard?period=${period}`);
             if (!res.ok) throw new Error("Failed to load dashboard data");
             return res.json();
         },
         refetchInterval: 30000,
+        placeholderData: (prev) => prev,
     });
 
+    if (isError && !data) {
+        return (
+            <div className="py-16 text-center text-sm text-neutral-500 space-y-3">
+                <p>The overview couldn&apos;t load right now.</p>
+                <button onClick={() => refetch()} className="px-4 py-2 rounded-md bg-primary text-white text-xs font-medium">Try again</button>
+            </div>
+        );
+    }
     if (isLoading || !data) {
         return (
-            <div className="space-y-6">
+            <div className="space-y-5">
                 <SkeletonPulse className="h-10 w-64" />
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    {Array.from({ length: 8 }).map((_, i) => <SkeletonPulse key={i} className="h-24 rounded-2xl" />)}
-                </div>
+                <SkeletonPulse className="h-56 rounded-2xl" />
+                <SkeletonPulse className="h-10 rounded-xl" />
                 <SkeletonPulse className="h-72 rounded-2xl" />
             </div>
         );
     }
 
     const k = data.kpis;
-    const today = data.todayOperations;
+    const today = data.todayOperations ?? {};
     const recruiterPerf = data.recruiterPerformance || [];
     const clientHealth = data.clientHealth || [];
     const alerts = data.alerts || [];
@@ -53,514 +68,313 @@ export default function AdminDashboard() {
     const agingReceivables = k.agingReceivables || {};
     const sourcePerf = data.sourcePerformance || [];
     const dataQuality = data.dataQuality || {};
-
-    const revenueTrend = [
-        { month: "Mar", revenue: 180000, collections: 160000 },
-        { month: "Apr", revenue: 240000, collections: 210000 },
-        { month: "May", revenue: 195000, collections: 190000 },
-        { month: "Jun", revenue: 310000, collections: 280000 },
-        { month: "Jul", revenue: 285000, collections: 275000 },
-        { month: "Aug", revenue: Math.max(k.revenueThisMonth, 150000), collections: 140000 },
-    ];
+    const positions = data.positions ?? [];
+    const revenueTrend = data.revenueTrend ?? [];
+    const RISKY = ["PAYMENT_RISK", "NEEDS_ATTENTION"];
+    const clientsAtRisk = clientHealth.filter((c: { operationalStatus: string }) => RISKY.includes(c.operationalStatus)).length;
+    const growth = (pct: number | null | undefined) => (pct == null ? "no earlier data to compare" : `${pct >= 0 ? "+" : ""}${pct}% vs previous period`);
 
     const agingChartData = [
-        { bucket: "0–30 Days", amount: agingReceivables["0_30"] ?? 0 },
-        { bucket: "31–60 Days", amount: agingReceivables["31_60"] ?? 0 },
-        { bucket: "61–90 Days", amount: agingReceivables["61_90"] ?? 0 },
-        { bucket: "90+ Days", amount: agingReceivables["90_plus"] ?? 0 },
+        { bucket: "0–30 days", amount: agingReceivables["0_30"] ?? 0 },
+        { bucket: "31–60 days", amount: agingReceivables["31_60"] ?? 0 },
+        { bucket: "61–90 days", amount: agingReceivables["61_90"] ?? 0 },
+        { bucket: "90+ days", amount: agingReceivables["90_plus"] ?? 0 },
+    ];
+    const agingBuckets = [
+        { label: "0–3 days (fresh)", count: pipelineAging["0_3"] ?? 0, color: "bg-emerald-500" },
+        { label: "4–7 days", count: pipelineAging["4_7"] ?? 0, color: "bg-blue-500" },
+        { label: "8–14 days (aging)", count: pipelineAging["8_14"] ?? 0, color: "bg-amber-500" },
+        { label: "15–30 days (stuck)", count: pipelineAging["15_30"] ?? 0, color: "bg-orange-500" },
+        { label: "30+ days (critical)", count: pipelineAging["30_plus"] ?? 0, color: "bg-red-500" },
+    ];
+    const stuck = (pipelineAging["15_30"] ?? 0) + (pipelineAging["30_plus"] ?? 0);
+
+    const tabs: { id: AdminTab; label: string; count?: number; alert?: boolean }[] = [
+        { id: "today", label: "Today", count: alerts.length, alert: alerts.length > 0 },
+        { id: "positions", label: "Positions", count: positions.length },
+        { id: "pipeline", label: "Pipeline", count: stuck, alert: stuck > 0 },
+        { id: "team", label: "Team" },
+        { id: "clients", label: "Clients", count: clientsAtRisk, alert: clientsAtRisk > 0 },
+        { id: "revenue", label: "Revenue" },
+        { id: "health", label: "Sources & compliance" },
     ];
 
     return (
-        <div className="space-y-8 animate-fade-in pb-16">
-            {/* 1. Global Header & Controls */}
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pt-2">
+        <div className="space-y-5 animate-fade-in pb-16">
+            {/* 1. Header */}
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 pt-1">
                 <div>
-                    <h1 className="text-[22px] leading-tight font-semibold tracking-tight text-neutral-900 mt-1">Agency Operations & Revenue Monitor</h1>
-                    <p className="text-[13px] text-neutral-500 mt-1">360° Real-time visibility across pipeline, team capacity, collections & client SLA.</p>
+                    <h1 className="text-[22px] leading-tight font-semibold tracking-tight text-neutral-900">Good {greeting()}</h1>
+                    <p className="text-[13px] text-neutral-500 mt-0.5">The whole agency at a glance: hiring, team, clients and money. Click any number to open it.</p>
                 </div>
-
-                <div className="flex items-center gap-2.5 flex-wrap">
-                    {/* Date filter dropdown */}
-                    <div className="flex items-center bg-white border border-neutral-200 rounded-xl px-2.5 py-1.5 shadow-xs">
+                <div className="flex items-center gap-2 flex-wrap">
+                    <label className="flex items-center bg-white border border-neutral-200 rounded-md px-2.5 h-9 text-xs">
                         <Calendar size={14} className="text-neutral-400 mr-2" />
-                        <select 
-                            value={dateRange} 
-                            onChange={(e) => setDateRange(e.target.value)}
-                            className="text-xs font-bold text-neutral-700 bg-transparent outline-none cursor-pointer"
-                        >
-                            <option value="TODAY">Today</option>
-                            <option value="THIS_WEEK">This Week</option>
-                            <option value="THIS_MONTH">This Month (MTD)</option>
-                            <option value="LAST_MONTH">Last Month</option>
-                            <option value="THIS_QUARTER">This Quarter (Q3)</option>
+                        <select value={period} onChange={(e) => setPeriod(e.target.value)} aria-label="Period" className="font-medium text-neutral-700 bg-transparent outline-none cursor-pointer">
+                            {PERIODS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                         </select>
-                    </div>
-
-                    {/* Quick Create Dropdown / Buttons */}
-                    <div className="flex items-center gap-2">
-                        <Link 
-                            href="/admin/candidates" 
-                            className="px-3 py-2 bg-white border border-neutral-200 text-neutral-700 hover:bg-neutral-50 rounded-md text-xs font-medium flex items-center gap-1.5 shadow-xs transition-colors"
-                        >
-                            <Plus size={13} /> Candidate
-                        </Link>
-                        <Link 
-                            href="/admin/jobs" 
-                            className="px-3.5 py-2 bg-primary text-white hover:bg-primary-dark rounded-md text-xs font-medium flex items-center gap-1.5 shadow-sm transition-colors"
-                        >
-                            <Plus size={13} /> Requisition
-                        </Link>
-                    </div>
+                    </label>
+                    <button onClick={() => refetch()} aria-label="Refresh" title="Refresh" className="h-9 w-9 rounded-md border border-neutral-200 bg-white flex items-center justify-center text-neutral-500 hover:text-navy">
+                        <RefreshCw size={14} className={isFetching ? "animate-spin" : ""} />
+                    </button>
+                    <Link href="/admin/candidates" className="h-9 px-3 bg-white border border-neutral-200 text-neutral-700 hover:bg-neutral-50 rounded-md text-xs font-medium flex items-center gap-1.5">
+                        <Plus size={13} /> Candidate
+                    </Link>
+                    <Link href="/admin/jobs" className="h-9 px-3.5 bg-primary text-white hover:bg-primary-dark rounded-md text-xs font-medium flex items-center gap-1.5">
+                        <Plus size={13} /> Requisition
+                    </Link>
                 </div>
             </div>
 
-            {/* 2. Today's Operational Snapshot Bar */}
-            <div className="bg-navy text-white rounded-2xl p-4 shadow-md flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center gap-2.5">
-                    <span className="w-2 h-2 rounded-full bg-accent" />
-                    <span className="text-[13px] font-semibold text-white">Today</span>
-                </div>
-                <div className="flex items-center gap-6 sm:gap-8 flex-wrap text-xs">
-                    <div>
-                        <span className="text-[#94A6C3] font-medium block text-[11px]">Interviews Today</span>
-                        <span className="text-lg font-semibold text-white tabular-nums">{today?.interviewsCount ?? 0}</span>
-                    </div>
-                    <div>
-                        <span className="text-[#94A6C3] font-medium block text-[11px]">Follow-ups Due</span>
-                        <span className="text-lg font-semibold text-white tabular-nums">{today?.followUpsDue ?? 0}</span>
-                    </div>
-                    <div>
-                        <span className="text-[#94A6C3] font-medium block text-[11px]">Offers Pending</span>
-                        <span className="text-lg font-semibold text-white tabular-nums">{today?.offersPending ?? 0}</span>
-                    </div>
-                    <div>
-                        <span className="text-[#94A6C3] font-medium block text-[11px]">Joining Pending</span>
-                        <span className="text-lg font-semibold text-white tabular-nums">{today?.joiningPending ?? k.joiningPending}</span>
-                    </div>
-                    <div>
-                        <span className="text-[#94A6C3] font-medium block text-[11px]">Approvals Waiting</span>
-                        <span className="text-lg font-semibold tabular-nums text-[#F2B5B5]">{today?.approvalsPending ?? k.pendingApprovals}</span>
-                    </div>
-                </div>
-                <Link href="/admin/interviews" className="text-xs font-bold text-neutral-300 hover:text-white flex items-center gap-1 transition-colors">
-                    Interview Monitor <ChevronRight size={14} />
-                </Link>
+            {/* 2. Key numbers — one compact strip, every tile opens its page */}
+            <div className="bg-white rounded-2xl border border-neutral-200/80 shadow-xs divide-y divide-neutral-100">
+                <KpiRow title="Today">
+                    <Kpi label="Interviews today" value={today.interviewsCount ?? 0} hint="All clients" href="/admin/interviews" />
+                    <Kpi label="Follow-ups due" value={today.followUpsDue ?? 0} hint="Across the team" href="/admin/tasks" tone={(today.followUpsDue ?? 0) > 0 ? "warn" : undefined} />
+                    <Kpi label="Offers pending" value={today.offersPending ?? 0} hint="Awaiting candidate" href="/admin/placements" />
+                    <Kpi label="Joining pending" value={today.joiningPending ?? k.joiningPending} hint="Offer accepted" href="/admin/placements?status=JOINING_PENDING" />
+                    <Kpi label="Approvals waiting" value={today.approvalsPending ?? k.pendingApprovals} hint="Need your decision" href="/admin/approvals" tone={(today.approvalsPending ?? k.pendingApprovals) > 0 ? "bad" : undefined} />
+                    <Kpi label="Data-quality flags" value={dataQuality.incompleteProfiles ?? 0} hint={`${dataQuality.potentialDuplicates ?? 0} possible duplicates`} href="/admin/data-quality" tone={(dataQuality.incompleteProfiles ?? 0) > 0 ? "warn" : undefined} />
+                </KpiRow>
+                <KpiRow title="Recruitment">
+                    <Kpi label="Active clients" value={k.activeClients} hint={`${k.totalClients} accounts in total`} href="/admin/clients" />
+                    <Kpi label="Open positions" value={k.openPositions} hint={`${k.activeJobs} requisitions`} href="/admin/jobs" />
+                    <Kpi label="In pipeline" value={k.inPipeline} hint="Screening & rounds" href="/ta/pipeline" />
+                    <Kpi label={`Joined · ${k.period ?? "period"}`} value={k.joinedInPeriod ?? 0} hint={`${k.placementsTotal} placements all time`} href="/admin/placements" />
+                    <Kpi label="Stuck candidates" value={stuck} hint="Waiting 15+ days" href="/ta/pipeline" tone={stuck > 0 ? "warn" : undefined} />
+                    <Kpi label="Team" value={k.teamSize} hint={`${k.recruiters} recruiters · ${k.agents} partners`} href="/admin/team" />
+                </KpiRow>
+                <KpiRow title="Money">
+                    <Kpi label={`Revenue · ${k.period ?? "period"}`} value={lakh(k.revenuePeriod ?? k.revenueThisMonth)} hint={growth(k.revenuePeriodGrowthPct)} href="/finance/dashboard" />
+                    <Kpi label="Revenue all time" value={lakh(k.totalRevenue)} hint="Placement billing" href="/finance/dashboard" />
+                    <Kpi label="Receivables" value={lakh(k.pendingReceivables)} hint="Not yet collected" href="/finance/dashboard" />
+                    <Kpi label="Overdue" value={lakh(k.overdueReceivables || 0)} hint="Past due date" href="/finance/dashboard" tone={(k.overdueReceivables || 0) > 0 ? "bad" : undefined} />
+                    <Kpi label="Clients needing attention" value={clientsAtRisk} hint="Payment or SLA risk" href="/admin/clients" tone={clientsAtRisk > 0 ? "warn" : undefined} />
+                    <Kpi label="Pending approvals" value={k.pendingApprovals} hint="Requisitions" href="/admin/approvals" tone={k.pendingApprovals > 0 ? "bad" : undefined} />
+                </KpiRow>
             </div>
 
-            {/* 3. Primary KPI Rows (Recruitment + Financial Matrix) */}
-            <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-3">Recruitment & Operations Core</p>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
-                    <StatCard label="Active Clients" value={k.activeClients} icon={Building2} tone="primary" hint={`${k.totalClients} total accounts`} href="/admin/clients" />
-                    <StatCard label="Open Positions" value={k.openPositions} icon={Briefcase} tone="blue" hint={`${k.activeJobs} active requisitions`} href="/admin/jobs" />
-                    <StatCard label="In Pipeline" value={k.inPipeline} icon={Users} tone="purple" hint="screening & rounds" href="/admin/candidates" />
-                    <StatCard label="Joined / Hired" value={k.placementsTotal} icon={UserCheck} tone="emerald" hint="verified placements" href="/admin/placements" />
-                    <StatCard label="Joining Pending" value={k.joiningPending} icon={Clock} tone="amber" hint="offer released/accepted" href="/admin/placements?status=JOINING_PENDING" />
-                    <StatCard label="Team Capacity" value={k.teamSize} icon={ClipboardCheck} tone="blue" hint={`${k.recruiters} TA · ${k.agents} Agents`} href="/admin/team" />
-                </div>
-            </div>
+            {/* 3. Sections in tabs so the page stays short */}
+            <OverviewTabs tabs={tabs} value={tab} onChange={setTab} />
 
-            <MyWork />
-
-            <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-3">Financial Performance & Receivables</p>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
-                    <StatCard 
-                        label="Revenue (MTD)" 
-                        value={inr(k.revenueThisMonth)} 
-                        icon={TrendingUp} 
-                        tone="emerald" 
-                        hint={`+${k.revenueGrowthPct}% vs last month`} 
-                        href="/admin/finance" 
-                    />
-                    <StatCard 
-                        label="Total Revenue" 
-                        value={inr(k.totalRevenue)} 
-                        icon={Wallet} 
-                        tone="primary" 
-                        hint="placement billing YTD" 
-                        href="/admin/finance" 
-                    />
-                    <StatCard 
-                        label="Total Receivables" 
-                        value={inr(k.pendingReceivables)} 
-                        icon={Clock} 
-                        tone="amber" 
-                        hint="outstanding invoices" 
-                        href="/admin/finance" 
-                    />
-                    <StatCard 
-                        label="Overdue (>30d)" 
-                        value={inr(k.overdueReceivables || 0)} 
-                        icon={AlertTriangle} 
-                        tone="red" 
-                        hint="urgent collection action" 
-                        href="/admin/finance" 
-                    />
-                    <StatCard 
-                        label="Pending Approvals" 
-                        value={k.pendingApprovals} 
-                        icon={ShieldAlert} 
-                        tone={k.pendingApprovals > 0 ? "red" : "emerald"} 
-                        hint="governance & requisitions" 
-                        href="/admin/approvals" 
-                    />
-                    <StatCard 
-                        label="Data Quality" 
-                        value={`${dataQuality.incompleteProfiles ?? 0} flags`} 
-                        icon={ShieldCheck} 
-                        tone="purple" 
-                        hint={`${dataQuality.potentialDuplicates ?? 0} duplicates found`} 
-                        href="/admin/data-quality" 
-                    />
-                </div>
-            </div>
-
-            {/* 4. Actionable Alerts / Needs Immediate Attention */}
-            {alerts.length > 0 && (
-                <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                        <h3 className="text-xs font-bold uppercase tracking-widest text-neutral-400 flex items-center gap-1.5">
-                            <AlertCircle size={14} className="text-amber-500" /> Operational Attention Required ({alerts.length})
+            {tab === "today" && (<>
+                <MyWork />
+                {alerts.length > 0 ? (
+                    <div className="space-y-3">
+                        <h3 className="text-[13px] font-semibold text-neutral-800 flex items-center gap-1.5">
+                            <AlertCircle size={15} className="text-amber-500" /> Needs your attention ({alerts.length})
                         </h3>
-                        <span className="text-[11px] text-neutral-400 font-semibold">Priority Escalations</span>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-                        {alerts.map((alt: any) => (
-                            <div 
-                                key={alt.id} 
-                                className={`p-4 rounded-2xl border transition-all flex flex-col justify-between ${
-                                    alt.type === "URGENT" ? "bg-red-50/50 border-red-200" :
-                                    alt.type === "WARNING" ? "bg-amber-50/40 border-amber-200" :
-                                    "bg-blue-50/40 border-blue-200"
-                                }`}
-                            >
-                                <div>
-                                    <div className="flex items-center justify-between mb-2">
-                                        <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${
-                                            alt.type === "URGENT" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-800"
-                                        }`}>
-                                            {alt.type}
-                                        </span>
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                            {alerts.map((alt: { id: string; type: string; title: string; detail: string; link: string }) => (
+                                <div key={alt.id} className={`p-4 rounded-xl border flex flex-col justify-between ${alt.type === "URGENT" ? "bg-red-50/50 border-red-200" : alt.type === "WARNING" ? "bg-amber-50/40 border-amber-200" : "bg-blue-50/40 border-blue-200"}`}>
+                                    <div>
+                                        <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded ${alt.type === "URGENT" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-800"}`}>{alt.type.toLowerCase()}</span>
+                                        <h4 className="mt-2 font-semibold text-neutral-900 text-[13px]">{alt.title}</h4>
+                                        <p className="text-[12px] text-neutral-600 mt-0.5">{alt.detail}</p>
                                     </div>
-                                    <h4 className="font-bold text-neutral-900 text-xs">{alt.title}</h4>
-                                    <p className="text-[11px] text-neutral-600 mt-1 leading-relaxed">{alt.detail}</p>
+                                    <Link href={alt.link} className="mt-3 text-xs font-medium text-primary hover:underline flex items-center gap-1">Open <ArrowRight size={12} /></Link>
                                 </div>
-                                <Link href={alt.link} className="mt-3 text-xs font-bold text-primary hover:underline flex items-center gap-1">
-                                    Take Action <ArrowRight size={12} />
-                                </Link>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
+                ) : (
+                    <SectionCard><EmptyState icon={CheckCircle2} message="Nothing needs your attention right now." /></SectionCard>
+                )}
+            </>)}
+
+            {tab === "positions" && (
+                <SectionCard
+                    title="Open positions & requisitions"
+                    subtitle={`${positions.length} active client requisitions`}
+                    action={<Link href="/admin/jobs" className="text-xs font-medium text-primary hover:underline flex items-center gap-1">All jobs <ArrowRight size={12} /></Link>}
+                >
+                    <PositionsSection positions={positions} />
+                </SectionCard>
+            )}
+
+            {tab === "pipeline" && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                    <SectionCard title="Recruitment funnel" subtitle="How many candidates reach each stage, and how long they wait there" className="lg:col-span-2">
+                        {funnel.length === 0 ? <EmptyState icon={Briefcase} message="No candidates in the pipeline yet." /> : (
+                            <div className="space-y-2.5">
+                                {funnel.map((f: { stage: string; count: number; conversion: number; avgAgingDays: number }) => {
+                                    const max = Math.max(...funnel.map((x: { count: number }) => x.count), 1);
+                                    return (
+                                        <div key={f.stage}>
+                                            <div className="flex items-center justify-between text-xs mb-1">
+                                                <span className="font-medium text-neutral-800">{f.stage.replaceAll("_", " ").toLowerCase().replace(/^\w/, (c) => c.toUpperCase())} <span className="text-neutral-400 font-normal">· avg {f.avgAgingDays}d</span></span>
+                                                <span className="flex items-center gap-3"><span className="text-neutral-500">{f.conversion}% move on</span><span className="font-semibold text-neutral-900 w-6 text-right tabular-nums">{f.count}</span></span>
+                                            </div>
+                                            <div className="h-2 bg-neutral-100 rounded-full overflow-hidden"><div className="h-full bg-primary rounded-full" style={{ width: `${(f.count / max) * 100}%` }} /></div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </SectionCard>
+                    <SectionCard title="Waiting for next action" subtitle="Days since each candidate last moved">
+                        <div className="space-y-2">
+                            {agingBuckets.map((b) => (
+                                <div key={b.label} className="flex items-center justify-between p-2.5 rounded-lg border border-neutral-100 text-xs">
+                                    <span className="flex items-center gap-2 text-neutral-700"><span className={`w-2.5 h-2.5 rounded-full ${b.color}`} />{b.label}</span>
+                                    <span className="font-semibold tabular-nums">{b.count}</span>
+                                </div>
+                            ))}
+                        </div>
+                        <Link href="/ta/pipeline" className="mt-4 w-full h-9 bg-navy text-white rounded-md text-xs font-medium flex items-center justify-center gap-1.5">Open pipeline <ArrowRight size={13} /></Link>
+                    </SectionCard>
                 </div>
             )}
 
-            {/* 5. Revenue Trend & Accounts Receivable Aging */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <SectionCard 
-                    title="Revenue Trend vs Collections" 
-                    subtitle="Placement commissions billed vs payment collected" 
-                    className="lg:col-span-2"
-                >
-                    <ResponsiveContainer width="100%" height={260}>
-                        <AreaChart data={revenueTrend}>
-                            <defs>
-                                <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stopColor="#2F6AA8" stopOpacity={0.25} />
-                                    <stop offset="100%" stopColor="#2F6AA8" stopOpacity={0} />
-                                </linearGradient>
-                                <linearGradient id="colGrad" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stopColor="#2F6AA8" stopOpacity={0.25} />
-                                    <stop offset="100%" stopColor="#2F6AA8" stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#E2E7EF" vertical={false} />
-                            <XAxis dataKey="month" tick={{ fontSize: 12, fill: "#A0AABA" }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fontSize: 11, fill: "#A0AABA" }} axisLine={false} tickLine={false}
-                                tickFormatter={(v: number) => `₹${Math.round(v / 1000)}k`} />
-                            <Tooltip formatter={(v) => [inr(Number(v)), "Amount"]} contentStyle={{ borderRadius: 12, border: "1px solid #E5E7EB", fontSize: 12 }} />
-                            <Legend verticalAlign="top" height={36} iconType="circle" />
-                            <Area name="Billed Revenue" type="monotone" dataKey="revenue" stroke="#2F6AA8" strokeWidth={2.5} fill="url(#revGrad)" />
-                            <Area name="Collections" type="monotone" dataKey="collections" stroke="#2F6AA8" strokeWidth={2} fill="url(#colGrad)" />
-                        </AreaChart>
-                    </ResponsiveContainer>
-                </SectionCard>
-
-                <SectionCard 
-                    title="Receivables Aging" 
-                    subtitle="Accounts receivable bucketing by days"
-                >
-                    <ResponsiveContainer width="100%" height={260}>
-                        <BarChart data={agingChartData}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#E2E7EF" vertical={false} />
-                            <XAxis dataKey="bucket" tick={{ fontSize: 10, fill: "#A0AABA" }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fontSize: 10, fill: "#A0AABA" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `₹${Math.round(v / 1000)}k`} />
-                            <Tooltip formatter={(v) => [inr(Number(v)), "Outstanding"]} contentStyle={{ borderRadius: 12, border: "1px solid #E5E7EB", fontSize: 12 }} />
-                            <Bar dataKey="amount" fill="#E0952A" radius={[6, 6, 0, 0]} maxBarSize={36} />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </SectionCard>
-            </div>
-
-            {/* 6. Recruitment Funnel & Pipeline Aging */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <SectionCard 
-                    title="End-to-End Recruitment Funnel" 
-                    subtitle="Conversion velocity across stages" 
-                    className="lg:col-span-2"
-                >
-                    <div className="space-y-3">
-                        {funnel.map((f: any) => {
-                            const max = Math.max(...funnel.map((x: any) => x.count), 1);
-                            return (
-                                <div key={f.stage} className="bg-neutral-50 p-2.5 rounded-xl border border-neutral-100">
-                                    <div className="flex items-center justify-between text-xs mb-1.5">
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-bold text-neutral-800 text-xs">{f.stage.replaceAll("_", " ")}</span>
-                                            <span className="text-[10px] text-neutral-400 font-semibold">avg {f.avgAgingDays}d</span>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-neutral-200/70 text-neutral-700">
-                                                {f.conversion}% Conv
-                                            </span>
-                                            <span className="font-black text-neutral-900 text-xs w-6 text-right">{f.count}</span>
-                                        </div>
-                                    </div>
-                                    <div className="h-2 bg-neutral-200/50 rounded-full overflow-hidden">
-                                        <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${(f.count / max) * 100}%` }} />
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </SectionCard>
-
-                <SectionCard 
-                    title="Pipeline Aging Breakdown" 
-                    subtitle="Candidates waiting for next recruiter/client action"
-                >
-                    <div className="space-y-3">
-                        {[
-                            { label: "0–3 Days (Fresh)", count: pipelineAging["0_3"] || 4, color: "bg-emerald-500", text: "text-emerald-700" },
-                            { label: "4–7 Days (Normal)", count: pipelineAging["4_7"] || 3, color: "bg-blue-500", text: "text-blue-700" },
-                            { label: "8–14 Days (Aging)", count: pipelineAging["8_14"] || 2, color: "bg-amber-500", text: "text-amber-700" },
-                            { label: "15–30 Days (Stuck)", count: pipelineAging["15_30"] || 1, color: "bg-orange-500", text: "text-orange-700" },
-                            { label: "30+ Days (Critical)", count: pipelineAging["30_plus"] || 1, color: "bg-red-500", text: "text-red-700" },
-                        ].map((b) => (
-                            <div key={b.label} className="flex items-center justify-between p-2.5 rounded-xl border border-neutral-100 bg-white">
-                                <div className="flex items-center gap-2">
-                                    <span className={`w-2.5 h-2.5 rounded-full ${b.color}`} />
-                                    <span className="text-xs font-semibold text-neutral-700">{b.label}</span>
-                                </div>
-                                <span className={`text-xs font-black ${b.text}`}>{b.count} candidates</span>
-                            </div>
-                        ))}
-                    </div>
-
-                    <Link 
-                        href="/admin/candidates" 
-                        className="mt-5 w-full py-2.5 bg-navy hover:bg-neutral-800 text-white rounded-md text-xs font-medium flex items-center justify-center gap-1.5 transition-colors shadow-xs"
-                    >
-                        View Stuck Candidates <ArrowRight size={13} />
-                    </Link>
-                </SectionCard>
-            </div>
-
-            {/* 7. Recruiter Performance Table & Team Capacity */}
-            <SectionCard 
-                title="Recruiter Performance & Capacity Matrix" 
-                subtitle="Factual throughput across Sourcing, Interviews, Offers, and Placements"
-                action={
-                    <Link href="/admin/team" className="text-xs font-bold text-primary hover:underline flex items-center gap-1">
-                        Team Management <ArrowRight size={12} />
-                    </Link>
-                }
-            >
-                <div className="overflow-x-auto -m-5">
-                    <table className="w-full text-xs min-w-[700px]">
-                        <thead>
-                            <tr className="bg-neutral-50/70 border-b border-neutral-100 text-neutral-400 font-bold uppercase tracking-wider text-[10px] text-left">
-                                <th className="px-5 py-3">Recruiter</th>
-                                <th className="px-3 py-3">Workload</th>
-                                <th className="px-3 py-3">Sourced</th>
-                                <th className="px-3 py-3">Screened</th>
-                                <th className="px-3 py-3">Interviews</th>
-                                <th className="px-3 py-3">Offers</th>
-                                <th className="px-3 py-3">Placed</th>
-                                <th className="px-3 py-3">Revenue</th>
-                                <th className="px-3 py-3 text-right">Conversion</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-neutral-100">
-                            {recruiterPerf.map((r: any) => (
-                                <tr key={r.id} className="hover:bg-neutral-50/50 transition-colors">
-                                    <td className="px-5 py-3.5 font-bold text-neutral-900 flex items-center gap-2">
-                                        <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center font-black text-xs">
-                                            {r.avatar}
-                                        </div>
-                                        <div>
-                                            <p className="font-bold text-neutral-900">{r.name}</p>
-                                            <p className="text-[10px] text-neutral-400 font-normal">{r.role}</p>
-                                        </div>
-                                    </td>
-                                    <td className="px-3 py-3.5">
-                                        <span className={`px-2 py-0.5 rounded text-[10px] font-black ${
-                                            r.workload === "HIGH" ? "bg-red-50 text-red-700 border border-red-200" :
-                                            r.workload === "NORMAL" ? "bg-blue-50 text-blue-700 border border-blue-200" :
-                                            "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                        }`}>
-                                            {r.workload}
-                                        </span>
-                                    </td>
-                                    <td className="px-3 py-3.5 font-semibold text-neutral-700">{r.candidatesCount}</td>
-                                    <td className="px-3 py-3.5 font-semibold text-neutral-700">{r.screened}</td>
-                                    <td className="px-3 py-3.5 font-semibold text-neutral-700">{r.interviews}</td>
-                                    <td className="px-3 py-3.5 font-semibold text-neutral-700">{r.offers}</td>
-                                    <td className="px-3 py-3.5 font-black text-emerald-700">{r.placements}</td>
-                                    <td className="px-3 py-3.5 font-mono font-bold text-neutral-900">{inr(r.revenue)}</td>
-                                    <td className="px-3 py-3.5 text-right font-black text-primary">{r.conversionRate}%</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </SectionCard>
-
-            {/* 8. Client Health & Operational Status */}
-            <SectionCard 
-                title="Client Accounts & Revenue Health" 
-                subtitle="Monitors open requisitions, candidate pipeline, and billing exposure"
-                action={
-                    <Link href="/admin/clients" className="text-xs font-bold text-primary hover:underline flex items-center gap-1">
-                        View All Clients <ArrowRight size={12} />
-                    </Link>
-                }
-            >
-                <div className="overflow-x-auto -m-5">
-                    <table className="w-full text-xs min-w-[700px]">
-                        <thead>
-                            <tr className="bg-neutral-50/70 border-b border-neutral-100 text-neutral-400 font-bold uppercase tracking-wider text-[10px] text-left">
-                                <th className="px-5 py-3">Client Account</th>
-                                <th className="px-3 py-3">Status</th>
-                                <th className="px-3 py-3">Open Positions</th>
-                                <th className="px-3 py-3">Submissions</th>
-                                <th className="px-3 py-3">Placements</th>
-                                <th className="px-3 py-3">Revenue (YTD)</th>
-                                <th className="px-3 py-3">Receivables</th>
-                                <th className="px-3 py-3 text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-neutral-100">
-                            {clientHealth.map((c: any) => (
-                                <tr key={c.id} className="hover:bg-neutral-50/50 transition-colors">
-                                    <td className="px-5 py-3.5">
-                                        <p className="font-bold text-neutral-900">{c.name}</p>
-                                        <p className="text-[10px] text-neutral-400">{c.industry}</p>
-                                    </td>
-                                    <td className="px-3 py-3.5">
-                                        <span className={`px-2 py-0.5 rounded text-[10px] font-black ${
-                                            c.operationalStatus === "PAYMENT_RISK" ? "bg-red-50 text-red-700 border border-red-200" :
-                                            c.operationalStatus === "NEEDS_ATTENTION" ? "bg-amber-50 text-amber-800 border border-amber-200" :
-                                            "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                        }`}>
-                                            {c.operationalStatus.replaceAll("_", " ")}
-                                        </span>
-                                    </td>
-                                    <td className="px-3 py-3.5 font-semibold text-neutral-700">{c.openPositions}</td>
-                                    <td className="px-3 py-3.5 font-semibold text-neutral-700">{c.candidatesSubmitted}</td>
-                                    <td className="px-3 py-3.5 font-bold text-emerald-700">{c.placements}</td>
-                                    <td className="px-3 py-3.5 font-mono font-bold text-neutral-900">{inr(c.revenue)}</td>
-                                    <td className="px-3 py-3.5 font-mono font-semibold text-amber-600">{inr(c.receivables)}</td>
-                                    <td className="px-3 py-3.5 text-right">
-                                        <Link 
-                                            href={`/admin/clients/${c.id}`} 
-                                            className="px-2.5 py-1 text-primary hover:bg-primary/5 rounded font-bold text-[11px] inline-flex items-center gap-1"
-                                        >
-                                            Details <ChevronRight size={11} />
-                                        </Link>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </SectionCard>
-
-            {/* 9. Candidate Sourcing Breakdown & Compliance Widget */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <SectionCard 
-                    title="Candidate Sourcing Channel Performance" 
-                    subtitle="Which sourcing streams generate active joins & revenue"
-                >
-                    <div className="space-y-3">
-                        {sourcePerf.map((s: any) => (
-                            <div key={s.source} className="p-3 bg-neutral-50 rounded-xl border border-neutral-100 flex items-center justify-between text-xs">
-                                <div>
-                                    <Badge value={s.source} />
-                                    <p className="text-[11px] text-neutral-400 mt-1">{s.sourced} candidates sourced</p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="font-black text-emerald-700">{s.joined} Placed</p>
-                                    <p className="font-mono text-[11px] font-bold text-neutral-800">{inr(s.revenue)}</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </SectionCard>
-
-                <SectionCard 
-                    title="Compliance & Platform Health" 
-                    subtitle="Security, consent tracking & audit oversight"
-                    action={
-                        <Link href="/admin/audit-log" className="text-xs font-bold text-primary hover:underline flex items-center gap-1">
-                            Full Audit Log <ArrowRight size={12} />
-                        </Link>
-                    }
-                >
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-3 text-xs">
-                            <div className="p-3 rounded-xl bg-emerald-50/60 border border-emerald-200">
-                                <span className="text-[10px] font-bold uppercase text-emerald-800">Consent Verified</span>
-                                <p className="text-xl font-black text-emerald-900 mt-1">{data.platformHealth?.consentPct != null ? `${data.platformHealth.consentPct}%` : "—"}</p>
-                                <p className="text-[10px] text-emerald-700 mt-0.5">{data.platformHealth ? `${data.platformHealth.consented} of ${data.platformHealth.candidates} candidates (DPDP)` : "DPDP consent"}</p>
-                            </div>
-                            <div className="p-3 rounded-xl bg-blue-50/60 border border-blue-200">
-                                <span className="text-[10px] font-bold uppercase text-blue-800">Integrations</span>
-                                <p className="text-xl font-black text-blue-900 mt-1">{data.platformHealth ? `${data.platformHealth.integrationsConnected}/${data.platformHealth.integrationsTotal}` : "—"}</p>
-                                <p className="text-[10px] text-blue-700 mt-0.5">{data.platformHealth?.integrationsNeedingAttention ? `${data.platformHealth.integrationsNeedingAttention} need attention` : "connected and healthy"}</p>
-                            </div>
+            {tab === "team" && (
+                <SectionCard title="Recruiter performance" subtitle="Actual output: candidates, interviews, offers, placements and revenue"
+                    action={<Link href="/admin/team" className="text-xs font-medium text-primary hover:underline flex items-center gap-1">Team <ArrowRight size={12} /></Link>}>
+                    {recruiterPerf.length === 0 ? <EmptyState icon={Briefcase} message="No recruiters yet." /> : (
+                        <div className="overflow-x-auto -m-5">
+                            <table className="w-full text-xs min-w-[700px]">
+                                <thead>
+                                    <tr className="bg-neutral-50/70 border-b border-neutral-100 text-neutral-500 font-semibold text-[11px] text-left">
+                                        <th className="px-5 py-2.5">Recruiter</th><th className="px-3 py-2.5">Workload</th><th className="px-3 py-2.5 text-right">Candidates</th>
+                                        <th className="px-3 py-2.5 text-right">Screened</th><th className="px-3 py-2.5 text-right">Interviews</th><th className="px-3 py-2.5 text-right">Offers</th>
+                                        <th className="px-3 py-2.5 text-right">Placed</th><th className="px-3 py-2.5 text-right">Revenue</th><th className="px-5 py-2.5 text-right">Conversion</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-neutral-100">
+                                    {recruiterPerf.map((r: { id: string; avatar: string; name: string; role: string; workload: string; candidatesCount: number; screened: number; interviews: number; offers: number; placements: number; revenue: number; conversionRate: number }) => (
+                                        <tr key={r.id} className="hover:bg-neutral-50/50">
+                                            <td className="px-5 py-3">
+                                                <Link href={`/admin/team/${r.id}`} className="flex items-center gap-2 hover:text-primary">
+                                                    <span className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold">{r.avatar}</span>
+                                                    <span><span className="block font-semibold text-neutral-900">{r.name}</span><span className="block text-[10px] text-neutral-400">{r.role}</span></span>
+                                                </Link>
+                                            </td>
+                                            <td className="px-3 py-3"><span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${r.workload === "HIGH" ? "bg-red-50 text-red-700" : r.workload === "NORMAL" ? "bg-blue-50 text-blue-700" : "bg-emerald-50 text-emerald-700"}`}>{r.workload.toLowerCase()}</span></td>
+                                            <td className="px-3 py-3 text-right tabular-nums">{r.candidatesCount}</td>
+                                            <td className="px-3 py-3 text-right tabular-nums">{r.screened}</td>
+                                            <td className="px-3 py-3 text-right tabular-nums">{r.interviews}</td>
+                                            <td className="px-3 py-3 text-right tabular-nums">{r.offers}</td>
+                                            <td className="px-3 py-3 text-right tabular-nums font-semibold text-emerald-700">{r.placements}</td>
+                                            <td className="px-3 py-3 text-right tabular-nums">{inr(r.revenue)}</td>
+                                            <td className="px-5 py-3 text-right tabular-nums font-semibold text-primary">{r.conversionRate}%</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
+                    )}
+                </SectionCard>
+            )}
 
-                        <div className="space-y-2 pt-2 border-t border-neutral-100">
-                            <h4 className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Recent Immutable Audit Trail</h4>
-                            <div className="space-y-2">
-                                {(data.recentAudit || []).slice(0, 4).map((log: any) => (
-                                    <div key={log.id} className="text-[11px] text-neutral-600 flex items-start gap-2 bg-neutral-50 p-2 rounded-lg">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
-                                        <div className="min-w-0">
-                                            <p className="font-semibold text-neutral-800 leading-snug">{log.detail}</p>
-                                            <p className="text-[9px] text-neutral-400">{log.actorRole} · {new Date(log.createdAt).toLocaleDateString()}</p>
-                                        </div>
+            {tab === "clients" && (
+                <SectionCard title="Client accounts" subtitle="Open positions, submissions, placements and money owed per client"
+                    action={<Link href="/admin/clients" className="text-xs font-medium text-primary hover:underline flex items-center gap-1">All clients <ArrowRight size={12} /></Link>}>
+                    {clientHealth.length === 0 ? <EmptyState icon={Briefcase} message="No clients yet." /> : (
+                        <div className="overflow-x-auto -m-5">
+                            <table className="w-full text-xs min-w-[700px]">
+                                <thead>
+                                    <tr className="bg-neutral-50/70 border-b border-neutral-100 text-neutral-500 font-semibold text-[11px] text-left">
+                                        <th className="px-5 py-2.5">Client</th><th className="px-3 py-2.5">Status</th><th className="px-3 py-2.5 text-right">Open positions</th>
+                                        <th className="px-3 py-2.5 text-right">Submissions</th><th className="px-3 py-2.5 text-right">Placements</th><th className="px-3 py-2.5 text-right">Revenue</th>
+                                        <th className="px-5 py-2.5 text-right">Receivables</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-neutral-100">
+                                    {[...clientHealth].sort((a: { operationalStatus: string }, b: { operationalStatus: string }) => (RISKY.includes(a.operationalStatus) ? 0 : 1) - (RISKY.includes(b.operationalStatus) ? 0 : 1)).map((c: { id: string; name: string; industry: string; operationalStatus: string; openPositions: number; candidatesSubmitted: number; placements: number; revenue: number; receivables: number }) => (
+                                        <tr key={c.id} className="hover:bg-neutral-50/50">
+                                            <td className="px-5 py-3"><Link href={`/admin/clients/${c.id}`} className="hover:text-primary"><span className="block font-semibold text-neutral-900">{c.name}</span><span className="block text-[10px] text-neutral-400">{c.industry}</span></Link></td>
+                                            <td className="px-3 py-3"><span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${c.operationalStatus === "PAYMENT_RISK" ? "bg-red-50 text-red-700" : c.operationalStatus === "NEEDS_ATTENTION" ? "bg-amber-50 text-amber-800" : c.operationalStatus === "INACTIVE" ? "bg-neutral-100 text-neutral-600" : "bg-emerald-50 text-emerald-700"}`}>{c.operationalStatus.replaceAll("_", " ").toLowerCase()}</span></td>
+                                            <td className="px-3 py-3 text-right tabular-nums">{c.openPositions}</td>
+                                            <td className="px-3 py-3 text-right tabular-nums">{c.candidatesSubmitted}</td>
+                                            <td className="px-3 py-3 text-right tabular-nums font-semibold text-emerald-700">{c.placements}</td>
+                                            <td className="px-3 py-3 text-right tabular-nums">{inr(c.revenue)}</td>
+                                            <td className={`px-5 py-3 text-right tabular-nums ${c.receivables > 0 ? "text-amber-700 font-medium" : "text-neutral-500"}`}>{inr(c.receivables)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </SectionCard>
+            )}
+
+            {tab === "revenue" && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                    <SectionCard title="Billed vs collected" subtitle="Placement fees billed and money received, last 6 months" className="lg:col-span-2">
+                        {revenueTrend.every((m: { revenue: number; collections: number }) => !m.revenue && !m.collections) ? (
+                            <EmptyState icon={Briefcase} message="Nothing billed or collected in the last 6 months." />
+                        ) : (
+                            <ResponsiveContainer width="100%" height={260}>
+                                <AreaChart data={revenueTrend}>
+                                    <defs>
+                                        <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#2F6AA8" stopOpacity={0.25} /><stop offset="100%" stopColor="#2F6AA8" stopOpacity={0} /></linearGradient>
+                                        <linearGradient id="colGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#2E8B57" stopOpacity={0.2} /><stop offset="100%" stopColor="#2E8B57" stopOpacity={0} /></linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#E2E7EF" vertical={false} />
+                                    <XAxis dataKey="month" tick={{ fontSize: 12, fill: "#7A8699" }} axisLine={false} tickLine={false} />
+                                    <YAxis tick={{ fontSize: 11, fill: "#7A8699" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => (v >= 100000 ? `₹${(v / 100000).toFixed(1)}L` : `₹${Math.round(v / 1000)}k`)} />
+                                    <Tooltip formatter={(v, name) => [inr(Number(v)), name]} contentStyle={{ borderRadius: 12, border: "1px solid #E5E7EB", fontSize: 12 }} />
+                                    <Legend verticalAlign="top" height={32} iconType="circle" />
+                                    <Area name="Billed" type="monotone" dataKey="revenue" stroke="#2F6AA8" strokeWidth={2.5} fill="url(#revGrad)" />
+                                    <Area name="Collected" type="monotone" dataKey="collections" stroke="#2E8B57" strokeWidth={2} fill="url(#colGrad)" />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        )}
+                    </SectionCard>
+                    <SectionCard title="Receivables by age" subtitle="Unpaid amounts by days since billing">
+                        <ResponsiveContainer width="100%" height={260}>
+                            <BarChart data={agingChartData}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#E2E7EF" vertical={false} />
+                                <XAxis dataKey="bucket" tick={{ fontSize: 10, fill: "#7A8699" }} axisLine={false} tickLine={false} />
+                                <YAxis tick={{ fontSize: 10, fill: "#7A8699" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `₹${Math.round(v / 1000)}k`} />
+                                <Tooltip formatter={(v) => [inr(Number(v)), "Outstanding"]} contentStyle={{ borderRadius: 12, border: "1px solid #E5E7EB", fontSize: 12 }} />
+                                <Bar dataKey="amount" fill="#E0952A" radius={[6, 6, 0, 0]} maxBarSize={36} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                        <Link href="/finance/dashboard" className="mt-3 text-xs font-medium text-primary hover:underline flex items-center gap-1">Open Finance <ArrowRight size={12} /></Link>
+                    </SectionCard>
+                </div>
+            )}
+
+            {tab === "health" && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                    <SectionCard title="Sourcing channels" subtitle="Which sources bring candidates who join, and the revenue they earn">
+                        {sourcePerf.length === 0 ? <EmptyState icon={Briefcase} message="No candidates sourced yet." /> : (
+                            <div className="divide-y divide-neutral-100">
+                                {sourcePerf.map((s: { source: string; sourced: number; joined: number; revenue: number }) => (
+                                    <div key={s.source} className="py-2.5 flex items-center justify-between text-xs">
+                                        <div><Badge value={s.source} /><p className="text-[11px] text-neutral-500 mt-1">{s.sourced} sourced</p></div>
+                                        <div className="text-right"><p className="font-semibold text-emerald-700">{s.joined} joined</p><p className="text-[11px] text-neutral-700 tabular-nums">{inr(s.revenue)}</p></div>
                                     </div>
                                 ))}
                             </div>
+                        )}
+                    </SectionCard>
+                    <SectionCard title="Compliance & platform" subtitle="Consent, integrations and the latest audit entries"
+                        action={<Link href="/admin/audit-log" className="text-xs font-medium text-primary hover:underline flex items-center gap-1">Audit log <ArrowRight size={12} /></Link>}>
+                        <div className="grid grid-cols-2 gap-3 text-xs">
+                            <Link href="/admin/compliance" className="p-3 rounded-lg border border-neutral-200 hover:bg-neutral-50">
+                                <span className="text-[11px] text-neutral-500">Consent recorded (DPDP)</span>
+                                <p className="text-xl font-semibold text-neutral-900 mt-1">{data.platformHealth?.consentPct != null ? `${data.platformHealth.consentPct}%` : "—"}</p>
+                                <p className="text-[10px] text-neutral-500">{data.platformHealth ? `${data.platformHealth.consented} of ${data.platformHealth.candidates} candidates` : ""}</p>
+                            </Link>
+                            <Link href="/admin/integrations" className="p-3 rounded-lg border border-neutral-200 hover:bg-neutral-50">
+                                <span className="text-[11px] text-neutral-500">Integrations live</span>
+                                <p className="text-xl font-semibold text-neutral-900 mt-1">{data.platformHealth ? `${data.platformHealth.integrationsConnected}/${data.platformHealth.integrationsTotal}` : "—"}</p>
+                                <p className="text-[10px] text-neutral-500">{data.platformHealth?.integrationsNeedingAttention ? `${data.platformHealth.integrationsNeedingAttention} need setup` : "nothing needs setup"}</p>
+                            </Link>
                         </div>
-                    </div>
-                </SectionCard>
-            </div>
-
-            {/* 10. Positions & Requisitions Command */}
-            <SectionCard
-                title="All Open Positions & Requisitions"
-                subtitle={`${data.positions?.length ?? 0} active client requisitions under management`}
-                action={
-                    <Link href="/admin/jobs" className="text-xs font-bold text-primary hover:underline flex items-center gap-1">
-                        Requisitions Command <ArrowRight size={12} />
-                    </Link>
-                }
-            >
-                <PositionsSection positions={data.positions ?? []} />
-            </SectionCard>
+                        <div className="mt-4 space-y-1.5">
+                            <p className="text-[11px] font-semibold text-neutral-500">Recent audit entries</p>
+                            {(data.recentAudit || []).slice(0, 5).map((log: { id: string; detail: string; actorRole: string; createdAt: string }) => (
+                                <div key={log.id} className="text-[11.5px] text-neutral-700 flex items-start gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
+                                    <span className="min-w-0">{log.detail} <span className="text-neutral-400">· {log.actorRole.replaceAll("_", " ").toLowerCase()} · {new Date(log.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</span></span>
+                                </div>
+                            ))}
+                        </div>
+                    </SectionCard>
+                </div>
+            )}
         </div>
     );
 }

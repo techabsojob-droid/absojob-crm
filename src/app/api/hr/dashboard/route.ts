@@ -51,15 +51,15 @@ export async function GET(req: NextRequest) {
 
     // Attendance Exceptions (late today, missing check-in/out)
     const lateEmployees = todayAtt
-        .filter((a) => a.status === "LATE" || (a.checkIn && a.checkIn.includes("T10:")))
+        .filter((a) => a.status === "LATE" || (a.lateByMinutes ?? 0) > 0)
         .map((a) => {
             const emp = orgEmployees.find((e) => e.userId === a.userId || e.id === a.userId);
             return {
                 id: a.id,
                 name: emp?.name || "Staff Member",
-                department: emp?.department || "General",
-                checkIn: a.checkIn ? a.checkIn.split("T")[1]?.substring(0, 5) : "10:15",
-                delayMinutes: 25,
+                department: emp?.department || "—",
+                checkIn: a.checkIn ? a.checkIn.split("T")[1]?.substring(0, 5) : "—",
+                delayMinutes: a.lateByMinutes ?? null,
             };
         });
 
@@ -71,8 +71,8 @@ export async function GET(req: NextRequest) {
             return {
                 id: a.id,
                 name: emp?.name || "Staff Member",
-                department: emp?.department || "Operations",
-                checkIn: a.checkIn ? a.checkIn.split("T")[1]?.substring(0, 5) : "09:30",
+                department: emp?.department || "—",
+                checkIn: a.checkIn ? a.checkIn.split("T")[1]?.substring(0, 5) : "—",
             };
         });
 

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { defaultSlaDays } from "@/lib/org-settings";
 import { createRequisition } from "@/lib/requisition-server";
 import { requireRole } from "@/lib/mock/server";
 import { clients, users, applications, nextIds } from "@/lib/mock/data";
@@ -49,7 +50,7 @@ export async function GET(request: Request) {
         const interviewCount = jobApps.filter((a) => ["INTERVIEW_SCHEDULED", "TECH_ROUND", "CLIENT_ROUND", "HR_ROUND"].includes(a.stage)).length;
         const offerCount = jobApps.filter((a) => ["OFFER_SENT", "OFFER_ACCEPTED", "ONBOARDING"].includes(a.stage)).length;
 
-        const effectiveSlaDays = j.slaDays || 30;
+        const effectiveSlaDays = j.slaDays || defaultSlaDays(j.orgId);
         const daysRemaining = effectiveSlaDays - daysOpen;
         let calculatedSlaStatus = j.sla?.status || "ON_TRACK";
         if (j.status === "FULFILLED") {
@@ -241,9 +242,9 @@ export async function POST(request: Request) {
         accountManagerId: body.accountManagerId ?? null,
         targetCloseDate: body.targetCloseDate ?? null,
         targetJoiningDate: body.targetJoiningDate ?? null,
-        slaDays: Number(body.slaDays) || 30,
+        slaDays: Number(body.slaDays) || defaultSlaDays(me.orgId),
         sla: {
-            slaDays: Number(body.slaDays) || 30,
+            slaDays: Number(body.slaDays) || defaultSlaDays(me.orgId),
             slaStartDate: new Date().toISOString(),
             status: "ON_TRACK"
         },
@@ -340,6 +341,7 @@ export async function PATCH(request: Request) {
     if (invalid.length) return NextResponse.json({ error: `Recruiter(s) not found: ${invalid.join(", ")}` }, { status: 400 });
     const prevTeam = [...(before.assignedTas || []), ...(before.primaryRecruiterId ? [before.primaryRecruiterId] : [])];
 
+    if (updates.slaDays !== undefined) updates.slaDays = Number(updates.slaDays) || defaultSlaDays(me.orgId);
     if (updates.skills && typeof updates.skills === "string") {
         updates.skills = updates.skills.split(",").map((s: string) => s.trim()).filter(Boolean);
     }

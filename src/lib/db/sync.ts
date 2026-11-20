@@ -131,6 +131,12 @@ function currentObjects(t: TableDef): Obj[] {
     return value as Obj[];
 }
 
+/** Read-only view of one collection (used by the Settings › Backup export). */
+export function collectionRows(key: string): Obj[] {
+    const t = TABLES.find((x) => x.key === key);
+    return t && S.store && key in S.store ? currentObjects(t) : [];
+}
+
 function replaceCollection(t: TableDef, objs: Obj[]) {
     const value = S.store![t.key];
     if (t.kind === "orgMap") {

@@ -39,6 +39,20 @@ const COLUMNS = [...STAGES, "ON_HOLD"] as const;
 
 const can = (from: string, to: string) => canTransition(from as ApplicationStage, to as ApplicationStage);
 
+/**
+ * Time in the current stage against that stage's SLA (Settings › Pipeline).
+ * Past the SLA is "stuck", the last quarter before it is "aging". Stages
+ * without an SLA fall back to 3 / 7 days.
+ */
+function stageAging(a: { updatedAt?: string; createdAt?: string; stageSlaHours?: number }) {
+    const hours = (Date.now() - new Date(a.updatedAt || a.createdAt || Date.now()).getTime()) / 3600000;
+    const days = Math.floor(hours / 24);
+    const sla = Number(a.stageSlaHours) || 0;
+    const isStuck = sla > 0 ? hours > sla : days > 7;
+    const isAging = !isStuck && (sla > 0 ? hours > sla * 0.75 : days > 3);
+    return { days, isStuck, isAging, level: isStuck ? "STUCK" : isAging ? "AGING" : "FRESH" };
+}
+
 export default function TaPipelinePage() {
     const qc = useQueryClient();
 
@@ -233,22 +247,7 @@ export default function TaPipelinePage() {
             );
         }
 
-        if (agingFilter === "FRESH") {
-            list = list.filter((a) => {
-                const days = Math.floor((Date.now() - new Date(a.updatedAt || a.createdAt).getTime()) / 86400000);
-                return days <= 3;
-            });
-        } else if (agingFilter === "AGING") {
-            list = list.filter((a) => {
-                const days = Math.floor((Date.now() - new Date(a.updatedAt || a.createdAt).getTime()) / 86400000);
-                return days > 3 && days <= 7;
-            });
-        } else if (agingFilter === "STUCK") {
-            list = list.filter((a) => {
-                const days = Math.floor((Date.now() - new Date(a.updatedAt || a.createdAt).getTime()) / 86400000);
-                return days > 7;
-            });
-        }
+        if (agingFilter !== "ALL") list = list.filter((a) => stageAging(a).level === agingFilter);
 
         return list;
     }, [rawList, jobFilter, stageFilter, searchQuery, agingFilter]);
@@ -258,10 +257,7 @@ export default function TaPipelinePage() {
         const total = rawList.length;
         const interviewing = rawList.filter((a) => ["INTERVIEW_SCHEDULED", "TECH_ROUND", "CLIENT_ROUND"].includes(a.stage)).length;
         const offers = rawList.filter((a) => ["OFFER_SENT", "OFFER_ACCEPTED"].includes(a.stage)).length;
-        const agingStuck = rawList.filter((a) => {
-            const days = Math.floor((Date.now() - new Date(a.updatedAt || a.createdAt).getTime()) / 86400000);
-            return days > 7;
-        }).length;
+        const agingStuck = rawList.filter((a) => stageAging(a).isStuck).length;
 
         return { total, interviewing, offers, agingStuck };
     }, [rawList]);
@@ -349,11 +345,11 @@ export default function TaPipelinePage() {
                     hint="Sent or accepted offers"
                 />
                 <StatCard
-                    label="Aging > 7 Days"
+                    label="Past Stage SLA"
                     value={metrics.agingStuck}
                     icon={Clock}
                     tone={metrics.agingStuck > 5 ? "red" : "amber"}
-                    hint="Needs recruiter follow-up"
+                    hint="Over the stage limit set in Settings"
                 />
             </div>
 
@@ -413,9 +409,9 @@ export default function TaPipelinePage() {
                             className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-md text-xs font-semibold text-neutral-700 outline-none hover:bg-neutral-100 cursor-pointer"
                         >
                             <option value="ALL">All Ages</option>
-                            <option value="FRESH">Fresh (≤ 3d)</option>
-                            <option value="AGING">Aging (4–7d)</option>
-                            <option value="STUCK">Stuck (&gt; 7d)</option>
+                            <option value="FRESH">Within stage SLA</option>
+                            <option value="AGING">Nearing stage SLA</option>
+                            <option value="STUCK">Past stage SLA</option>
                         </select>
 
                         {/* Mine only toggle */}
@@ -613,9 +609,7 @@ export default function TaPipelinePage() {
                                     {/* Stage Cards */}
                                     <div className="space-y-2.5">
                                         {stageApps.map((a: any) => {
-                                            const daysInStage = Math.floor((Date.now() - new Date(a.updatedAt || a.createdAt).getTime()) / 86400000);
-                                            const isAging = daysInStage > 3 && daysInStage <= 7;
-                                            const isStuck = daysInStage > 7;
+                                            const { days: daysInStage, isAging, isStuck } = stageAging(a);
                                             const isBeingDragged = draggedAppId === a.id;
 
                                             return (
@@ -839,9 +833,7 @@ export default function TaPipelinePage() {
                             <tbody className="divide-y divide-neutral-100">
                                 {filteredApps.map((a: any) => {
                                     const isSelected = selectedIds.includes(a.id);
-                                    const daysInStage = Math.floor((Date.now() - new Date(a.updatedAt || a.createdAt).getTime()) / 86400000);
-                                    const isAging = daysInStage > 3 && daysInStage <= 7;
-                                    const isStuck = daysInStage > 7;
+                                    const { days: daysInStage, isAging, isStuck } = stageAging(a);
 
                                     return (
                                         <tr key={a.id} className={`hover:bg-neutral-50/60 transition-colors ${isSelected ? "bg-primary/5" : ""}`}>

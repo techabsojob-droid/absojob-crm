@@ -1147,7 +1147,7 @@ export const auditLogs: AuditLog[] = persist("auditLogs", () => ([
 export const notifications: Notification[] = persist("notifications", () => ([
   { id: "ntf-1", orgId: ORG_1, userId: "usr-sa", title: "Job approval pending", message: "MediCare Plus raised 'Staff Nurse (ICU)' — needs your approval", link: "/admin/jobs", isRead: false, createdAt: daysAgo(0, 2) },
   { id: "ntf-2", orgId: ORG_1, userId: "usr-sa", title: "New referral submitted", message: "Vikram Singh referred Sameer Khan for Senior Backend Engineer", link: "/admin/referrals", isRead: false, createdAt: daysAgo(0, 5) },
-  { id: "ntf-3", orgId: ORG_1, userId: "usr-sa", title: "Invoice overdue reminder", message: "INV-2026-041 (TechNova) payment due in 18 days", link: "/admin/finance", isRead: true, createdAt: daysAgo(3) },
+  { id: "ntf-3", orgId: ORG_1, userId: "usr-sa", title: "Invoice overdue reminder", message: "INV-2026-041 (TechNova) payment due in 18 days", link: "/finance/invoices", isRead: true, createdAt: daysAgo(3) },
   { id: "ntf-4", orgId: ORG_1, userId: "usr-ag1", title: "Referral shortlisted!", message: "Your referral Amit Verma moved to CLIENT_ROUND at TechNova", link: "/portal/referrals", isRead: false, createdAt: daysAgo(0, 1) },
   { id: "ntf-5", orgId: ORG_1, userId: "usr-ag1", title: "New task assigned", message: "Neha assigned you: Refer candidates for ICU Nurse", link: "/portal/tasks", isRead: false, createdAt: daysAgo(1) },
   { id: "ntf-6", orgId: ORG_1, userId: "usr-ta1", title: "Interview tomorrow", message: "Client round — Amit Verma @ 3:00 PM (video)", link: "/ta/interviews", isRead: false, createdAt: daysAgo(0, 3) },
